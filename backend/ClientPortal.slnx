@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClientPortal.Api/ClientPortal.Api.csproj" />
+    <Project Path="src/ClientPortal.Application/ClientPortal.Application.csproj" />
+    <Project Path="src/ClientPortal.Domain/ClientPortal.Domain.csproj" />
+    <Project Path="src/ClientPortal.Infrastructure/ClientPortal.Infrastructure.csproj" />
+    <Project Path="src/ClientPortal.SharedKernel/ClientPortal.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClientPortal.Api.Tests/ClientPortal.Api.Tests.csproj" />
+    <Project Path="tests/ClientPortal.Application.Tests/ClientPortal.Application.Tests.csproj" />
+    <Project Path="tests/ClientPortal.Architecture.Tests/ClientPortal.Architecture.Tests.csproj" />
+    <Project Path="tests/ClientPortal.Domain.Tests/ClientPortal.Domain.Tests.csproj" />
+    <Project Path="tests/ClientPortal.Infrastructure.Tests/ClientPortal.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
