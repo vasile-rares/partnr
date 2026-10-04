@@ -18,7 +18,7 @@ Code, identifiers, code comments and commit messages are in English. Reply to th
 
 ## Backend (`backend/`)
 
-Structure, dependency rules, conventions, database and commands are in [backend/CLAUDE.md](backend/CLAUDE.md), which Claude Code loads when working in that folder. The structure follows [this article](https://dev.to/mashrulhaque/how-to-design-a-maintainable-net-solution-structure-for-growing-teams-284n).
+Structure, dependency rules, conventions, database and commands are in [backend/CLAUDE.md](backend/CLAUDE.md), which Claude Code loads when working in that folder. The structure follows [this article](https://codewithmukesh.com/blog/clean-architecture-dotnet/).
 
 ## Frontend (`frontend/`)
 

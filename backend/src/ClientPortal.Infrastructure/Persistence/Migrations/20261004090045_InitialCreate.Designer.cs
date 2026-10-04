@@ -25,7 +25,7 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ClientPortal.Domain.Entities.Client", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Clients.Client", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");

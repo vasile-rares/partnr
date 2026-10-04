@@ -1,5 +1,5 @@
-using ClientPortal.Application.Common.Interfaces;
-using ClientPortal.Domain.Interfaces;
+using ClientPortal.Application.Clients;
+using ClientPortal.Application.Common;
 using ClientPortal.Infrastructure.Persistence;
 using ClientPortal.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +16,6 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Connection string 'Postgres' is not configured.");
 
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
-
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IClientRepository, ClientRepository>();
 

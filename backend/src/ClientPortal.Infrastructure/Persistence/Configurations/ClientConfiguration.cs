@@ -1,4 +1,4 @@
-using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,7 +16,5 @@ internal sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.Property(c => c.Name).HasMaxLength(200).IsRequired();
         builder.Property(c => c.Email).HasMaxLength(320).IsRequired();
         builder.HasIndex(c => c.Email).IsUnique();
-
-        builder.Ignore(c => c.DomainEvents);
     }
 }
