@@ -26,6 +26,14 @@ Structure, dependency rules, conventions, database and commands are in [backend/
 - Commands (from `frontend/`): `npm run dev` (localhost:3000), `npm run build`, `npm run lint`.
 - Calls the backend API at `http://localhost:5051`.
 
+## Skills (`.claude/skills/`)
+
+Project rules in this file take precedence over any skill. A skill never authorizes `git commit` / `git push`.
+
+- **`grilling`** (`/grill-me`) — before implementing a new feature or making an architecture decision (auth, data model, roles, API contract), grill the user on the plan first. Skip it for small fixes and obvious changes.
+- **`react-best-practices`** — apply when writing, reviewing or refactoring React / Next.js code in `frontend/` (components, pages, data fetching, bundle size). Where it conflicts with the Next.js 16 docs in `node_modules/next/dist/docs/`, the docs win.
+- **`frontend-design`** — apply when building a new UI or reshaping an existing one visually and no design is provided. Do not use it when a Figma design or an existing design system defines the look; follow that instead.
+
 ## VS Code (`.vscode/`)
 
 - Launch: **API**, **Frontend**, **Full stack** (compound, F5).
