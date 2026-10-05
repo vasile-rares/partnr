@@ -1,5 +1,6 @@
 using ClientPortal.Application.Auth;
 using ClientPortal.Application.Clients;
+using ClientPortal.Application.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClientPortal.Application;
@@ -10,6 +11,8 @@ public static class DependencyInjection
     {
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<WorkspaceAccess>();
+        services.AddScoped<IWorkspaceService, WorkspaceService>();
 
         return services;
     }

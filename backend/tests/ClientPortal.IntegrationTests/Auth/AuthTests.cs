@@ -125,7 +125,7 @@ public sealed class AuthTests(ApiFactory factory)
     [Fact]
     public async Task ProtectedEndpoint_WithoutLogin_ReturnsUnauthorized()
     {
-        var response = await factory.CreateClient().GetAsync($"/api/clients/{Guid.NewGuid()}");
+        var response = await factory.CreateClient().GetAsync("/api/workspaces");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -136,10 +136,10 @@ public sealed class AuthTests(ApiFactory factory)
         var client = factory.CreateClient();
         await Register(client, NewEmail());
 
-        var response = await client.GetAsync($"/api/clients/{Guid.NewGuid()}");
+        var response = await client.GetAsync("/api/workspaces");
 
-        // 404 comes from the endpoint itself (the client does not exist), so authorization let the request through.
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        // A 200 (an empty list for a new account) can only come from the endpoint itself, so authorization let the request through.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     private static async Task<string?> ReadDetail(HttpResponseMessage response)

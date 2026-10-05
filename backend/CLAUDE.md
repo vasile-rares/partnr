@@ -54,12 +54,21 @@ Domain         -> nothing
 - Roles are not global. They will belong to workspace memberships (next step), so `ApplicationDbContext` extends `IdentityUserContext` (no role tables).
 - Email confirmation and password reset are not built yet; they come with the email service (Invitations step).
 
+## Authorization (workspaces)
+
+- Everything a freelancer or agency owns lives in a **workspace**, and its routes say so: `/api/workspaces/{workspaceId}/clients/...`. Roles (`Owner`, `Member`) belong to the membership (`WorkspaceMember`), never to the account.
+- **Every service that touches data inside a workspace calls `WorkspaceAccess` first** (`Application/Workspaces/WorkspaceAccess.cs`): `RequireMemberAsync` or `RequireOwnerAsync`. Do not re-implement the check in a service or a controller.
+- A non-member gets **404**, exactly like a missing workspace, so ids cannot be probed. A member doing an owner-only action gets **403** (`ForbiddenException`), since they already know the workspace exists.
+- Repositories of workspace data take the `workspaceId` in every lookup (`GetByIdAsync(workspaceId, id)`), so a record of another workspace is not found even by its id.
+- Clients are not members: their portal access will come from invitations, scoped to their own projects.
+- Members cannot be added through the API yet (invitations step); integration tests add them straight to the database.
+
 ## Adding a new feature (e.g. `Projects`)
 
 Use `Clients` as the template. Every step is needed; nothing fails at build time if the DI lines are forgotten, the app only breaks on the first request.
 
 1. **Domain**: `Domain/Projects/Project.cs` (private setters, static factory, throws `DomainException`).
-2. **Application** (`Application/Projects/`): `IProjectService`, `ProjectService` (`internal`), `IProjectRepository`, `ProjectMappings`, `Dtos/Requests/`, `Dtos/Responses/`. One repository per aggregate; keep closely related entities in the same feature.
+2. **Application** (`Application/Projects/`): `IProjectService`, `ProjectService` (`internal`, calls `WorkspaceAccess` first if the data belongs to a workspace), `IProjectRepository`, `ProjectMappings`, `Dtos/Requests/`, `Dtos/Responses/`. One repository per aggregate; keep closely related entities in the same feature.
 3. **Application DI**: register `IProjectService` in `Application/DependencyInjection.cs`.
 4. **Infrastructure**: `DbSet<Project>` in `ApplicationDbContext`, `Persistence/Configurations/ProjectConfiguration.cs`, `Persistence/Repositories/ProjectRepository.cs`, and register `IProjectRepository` in `Infrastructure/DependencyInjection.cs`.
 5. **Migration**: `dotnet ef migrations add <Name> ...` (see Database and migrations), then review the generated file.

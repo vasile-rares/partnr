@@ -5,9 +5,10 @@ namespace ClientPortal.Application.Clients;
 
 public interface IClientService
 {
-    /// <exception cref="Common.Exceptions.ConflictException">The email is already used.</exception>
-    Task<ClientResponse> RegisterAsync(RegisterClientRequest request, CancellationToken cancellationToken);
+    /// <exception cref="Common.Exceptions.NotFoundException">The workspace does not exist or the user is not a member.</exception>
+    /// <exception cref="Common.Exceptions.ConflictException">The email is already used in this workspace.</exception>
+    Task<ClientResponse> RegisterAsync(Guid workspaceId, RegisterClientRequest request, CancellationToken cancellationToken);
 
-    /// <exception cref="Common.Exceptions.NotFoundException">The client does not exist.</exception>
-    Task<ClientResponse> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    /// <exception cref="Common.Exceptions.NotFoundException">The workspace or the client does not exist, or the user is not a member.</exception>
+    Task<ClientResponse> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 }

@@ -1,4 +1,5 @@
 using ClientPortal.Domain.Clients;
+using ClientPortal.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,6 +16,11 @@ internal sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
 
         builder.Property(c => c.Name).HasMaxLength(200).IsRequired();
         builder.Property(c => c.Email).HasMaxLength(320).IsRequired();
-        builder.HasIndex(c => c.Email).IsUnique();
+
+        // The same person can be a client of two different workspaces, but only once in each.
+        builder.HasIndex(c => new { c.WorkspaceId, c.Email }).IsUnique();
+
+        // Restrict: deleting a workspace must be a deliberate decision about its clients, not a silent cascade.
+        builder.HasOne<Workspace>().WithMany().HasForeignKey(c => c.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
     }
 }

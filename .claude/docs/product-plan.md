@@ -318,7 +318,7 @@ Funcționalități precum propuneri, plăți, automatizări avansate, CRM, AI, w
 Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește împreună, pe parcurs (vezi regulile din [CLAUDE.md](../../CLAUDE.md)).
 
 - [x] Autentificare
-- [ ] Workspace
+- [x] Workspace
 - [ ] Gestionarea clienților
 - [ ] Invitații pentru clienți
 - [ ] Proiecte
@@ -345,6 +345,21 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **`Client` rămâne o fișă de contact**, creată de freelancer. Legătura cu un cont (`User`) se face la Invitații.
 - **Frontend: browserul apelează API-ul doar prin Next** (rewrite `/api/*`), ca să nu existe CORS și cookie-ul să aparțină originii aplicației; Server Components apelează API-ul direct, cu cookie-ul trimis mai departe.
 - **Frontend: protejarea paginilor.** `proxy.ts` face doar un redirect rapid dacă lipsește cookie-ul. Verificarea reală (`requireUser()`, apel la `/me`) se face în fiecare pagină protejată, nu în layout, conform ghidului Next.js 16 (layout-urile nu se re-randează la navigare). Proxy-ul nu redirectează niciodată dinspre `/login` doar după cookie, ca un cookie expirat să nu producă o buclă.
+- **UI cu shadcn/ui** (ales după auth și workspace, cât codul era încă mic): aspectul presetului implicit `base-nova` (neutru, font Geist), pe primitive **Base UI** (alegerea implicită din shadcn v4, întreținută activ). Am renunțat la direcția vizuală proprie de la început; doar cele trei culori de status (terminat / în lucru / urmează) rămân token-uri proprii, pentru timeline. Formularele rămân pe `useActionState` + validare nativă, fără react-hook-form/zod, ca regulile să nu fie dublate față de API. Mod întunecat cu buton (Light / Dark / System), prin `next-themes`.
 - **Frontend: textele interfeței sunt în engleză**, fără i18n deocamdată.
 - **Teste E2E cu Playwright, pe o bază separată** (`client_portal_e2e`, pe același Postgres local, recreată la fiecare rulare). Browserul, Next, API-ul și baza se testează împreună, ceea ce testele unitare și de integrare nu acoperă. Baza de dezvoltare nu se atinge: scriptul refuză orice bază al cărei nume nu se termină în `_e2e`. SQLite a fost respins pentru dev și test: codul se bazează pe Postgres (erori `23505`, tipuri și migrări Npgsql), iar producția va fi tot Postgres, deci rulăm pe același motor peste tot.
+### Workspace
+
+- **Workspace-ul se creează explicit**, după register (pagina „Create your workspace”), nu automat. Un client invitat nu trebuie să ajungă cu un workspace gol. Un utilizator poate avea mai multe workspace-uri.
+- **Roluri: `Owner` și `Member`**, ținute pe apartenența la workspace (`WorkspaceMember`), nu pe cont. Ownerul gestionează workspace-ul; membrii lucrează la clienți și proiecte.
+- **Clienții nu sunt membri.** Accesul lor la portal vine prin invitație, limitat la proiectele lor (pasul Invitații). Dacă ar fi membri cu rol, o verificare uitată le-ar arăta datele tuturor clienților.
+- **Membrii noi se adaugă abia prin invitații**; tabela de membri și rolurile există deja, ca autorizarea să fie corectă de la început.
+- **Workspace-ul e în rută** (`/api/workspaces/{id}/...`). Un non-membru primește **404**, la fel ca pentru un workspace inexistent, ca id-urile să nu poată fi ghicite. Un membru fără drept (de ex. redenumire) primește **403**.
+- **Regula de acces stă într-un singur loc** (`WorkspaceAccess`), prin care trec toate serviciile cu date dintr-un workspace.
+- **`Client` aparține unui workspace**; emailul e unic per workspace, nu global (aceeași persoană poate fi client la doi freelanceri). Asta a închis și o scurgere: înainte, orice utilizator logat putea citi orice client după id.
+- **Ștergerea workspace-ului e amânată** până există proiecte și invitații, ca să știm ce înseamnă „șterge”. Până atunci FK-ul clienților către workspace e `Restrict`, ca nimic să nu se șteargă în cascadă din greșeală.
+- **Frontend:** `/` doar redirecționează (0 → creare, 1 → direct în workspace, mai multe → listă). URL-urile folosesc id-ul (`/w/{id}`), fără slug.
+
+### Generale
+
 - **Limitare cunoscută:** logout-ul șterge cookie-ul din browser, dar un cookie copiat înainte rămâne valid până expiră (cookie Identity fără stare pe server). Se rezolvă cu invalidarea `SecurityStamp` la logout; de decis la pasul de securitate / înainte de producție.

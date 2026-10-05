@@ -1,6 +1,7 @@
 using ClientPortal.Application.Common;
 using ClientPortal.Application.Common.Exceptions;
 using ClientPortal.Domain.Clients;
+using ClientPortal.Domain.Workspaces;
 using ClientPortal.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -15,6 +16,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     private const string UniqueViolationSqlState = "23505";
 
     public DbSet<Client> Clients => Set<Client>();
+
+    public DbSet<Workspace> Workspaces => Set<Workspace>();
 
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,

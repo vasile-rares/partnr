@@ -8,12 +8,15 @@ public sealed class Client : Entity
     {
     }
 
-    private Client(string name, string email, DateTime createdAtUtc)
+    private Client(Guid workspaceId, string name, string email, DateTime createdAtUtc)
     {
+        WorkspaceId = workspaceId;
         Name = name;
         Email = email;
         CreatedAtUtc = createdAtUtc;
     }
+
+    public Guid WorkspaceId { get; private set; }
 
     public string Name { get; private set; } = string.Empty;
 
@@ -21,8 +24,13 @@ public sealed class Client : Entity
 
     public DateTime CreatedAtUtc { get; private set; }
 
-    public static Client Register(string name, string email)
+    public static Client Register(Guid workspaceId, string name, string email)
     {
+        if (workspaceId == Guid.Empty)
+        {
+            throw new DomainException("A client belongs to a workspace.");
+        }
+
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new DomainException("Client name is required.");
@@ -33,7 +41,7 @@ public sealed class Client : Entity
             throw new DomainException("Client email is required.");
         }
 
-        return new Client(name.Trim(), NormalizeEmail(email), DateTime.UtcNow);
+        return new Client(workspaceId, name.Trim(), NormalizeEmail(email), DateTime.UtcNow);
     }
 
     public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
