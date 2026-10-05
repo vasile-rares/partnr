@@ -1,13 +1,16 @@
 using ClientPortal.Application.Common;
 using ClientPortal.Application.Common.Exceptions;
 using ClientPortal.Domain.Clients;
+using ClientPortal.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace ClientPortal.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-    : DbContext(options), IUnitOfWork
+    : IdentityUserContext<ApplicationUser, Guid>(options), IUnitOfWork
 {
     private const string UniqueViolationSqlState = "23505";
 
@@ -28,6 +31,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         }
     }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Identity's mapping first, so our configurations can override it (table names, unique email index).
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+        // Only renamed to match the snake_case table names; these Identity tables are not used yet.
+        modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("user_claims");
+        modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("user_logins");
+        modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("user_tokens");
+    }
 }

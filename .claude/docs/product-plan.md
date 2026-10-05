@@ -333,4 +333,13 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 
 Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu motivul), ca să nu fie rediscutate în fiecare chat.
 
-_(nimic încă)_
+### Autentificare
+
+- **Doar identitate acum, rolurile la Workspace.** Aceeași persoană poate fi membru într-un workspace și client în altul, deci rolurile aparțin unui workspace, nu contului. De aceea nu există roluri globale.
+- **ASP.NET Core Identity** (hashing, lockout, token-uri gata făcute), în Infrastructure, în spatele `IAuthService`. Nu ne scriem singuri partea sensibilă de securitate.
+- **Cookie HttpOnly, nu JWT în localStorage.** JavaScript-ul nu poate citi cookie-ul, deci un atac XSS nu poate fura sesiunea. Sesiune de 14 zile, sliding.
+- **Tot API-ul cere login implicit** (fallback policy); excepțiile se marchează `[AllowAnonymous]`. Dacă uităm un atribut, endpoint-ul rămâne închis, nu deschis.
+- **Parolă:** minim 8 caractere, fără reguli de compoziție. Lockout: 5 încercări greșite → 15 minute. Eșecurile de login au mereu același mesaj, ca să nu se poată afla ce emailuri există.
+- **Register cere email, parolă și nume complet** (numele apare în portalul clientului).
+- **Confirmarea emailului și resetarea parolei sunt amânate** până apare serviciul de email (pasul Invitații).
+- **`Client` rămâne o fișă de contact**, creată de freelancer. Legătura cu un cont (`User`) se face la Invitații.

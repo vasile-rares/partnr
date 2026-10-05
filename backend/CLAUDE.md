@@ -16,7 +16,7 @@ tests/
   ClientPortal.Tests/            Unit tests (Domain/, Application/)
 ```
 
-Tests stay in a single project with folders mirroring the layers. Integration tests (real Postgres, `WebApplicationFactory`) go in a separate project, `tests/ClientPortal.IntegrationTests/`, so the fast unit tests can run on their own.
+Tests stay in a single project with folders mirroring the layers. Integration tests (real Postgres in a Testcontainers container via `ApiFactory`, `WebApplicationFactory`) live in a separate project, `tests/ClientPortal.IntegrationTests/`, so the fast unit tests can run on their own (`dotnet test tests/ClientPortal.Tests`). The integration tests need Docker running.
 
 ## Dependency rules
 
@@ -44,6 +44,16 @@ Domain         -> nothing
 - Shared settings live in `Directory.Build.props` (`net10.0`, nullable, `TreatWarningsAsErrors=true`). Do not repeat them in `.csproj` files.
 - **NuGet package versions only in `Directory.Packages.props`** (central package management). In `.csproj`: `<PackageReference Include="X" />`, no `Version`. The `Microsoft.OpenApi` pin in that file addresses a vulnerability (GHSA-v5pm-xwqc-g5wc) — do not remove it without checking.
 
+## Authentication
+
+- **ASP.NET Core Identity** with a **cookie** (HttpOnly, SameSite=Lax, 14 days sliding), no JWT. `AuthService` (the use cases: duplicate-email check, generic login error, mapping) is in `Application/Auth/` and is unit-tested with a fake. It talks to Identity only through the `IIdentityService` port, implemented by a thin adapter in `Infrastructure/Identity/` (`IdentityService`, plus `ApplicationUser`) on top of `UserManager`/`SignInManager`. It is a port, not a repository: Identity saves by itself and also owns passwords, lockout and the cookie. `ICurrentUser` is implemented in `Api/Services/CurrentUser`.
+- Endpoints: `POST /api/auth/register|login|logout`, `GET /api/auth/me`. Login failures are always the same 401 message (wrong password, unknown email and lockout are indistinguishable). 5 wrong passwords lock the account for 15 minutes.
+- **The whole API requires login by default** (fallback policy in `Program.cs`). A public endpoint must be marked `[AllowAnonymous]`; a new controller needs no attribute to be protected.
+- Identity's cookie handler would redirect to a login page; it is overridden to answer 401 / 403 (an API has no login page).
+- CORS must keep `AllowCredentials()` or the browser will not send the cookie from `localhost:3000`.
+- Roles are not global. They will belong to workspace memberships (next step), so `ApplicationDbContext` extends `IdentityUserContext` (no role tables).
+- Email confirmation and password reset are not built yet; they come with the email service (Invitations step).
+
 ## Adding a new feature (e.g. `Projects`)
 
 Use `Clients` as the template. Every step is needed; nothing fails at build time if the DI lines are forgotten, the app only breaks on the first request.
@@ -61,7 +71,7 @@ External services (email, OAuth, AI, file storage) follow the same rule as repos
 
 ## Database and migrations
 
-- PostgreSQL 17 via `docker-compose.yml` (db `client_portal`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/ClientPortal.Api/appsettings.Development.json`.
+- PostgreSQL 17 via `docker-compose.yml` (db `client_portal`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/ClientPortal.Api/appsettings.Development.json`. To use a different Postgres (e.g. one installed locally), override it with user secrets instead of editing that file: `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=...;Password=..." --project src/ClientPortal.Api`.
 - Migrations are created in Infrastructure, started from Api (commands work in any shell):
 
 ```bash

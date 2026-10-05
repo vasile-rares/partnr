@@ -1,6 +1,9 @@
 using ClientPortal.Api.Middleware;
+using ClientPortal.Api.Services;
 using ClientPortal.Application;
+using ClientPortal.Application.Common;
 using ClientPortal.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
 
 const string FrontendCorsPolicy = "Frontend";
@@ -10,6 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+// Every endpoint requires a signed-in user unless it opts out with [AllowAnonymous].
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -21,7 +31,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy => policy
         .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
-        .AllowAnyMethod()));
+        .AllowAnyMethod()
+        .AllowCredentials())); // the browser only sends the auth cookie cross-origin with this
 
 var app = builder.Build();
 
@@ -29,13 +40,18 @@ app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapOpenApi().AllowAnonymous();
+    app.MapScalarApiReference().AllowAnonymous();
 }
 
 app.UseHttpsRedirection();
 app.UseCors(FrontendCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+// Makes the entry point visible to WebApplicationFactory<Program> in the integration tests.
+public partial class Program;
