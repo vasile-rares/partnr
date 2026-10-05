@@ -1,5 +1,5 @@
-using ClientPortal.Application.Workspaces;
-using ClientPortal.Domain.Workspaces;
+using ClientPortal.Application.Interfaces.Repositories;
+using ClientPortal.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClientPortal.Infrastructure.Persistence.Repositories;

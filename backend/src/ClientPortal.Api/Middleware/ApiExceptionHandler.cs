@@ -1,5 +1,5 @@
-using ClientPortal.Application.Common.Exceptions;
-using ClientPortal.Domain.Common;
+using ClientPortal.Application.Exceptions;
+using ClientPortal.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;

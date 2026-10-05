@@ -1,7 +1,6 @@
-using ClientPortal.Application.Clients;
-using ClientPortal.Application.Common;
-using ClientPortal.Application.Workspaces;
-using ClientPortal.Infrastructure.Identity;
+using ClientPortal.Application.Interfaces.Repositories;
+using ClientPortal.Application.Interfaces.Services;
+using ClientPortal.Infrastructure.Authentication;
 using ClientPortal.Infrastructure.Persistence;
 using ClientPortal.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
         services.AddIdentityAuthentication();
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUser, CurrentUser>();
 
         return services;
     }

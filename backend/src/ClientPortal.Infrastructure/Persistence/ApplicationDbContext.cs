@@ -1,8 +1,7 @@
-using ClientPortal.Application.Common;
-using ClientPortal.Application.Common.Exceptions;
-using ClientPortal.Domain.Clients;
-using ClientPortal.Domain.Workspaces;
-using ClientPortal.Infrastructure.Identity;
+using ClientPortal.Application.Exceptions;
+using ClientPortal.Application.Interfaces.Repositories;
+using ClientPortal.Domain.Entities;
+using ClientPortal.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;

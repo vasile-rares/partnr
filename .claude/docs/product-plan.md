@@ -362,4 +362,6 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 
 ### Generale
 
+- **Backend organizat pe roluri, nu pe feature-uri** (`Domain/Entities`, `Application/Interfaces/Repositories|Services`, `Application/Services`, `Application/DTOs/<Feature>`, `Infrastructure/Authentication`). Folderele se creează doar când apare primul fișier. Regulile de dependență dintre straturi sunt verificate de `ClientPortal.ArchitectureTests` (NetArchTest), nu doar scrise în documentație. Validarea rămâne pe data annotations.
+
 - **Limitare cunoscută:** logout-ul șterge cookie-ul din browser, dar un cookie copiat înainte rămâne valid până expiră (cookie Identity fără stare pe server). Se rezolvă cu invalidarea `SecurityStamp` la logout; de decis la pasul de securitate / înainte de producție.

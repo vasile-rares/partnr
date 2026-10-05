@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="ClientPortal.Tests" />
+    <InternalsVisibleTo Include="ClientPortal.UnitTests" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-using ClientPortal.Infrastructure.Identity;
+using ClientPortal.Infrastructure.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

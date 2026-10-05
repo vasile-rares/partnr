@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using ClientPortal.Application.Auth.Dtos.Responses;
+using ClientPortal.Application.DTOs.Auth;
 
 namespace ClientPortal.IntegrationTests.Auth;
 

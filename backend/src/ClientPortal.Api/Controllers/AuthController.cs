@@ -1,5 +1,5 @@
-using ClientPortal.Application.Auth;
-using ClientPortal.Application.Auth.Dtos.Requests;
+using ClientPortal.Application.DTOs.Auth;
+using ClientPortal.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

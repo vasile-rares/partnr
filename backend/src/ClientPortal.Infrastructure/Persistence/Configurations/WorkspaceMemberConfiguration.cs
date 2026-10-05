@@ -1,5 +1,5 @@
-using ClientPortal.Domain.Workspaces;
-using ClientPortal.Infrastructure.Identity;
+using ClientPortal.Domain.Entities;
+using ClientPortal.Infrastructure.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

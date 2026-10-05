@@ -1,7 +1,5 @@
 using ClientPortal.Api.Middleware;
-using ClientPortal.Api.Services;
 using ClientPortal.Application;
-using ClientPortal.Application.Common;
 using ClientPortal.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
@@ -13,9 +11,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
-
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 // Every endpoint requires a signed-in user unless it opts out with [AllowAnonymous].
 builder.Services.AddAuthorizationBuilder()

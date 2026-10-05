@@ -6,17 +6,36 @@
 
 Solution: `ClientPortal.slnx`.
 
+Folders are grouped **by role inside each layer** (not by feature); the namespace always matches the folder.
+
 ```
 src/
-  ClientPortal.Domain/           Common/ (Entity, DomainException), one folder per aggregate (Clients/Client.cs). No NuGet packages.
-  ClientPortal.Application/      Common/ (IUnitOfWork, Exceptions/), one folder per feature (Clients/: IClientService, ClientService, IClientRepository, ClientMappings, Dtos/Requests|Responses/). Only the DI abstractions package.
-  ClientPortal.Infrastructure/   EF Core + Npgsql: Persistence/ (ApplicationDbContext, Configurations/, Repositories/, Migrations/)
+  ClientPortal.Domain/           No NuGet packages.
+    Entities/                    Entity (base), Client, Workspace, WorkspaceMember
+    Enums/                       WorkspaceRole
+    Exceptions/                  DomainException
+  ClientPortal.Application/      Only the DI abstractions package.
+    Interfaces/Repositories/     IClientRepository, IWorkspaceRepository, IUnitOfWork
+    Interfaces/Services/         IAuthService, IClientService, IWorkspaceService, IIdentityService, ICurrentUser
+    Services/                    AuthService, ClientService, WorkspaceService, WorkspaceAccess (all internal)
+    DTOs/<Feature>/              Auth/, Clients/, Workspaces/ (requests and responses side by side)
+    Mappings/                    ClientMappings, WorkspaceMappings (ToResponse() extension methods)
+    Exceptions/                  AppException and its subclasses
+    DependencyInjection.cs       AddApplication()
+  ClientPortal.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
+    Persistence/                 ApplicationDbContext, Configurations/, Repositories/, Migrations/
+    Authentication/              ApplicationUser, IdentityService, CurrentUser, cookie setup
+    DependencyInjection.cs       AddInfrastructure()
   ClientPortal.Api/              Controllers/ (thin), Middleware/ (exception handler), Program.cs (composition root)
 tests/
-  ClientPortal.Tests/            Unit tests (Domain/, Application/)
+  ClientPortal.UnitTests/        Domain/, Application/ (services with fakes, request validation)
+  ClientPortal.IntegrationTests/ Real Postgres via Testcontainers + WebApplicationFactory (needs Docker)
+  ClientPortal.ArchitectureTests/ NetArchTest rules for the dependency rules below
 ```
 
-Tests stay in a single project with folders mirroring the layers. Integration tests (real Postgres in a Testcontainers container via `ApiFactory`, `WebApplicationFactory`) live in a separate project, `tests/ClientPortal.IntegrationTests/`, so the fast unit tests can run on their own (`dotnet test tests/ClientPortal.Tests`). The integration tests need Docker running.
+Folders not created yet, to add when their first file appears: `Domain/ValueObjects/`, `Domain/Events/`, `Application/Validators/` (validation is data annotations on DTOs for now), `Infrastructure/Services/` (non-persistence implementations, e.g. email), `Api/Extensions/` (if `Program.cs` grows), `Api/Filters/`, `Api/DTOs/` (only for API-only shapes; use-case DTOs stay in Application). Do not create empty folders.
+
+Integration tests live in a separate project so the fast unit tests can run on their own (`dotnet test tests/ClientPortal.UnitTests`). The architecture tests are fast too and need no database.
 
 ## Dependency rules
 
@@ -27,26 +46,26 @@ Application    -> Domain
 Domain         -> nothing
 ```
 
-- Dependencies point inward only. Domain depends on nothing external.
-- Application talks to the database only through repository interfaces (`IClientRepository`, one per aggregate, declared next to the feature) and `IUnitOfWork`. Both are implemented in Infrastructure: `ClientRepository` (reads, `Add`/`Remove`, never saves) and `ApplicationDbContext` (`IUnitOfWork.SaveChangesAsync`). Application has no EF Core reference.
+- Dependencies point inward only. Domain depends on nothing external. These rules are checked by `tests/ClientPortal.ArchitectureTests` (`LayerDependencyTests`); add a test there when a new rule is agreed.
+- Application talks to the database only through repository interfaces (`IClientRepository`, one per aggregate, in `Interfaces/Repositories/`) and `IUnitOfWork`. Both are implemented in Infrastructure: `ClientRepository` (reads, `Add`/`Remove`, never saves) and `ApplicationDbContext` (`IUnitOfWork.SaveChangesAsync`). Application has no EF Core reference.
 - Api does not reference types from `Infrastructure.Persistence`; it only calls `AddInfrastructure()` from the composition root.
 
 ## Conventions
 
-- **Services per feature**: `IXService` / `XService` in `Application/<Feature>/`, registered in `Application/DependencyInjection.cs`. Services are `internal`; only the interface and DTOs are public. A use case reads/changes entities through repositories and calls `unitOfWork.SaveChangesAsync` once at the end (one transaction per use case). Services are unit-tested with hand-written fake repositories.
+- **Services per feature**: `IXService` in `Application/Interfaces/Services/`, `XService` in `Application/Services/`, registered in `Application/DependencyInjection.cs`. Services are `internal`; only the interface and DTOs are public. A use case reads/changes entities through repositories and calls `unitOfWork.SaveChangesAsync` once at the end (one transaction per use case). Services are unit-tested with hand-written fake repositories.
 - **Entities** have private setters and a static factory (`Client.Register`) that enforces invariants by throwing `DomainException`. Ids are UUID v7 (`Entity` base class).
-- **Errors**: expected failures are exceptions mapped to HTTP by `Api/Middleware/ApiExceptionHandler` as `ProblemDetails`. Services throw `NotFoundException` (404) / `ConflictException` (409), both `AppException`s from `Application/Common/Exceptions/` (add a new subclass for another status code). Entities throw `DomainException` (400) for broken invariants. Anything else becomes 500 via `UseExceptionHandler()`. Controllers stay free of error handling.
-- **Input validation** with data annotations (`[Required]`, `[MaxLength]`, `[EmailAddress]`) on the request DTOs in `Application/<Feature>/Dtos/Requests/` (responses go in `Dtos/Responses/`), validated automatically by `[ApiController]` (returns 400 `ValidationProblemDetails`). Use non-positional records with `init` properties so the attributes sit on properties. Data annotations go on DTOs only, never on entities.
-- **Mapping** by hand with extension methods (`ClientMappings.ToResponse()`), no AutoMapper.
+- **Errors**: expected failures are exceptions mapped to HTTP by `Api/Middleware/ApiExceptionHandler` as `ProblemDetails`. Services throw `NotFoundException` (404) / `ConflictException` (409), both `AppException`s from `Application/Exceptions/` (add a new subclass for another status code). Entities throw `DomainException` (400, `Domain/Exceptions/`) for broken invariants. Anything else becomes 500 via `UseExceptionHandler()`. Controllers stay free of error handling.
+- **Input validation** with data annotations (`[Required]`, `[MaxLength]`, `[EmailAddress]`) on the request DTOs in `Application/DTOs/<Feature>/` (`XRequest` and `XResponse` side by side), validated automatically by `[ApiController]` (returns 400 `ValidationProblemDetails`). Use non-positional records with `init` properties so the attributes sit on properties. Data annotations go on DTOs only, never on entities.
+- **Mapping** by hand with extension methods in `Application/Mappings/` (`ClientMappings.ToResponse()`), no AutoMapper.
 - **Unique-constraint violations** (Postgres `23505`) are translated to `ConflictException` inside `ApplicationDbContext.SaveChangesAsync`, so services need no try/catch for races.
 - **EF mapping** with Fluent API in `Infrastructure/Persistence/Configurations/` (`IEntityTypeConfiguration<T>`), never data annotations on entities.
-- Naming: plural folders for collections (`Dtos/`, `Requests/`, `Responses/`, `Controllers/`), singular for feature areas (`Clients/`); suffix files with their role (`ClientService`, `ClientRepository`, `ClientsController`, `ClientConfiguration`).
+- Naming: plural folders for roles (`Entities/`, `Services/`, `Controllers/`), plural feature names under `DTOs/` (`DTOs/Clients/`); suffix files with their role (`ClientService`, `ClientRepository`, `ClientsController`, `ClientConfiguration`).
 - Shared settings live in `Directory.Build.props` (`net10.0`, nullable, `TreatWarningsAsErrors=true`). Do not repeat them in `.csproj` files.
 - **NuGet package versions only in `Directory.Packages.props`** (central package management). In `.csproj`: `<PackageReference Include="X" />`, no `Version`. The `Microsoft.OpenApi` pin in that file addresses a vulnerability (GHSA-v5pm-xwqc-g5wc) — do not remove it without checking.
 
 ## Authentication
 
-- **ASP.NET Core Identity** with a **cookie** (HttpOnly, SameSite=Lax, 14 days sliding), no JWT. `AuthService` (the use cases: duplicate-email check, generic login error, mapping) is in `Application/Auth/` and is unit-tested with a fake. It talks to Identity only through the `IIdentityService` port, implemented by a thin adapter in `Infrastructure/Identity/` (`IdentityService`, plus `ApplicationUser`) on top of `UserManager`/`SignInManager`. It is a port, not a repository: Identity saves by itself and also owns passwords, lockout and the cookie. `ICurrentUser` is implemented in `Api/Services/CurrentUser`.
+- **ASP.NET Core Identity** with a **cookie** (HttpOnly, SameSite=Lax, 14 days sliding), no JWT. `AuthService` (the use cases: duplicate-email check, generic login error, mapping) is in `Application/Services/` and is unit-tested with a fake. It talks to Identity only through the `IIdentityService` port, implemented by a thin adapter in `Infrastructure/Authentication/` (`IdentityService`, plus `ApplicationUser`) on top of `UserManager`/`SignInManager`. It is a port, not a repository: Identity saves by itself and also owns passwords, lockout and the cookie. `ICurrentUser` is implemented by `Infrastructure/Authentication/CurrentUser` (reads the user id claim from `HttpContext`), registered in `AddInfrastructure()`.
 - Endpoints: `POST /api/auth/register|login|logout`, `GET /api/auth/me`. Login failures are always the same 401 message (wrong password, unknown email and lockout are indistinguishable). 5 wrong passwords lock the account for 15 minutes.
 - **The whole API requires login by default** (fallback policy in `Program.cs`). A public endpoint must be marked `[AllowAnonymous]`; a new controller needs no attribute to be protected.
 - Identity's cookie handler would redirect to a login page; it is overridden to answer 401 / 403 (an API has no login page).
@@ -57,7 +76,7 @@ Domain         -> nothing
 ## Authorization (workspaces)
 
 - Everything a freelancer or agency owns lives in a **workspace**, and its routes say so: `/api/workspaces/{workspaceId}/clients/...`. Roles (`Owner`, `Member`) belong to the membership (`WorkspaceMember`), never to the account.
-- **Every service that touches data inside a workspace calls `WorkspaceAccess` first** (`Application/Workspaces/WorkspaceAccess.cs`): `RequireMemberAsync` or `RequireOwnerAsync`. Do not re-implement the check in a service or a controller.
+- **Every service that touches data inside a workspace calls `WorkspaceAccess` first** (`Application/Services/WorkspaceAccess.cs`): `RequireMemberAsync` or `RequireOwnerAsync`. Do not re-implement the check in a service or a controller.
 - A non-member gets **404**, exactly like a missing workspace, so ids cannot be probed. A member doing an owner-only action gets **403** (`ForbiddenException`), since they already know the workspace exists.
 - Repositories of workspace data take the `workspaceId` in every lookup (`GetByIdAsync(workspaceId, id)`), so a record of another workspace is not found even by its id.
 - Clients are not members: their portal access will come from invitations, scoped to their own projects.
@@ -67,16 +86,16 @@ Domain         -> nothing
 
 Use `Clients` as the template. Every step is needed; nothing fails at build time if the DI lines are forgotten, the app only breaks on the first request.
 
-1. **Domain**: `Domain/Projects/Project.cs` (private setters, static factory, throws `DomainException`).
-2. **Application** (`Application/Projects/`): `IProjectService`, `ProjectService` (`internal`, calls `WorkspaceAccess` first if the data belongs to a workspace), `IProjectRepository`, `ProjectMappings`, `Dtos/Requests/`, `Dtos/Responses/`. One repository per aggregate; keep closely related entities in the same feature.
+1. **Domain**: `Domain/Entities/Project.cs` (private setters, static factory, throws `DomainException`); enums in `Domain/Enums/`.
+2. **Application**: `Interfaces/Services/IProjectService.cs`, `Services/ProjectService.cs` (`internal`, calls `WorkspaceAccess` first if the data belongs to a workspace), `Interfaces/Repositories/IProjectRepository.cs`, `Mappings/ProjectMappings.cs`, `DTOs/Projects/` (requests and responses). One repository per aggregate, not per entity.
 3. **Application DI**: register `IProjectService` in `Application/DependencyInjection.cs`.
 4. **Infrastructure**: `DbSet<Project>` in `ApplicationDbContext`, `Persistence/Configurations/ProjectConfiguration.cs`, `Persistence/Repositories/ProjectRepository.cs`, and register `IProjectRepository` in `Infrastructure/DependencyInjection.cs`.
 5. **Migration**: `dotnet ef migrations add <Name> ...` (see Database and migrations), then review the generated file.
 6. **Api**: `Controllers/ProjectsController.cs`, thin, no error handling.
-7. **Tests**: service tests in `tests/ClientPortal.Tests/Application/` (fake repository + fake unit of work), entity tests in `Domain/`.
+7. **Tests**: service tests in `tests/ClientPortal.UnitTests/Application/` (fake repository + fake unit of work), entity tests in `Domain/`.
 8. Run `dotnet build` (0 warnings) and `dotnet test`.
 
-External services (email, OAuth, AI, file storage) follow the same rule as repositories: the interface lives in Application, the implementation in `Infrastructure/External/<Name>/`, never in `Persistence/`.
+External services (email, OAuth, AI, file storage) follow the same rule as repositories: the interface lives in `Application/Interfaces/Services/`, the implementation in `Infrastructure/Services/`, never in `Persistence/`.
 
 ## Database and migrations
 

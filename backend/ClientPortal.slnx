@@ -6,7 +6,8 @@
     <Project Path="src/ClientPortal.Infrastructure/ClientPortal.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ClientPortal.ArchitectureTests/ClientPortal.ArchitectureTests.csproj" />
     <Project Path="tests/ClientPortal.IntegrationTests/ClientPortal.IntegrationTests.csproj" />
-    <Project Path="tests/ClientPortal.Tests/ClientPortal.Tests.csproj" />
+    <Project Path="tests/ClientPortal.UnitTests/ClientPortal.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -1,6 +1,5 @@
-using ClientPortal.Application.Auth;
-using ClientPortal.Application.Clients;
-using ClientPortal.Application.Workspaces;
+using ClientPortal.Application.Interfaces.Services;
+using ClientPortal.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClientPortal.Application;

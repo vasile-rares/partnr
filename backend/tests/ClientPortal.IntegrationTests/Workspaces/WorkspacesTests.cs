@@ -1,8 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using ClientPortal.Application.Auth.Dtos.Responses;
-using ClientPortal.Application.Workspaces.Dtos.Responses;
-using ClientPortal.Domain.Workspaces;
+using ClientPortal.Application.DTOs.Auth;
+using ClientPortal.Application.DTOs.Workspaces;
+using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Enums;
 using ClientPortal.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,5 +1,5 @@
-using ClientPortal.Application.Workspaces;
-using ClientPortal.Application.Workspaces.Dtos.Requests;
+using ClientPortal.Application.DTOs.Workspaces;
+using ClientPortal.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientPortal.Api.Controllers;

@@ -1,5 +1,4 @@
-using ClientPortal.Domain.Clients;
-using ClientPortal.Domain.Workspaces;
+using ClientPortal.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
