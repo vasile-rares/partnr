@@ -3,7 +3,7 @@ import { alertWith, createAccount, newUser, PASSWORD, signIn } from "./helpers";
 
 const SESSION_COOKIE = ".AspNetCore.Identity.Application";
 
-test("registering creates the account and lands on the home page", async ({ page }) => {
+test("registering creates the account and asks for a first workspace", async ({ page }) => {
   const user = newUser();
   await page.goto("/register");
 
@@ -12,26 +12,27 @@ test("registering creates the account and lands on the home page", async ({ page
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Create account" }).click();
 
-  await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: `Hi, ${user.fullName}` })).toBeVisible();
+  // A new account has no workspace yet, so "/" sends it to create one.
+  await expect(page).toHaveURL("/workspaces/new");
+  await expect(page.getByRole("heading", { name: "Create your workspace" })).toBeVisible();
 });
 
 test("the session survives a reload", async ({ page, request }) => {
   const user = await createAccount(request);
   await page.goto("/login");
   await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/workspaces/new");
 
   await page.reload();
 
-  await expect(page.getByRole("heading", { name: `Hi, ${user.fullName}` })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your workspace" })).toBeVisible();
 });
 
 test("signing out ends the session", async ({ page, request }) => {
   const user = await createAccount(request);
   await page.goto("/login");
   await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/workspaces/new");
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/login");
@@ -80,7 +81,8 @@ test("a redirect target outside the site is ignored", async ({ page, request }) 
 
   await signIn(page, user.email, user.password);
 
-  await expect(page).toHaveURL("/");
+  // Back on our own site: "/" then forwards a new account to its first workspace.
+  await expect(page).toHaveURL("/workspaces/new");
 });
 
 test("an invalid session cookie leads to the sign-in page without a redirect loop", async ({ page, context, baseURL }) => {

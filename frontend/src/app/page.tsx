@@ -1,22 +1,17 @@
-import { SignOutButton } from "@/components/auth/SignOutButton";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { getMyWorkspaces } from "@/lib/workspaces/server";
 
+// "/" has no page of its own: it sends you to where you most likely want to be.
 export default async function HomePage() {
-  const user = await requireUser();
+  await requireUser();
+  const workspaces = await getMyWorkspaces();
 
-  return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-6 py-8">
-      <header className="flex items-center justify-between">
-        <p className="font-display text-xl font-semibold">Client Portal</p>
-        <SignOutButton />
-      </header>
-
-      <section className="my-auto py-16">
-        <h1 className="font-display text-3xl font-semibold">Hi, {user.fullName}</h1>
-        <p className="mt-3 max-w-prose text-ink-soft">
-          You have no clients or projects yet. They will show up here once you add them.
-        </p>
-      </section>
-    </main>
-  );
+  if (workspaces.length === 0) {
+    redirect("/workspaces/new");
+  }
+  if (workspaces.length === 1) {
+    redirect(`/w/${workspaces[0].id}`);
+  }
+  redirect("/workspaces");
 }

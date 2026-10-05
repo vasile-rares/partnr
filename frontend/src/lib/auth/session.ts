@@ -1,10 +1,8 @@
 import "server-only";
 
 import { cache } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { BACKEND_URL } from "@/lib/backend";
-import { SESSION_COOKIE } from "@/lib/auth/constants";
+import { hasSessionCookie, serverFetch } from "@/lib/api/server";
 
 export type CurrentUser = {
   id: string;
@@ -17,15 +15,11 @@ export type CurrentUser = {
  * Wrapped in `cache` so any number of calls during one request cost a single round trip.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  const session = (await cookies()).get(SESSION_COOKIE);
-  if (!session) {
+  if (!(await hasSessionCookie())) {
     return null;
   }
 
-  const response = await fetch(`${BACKEND_URL}/api/auth/me`, {
-    headers: { cookie: `${session.name}=${session.value}` },
-    cache: "no-store",
-  });
+  const response = await serverFetch("/api/auth/me");
 
   if (response.status === 401) {
     return null;

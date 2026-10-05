@@ -16,7 +16,7 @@ const steps: { title: string; detail: string; status: Status }[] = [
 function Marker({ status }: { status: Status }) {
   if (status === "done") {
     return (
-      <span className="flex size-6 items-center justify-center rounded-full bg-done text-on-done">
+      <span className="flex size-6 items-center justify-center rounded-full bg-status-done text-background">
         <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
           <path d="m3.5 8.5 3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -26,32 +26,32 @@ function Marker({ status }: { status: Status }) {
 
   if (status === "doing") {
     return (
-      <span className="flex size-6 items-center justify-center rounded-full border-2 border-doing">
-        <span className="size-2 rounded-full bg-doing" />
+      <span className="flex size-6 items-center justify-center rounded-full border-2 border-status-doing">
+        <span className="size-2 rounded-full bg-status-doing" />
       </span>
     );
   }
 
-  return <span className="size-6 rounded-full border-2 border-todo bg-surface" />;
+  return <span className="size-6 rounded-full border-2 border-status-todo bg-background" />;
 }
 
 export function ProjectTimeline() {
   return (
     <section aria-labelledby="timeline-title" className="w-full max-w-md">
-      <h2 id="timeline-title" className="font-display text-3xl font-semibold leading-tight">
+      <h2 id="timeline-title" className="font-heading text-3xl font-semibold leading-tight">
         What your client sees
       </h2>
-      <p className="mt-3 text-ink-soft">
+      <p className="mt-3 text-muted-foreground">
         Every project has a timeline your client can open at any time, so nobody has to ask for an update.
       </p>
 
-      <p className="mt-12 font-display text-xl font-semibold">Bakery website</p>
-      <p className="text-sm text-ink-soft">Example project</p>
+      <p className="mt-12 font-heading text-xl font-semibold">Bakery website</p>
+      <p className="text-sm text-muted-foreground">Example project</p>
 
       <ol className="relative mt-6 flex flex-col gap-8">
         <span
           aria-hidden
-          className="timeline-line absolute bottom-3 left-3 top-3 w-0.5 -translate-x-1/2 bg-line"
+          className="timeline-line absolute bottom-3 left-3 top-3 w-0.5 -translate-x-1/2 bg-border"
         />
         {steps.map((step, index) => (
           <li
@@ -65,7 +65,7 @@ export function ProjectTimeline() {
                 {step.title}
                 <span className="sr-only">, {statusLabel[step.status]}</span>
               </p>
-              <p className="text-sm text-ink-soft">{step.detail}</p>
+              <p className="text-sm text-muted-foreground">{step.detail}</p>
             </div>
           </li>
         ))}

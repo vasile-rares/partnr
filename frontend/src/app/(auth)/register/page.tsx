@@ -12,7 +12,7 @@ export default async function RegisterPage() {
 
   return (
     <>
-      <h1 className="mb-8 font-display text-3xl font-semibold">Create account</h1>
+      <h1 className="mb-8 font-heading text-3xl font-semibold">Create account</h1>
       <RegisterForm />
     </>
   );

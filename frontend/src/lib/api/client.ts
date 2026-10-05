@@ -1,0 +1,92 @@
+// Browser-side calls to the API. They go through the /api rewrite (next.config.ts), so the session cookie belongs
+// to this site's own origin and the browser needs no CORS.
+
+export type ApiFailure = {
+  ok: false;
+  /** HTTP status, or 0 when the server could not be reached. */
+  status: number;
+  /** A message written for people, safe to show as is. */
+  message: string;
+  /** Messages per input, keyed by lower-case field name (e.g. "email", "name"). */
+  fieldErrors: Record<string, string>;
+};
+
+export type ApiResult<T> = { ok: true; data: T } | ApiFailure;
+
+type ProblemDetails = {
+  detail?: string;
+  errors?: Record<string, string[]>;
+};
+
+const messages = {
+  network: "Could not reach the server. Check your connection and try again.",
+  server: "Something went wrong on our side. Try again in a moment.",
+  invalidInput: "Check the highlighted fields and try again.",
+  signedOut: "Your session has ended. Sign in again to continue.",
+  forbidden: "You don't have permission to do this.",
+  notFound: "This no longer exists, or you don't have access to it.",
+};
+
+export async function sendJson<T = unknown>(
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  path: string,
+  body?: unknown,
+): Promise<ApiResult<T>> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method,
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    return failure(0, messages.network);
+  }
+
+  if (response.ok) {
+    return { ok: true, data: (await readJson(response)) as T };
+  }
+
+  const problem = (await readJson(response)) as ProblemDetails | null;
+
+  switch (response.status) {
+    case 400:
+      return badRequest(problem);
+    case 401:
+      return failure(401, messages.signedOut);
+    case 403:
+      return failure(403, messages.forbidden);
+    case 404:
+      return failure(404, messages.notFound);
+    case 409:
+      // Conflicts carry a message the API wrote for people ("already exists...").
+      return failure(409, problem?.detail ?? messages.server);
+    default:
+      return failure(response.status, messages.server);
+  }
+}
+
+function failure(status: number, message: string, fieldErrors: Record<string, string> = {}): ApiFailure {
+  return { ok: false, status, message, fieldErrors };
+}
+
+function badRequest(problem: ProblemDetails | null): ApiFailure {
+  if (problem?.errors) {
+    const fieldErrors: Record<string, string> = {};
+    for (const [field, errors] of Object.entries(problem.errors)) {
+      fieldErrors[field.toLowerCase()] = errors[0];
+    }
+    return failure(400, messages.invalidInput, fieldErrors);
+  }
+
+  // A business rule rejected by the API (e.g. the password policy): its message is already written for people.
+  return failure(400, problem?.detail ?? messages.invalidInput);
+}
+
+async function readJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null; // e.g. 204 No Content
+  }
+}

@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <>
-      <h1 className="mb-8 font-display text-3xl font-semibold">Sign in</h1>
+      <h1 className="mb-8 font-heading text-3xl font-semibold">Sign in</h1>
       <LoginForm next={next} />
     </>
   );

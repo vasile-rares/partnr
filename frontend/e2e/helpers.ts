@@ -23,3 +23,10 @@ export async function signIn(page: Page, email: string, password: string) {
 
 // Next.js has its own (empty) role="alert" live region, so alerts are matched by their text.
 export const alertWith = (page: Page, text: string) => page.getByRole("alert").filter({ hasText: text });
+
+// Creates a workspace as the account last registered through this request context (it keeps the session cookie).
+export async function createWorkspace(request: APIRequestContext, name: string): Promise<{ id: string; name: string }> {
+  const response = await request.post("/api/workspaces", { data: { name } });
+  expect(response.status()).toBe(201);
+  return response.json();
+}

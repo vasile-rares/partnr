@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState } from "react";
-import { TextField } from "@/components/auth/TextField";
+import { FormError } from "@/components/forms/FormMessage";
+import { TextField } from "@/components/forms/TextField";
+import { Button } from "@/components/ui/button";
 import { postAuth } from "@/lib/auth/client";
 
 type FormState = {
@@ -42,7 +44,7 @@ export function RegisterForm() {
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
   return (
-    <form action={submit} className="flex flex-col gap-5">
+    <form action={submit} className="flex flex-col gap-6">
       <TextField
         label="Full name"
         name="fullName"
@@ -74,23 +76,20 @@ export function RegisterForm() {
         error={fieldErrors.password}
       />
 
-      {state.message && !hasFieldErrors ? (
-        <p role="alert" className="text-sm text-danger">
-          {state.message}
-        </p>
-      ) : null}
+      <FormError message={state.message && !hasFieldErrors ? state.message : undefined} />
 
-      <button
+      <Button
         type="submit"
+        size="lg"
+        className="w-full"
         disabled={pending}
-        className="h-11 w-full rounded-md bg-done font-medium text-on-done outline-offset-2 focus-visible:outline-2 focus-visible:outline-done disabled:opacity-60"
       >
         {pending ? "Creating account…" : "Create account"}
-      </button>
+      </Button>
 
-      <p className="text-sm text-ink-soft">
+      <p className="text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-done underline underline-offset-2">
+        <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
           Sign in
         </Link>
       </p>

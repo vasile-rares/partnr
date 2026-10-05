@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { postAuth } from "@/lib/auth/client";
 
 export function SignOutButton() {
@@ -9,8 +10,8 @@ export function SignOutButton() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
@@ -19,9 +20,8 @@ export function SignOutButton() {
           router.refresh();
         })
       }
-      className="h-11 rounded-md border border-line px-4 font-medium outline-offset-2 hover:bg-surface focus-visible:outline-2 focus-visible:outline-done disabled:opacity-60"
     >
       Sign out
-    </button>
+    </Button>
   );
 }
