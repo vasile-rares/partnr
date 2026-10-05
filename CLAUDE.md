@@ -48,6 +48,7 @@ Project rules in this file take precedence over any skill. A skill never authori
 
 - **`grilling`** (`/grill-me`) — before implementing a new feature or making an architecture decision (auth, data model, roles, API contract), grill the user on the plan first. Skip it for small fixes and obvious changes.
 - **`react-best-practices`** — apply when writing, reviewing or refactoring React / Next.js code in `frontend/` (components, pages, data fetching, bundle size). Where it conflicts with the Next.js 16 docs in `node_modules/next/dist/docs/`, the docs win.
+- **`shadcn`** (official, installed with `npx skills add shadcn/ui --skill shadcn --agent claude-code --copy`; to update it, run the same command again) — apply when adding, composing or styling UI in `frontend/`: shadcn CLI usage, Base UI vs Radix, form and composition rules. Project rules here and the Next.js 16 docs take precedence over it.
 - **`frontend-design`** — apply when building a new UI or reshaping an existing one visually and no design is provided. Do not use it when a Figma design or an existing design system defines the look; follow that instead.
 
 ## VS Code (`.vscode/`)
