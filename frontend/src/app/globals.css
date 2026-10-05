@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
+/*
+ * Colours are the vocabulary of the product: a project step is done, in progress or still to come.
+ * The same three show up in the sign-in timeline and, later, in the client portal.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  color-scheme: light dark;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --paper: #f3f5f6;
+  --surface: #ffffff;
+  --ink: #18242d;
+  --ink-soft: #52616d;
+  --line: #d9dfe3;
+  --done: #1f6b4f;
+  --on-done: #ffffff;
+  --doing: #c98a1b;
+  --todo: #9aa7b2;
+  --danger: #b3261e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #0f1519;
+    --surface: #172027;
+    --ink: #e6ecef;
+    --ink-soft: #a3b1bc;
+    --line: #2a3640;
+    --done: #5fb38f;
+    --on-done: #0f1519;
+    --doing: #e0a93e;
+    --todo: #6b7a86;
+    --danger: #f2938c;
   }
 }
 
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-done: var(--done);
+  --color-on-done: var(--on-done);
+  --color-doing: var(--doing);
+  --color-todo: var(--todo);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* The one moment of motion: the timeline draws itself once when the sign-in page opens. */
+@media (prefers-reduced-motion: no-preference) {
+  .timeline-line {
+    transform-origin: top;
+    animation: timeline-draw 900ms ease-out both;
+  }
+
+  .timeline-step {
+    animation: timeline-appear 450ms ease-out both;
+    animation-delay: calc(var(--step) * 220ms + 150ms);
+  }
+}
+
+@keyframes timeline-draw {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes timeline-appear {
+  from {
+    opacity: 0;
+  }
 }

@@ -317,7 +317,7 @@ Funcționalități precum propuneri, plăți, automatizări avansate, CRM, AI, w
 
 Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește împreună, pe parcurs (vezi regulile din [CLAUDE.md](../../CLAUDE.md)).
 
-- [ ] Autentificare
+- [x] Autentificare
 - [ ] Workspace
 - [ ] Gestionarea clienților
 - [ ] Invitații pentru clienți
@@ -343,3 +343,8 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Register cere email, parolă și nume complet** (numele apare în portalul clientului).
 - **Confirmarea emailului și resetarea parolei sunt amânate** până apare serviciul de email (pasul Invitații).
 - **`Client` rămâne o fișă de contact**, creată de freelancer. Legătura cu un cont (`User`) se face la Invitații.
+- **Frontend: browserul apelează API-ul doar prin Next** (rewrite `/api/*`), ca să nu existe CORS și cookie-ul să aparțină originii aplicației; Server Components apelează API-ul direct, cu cookie-ul trimis mai departe.
+- **Frontend: protejarea paginilor.** `proxy.ts` face doar un redirect rapid dacă lipsește cookie-ul. Verificarea reală (`requireUser()`, apel la `/me`) se face în fiecare pagină protejată, nu în layout, conform ghidului Next.js 16 (layout-urile nu se re-randează la navigare). Proxy-ul nu redirectează niciodată dinspre `/login` doar după cookie, ca un cookie expirat să nu producă o buclă.
+- **Frontend: textele interfeței sunt în engleză**, fără i18n deocamdată.
+- **Teste E2E cu Playwright, pe o bază separată** (`client_portal_e2e`, pe același Postgres local, recreată la fiecare rulare). Browserul, Next, API-ul și baza se testează împreună, ceea ce testele unitare și de integrare nu acoperă. Baza de dezvoltare nu se atinge: scriptul refuză orice bază al cărei nume nu se termină în `_e2e`. SQLite a fost respins pentru dev și test: codul se bazează pe Postgres (erori `23505`, tipuri și migrări Npgsql), iar producția va fi tot Postgres, deci rulăm pe același motor peste tot.
+- **Limitare cunoscută:** logout-ul șterge cookie-ul din browser, dar un cookie copiat înainte rămâne valid până expiră (cookie Identity fără stare pe server). Se rezolvă cu invalidarea `SecurityStamp` la logout; de decis la pasul de securitate / înainte de producție.

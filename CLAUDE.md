@@ -32,7 +32,10 @@ Structure, dependency rules, conventions, database and commands are in [backend/
 
 - Next.js 16 has **breaking changes** compared to what you know. Before writing code, read the relevant guide in `frontend/node_modules/next/dist/docs/` (see `frontend/AGENTS.md`).
 - Commands (from `frontend/`): `npm run dev` (localhost:3000), `npm run build`, `npm run lint`.
-- Calls the backend API at `http://localhost:5051`.
+- Calls the backend API at `http://localhost:5051` (override with the `BACKEND_URL` env var). The browser never calls it directly: `next.config.ts` rewrites `/api/*` to the backend, so the session cookie belongs to the frontend's own origin and no CORS is involved. Server Components call the backend directly with the session cookie forwarded.
+- **Auth**: pages and forms are in `src/app/(auth)/` and `src/components/auth/`; the session logic is in `src/lib/auth/`. `src/proxy.ts` (Next 16's name for middleware) only does a quick redirect when the session cookie is missing. The real check is `requireUser()` (calls `GET /api/auth/me`), which every protected page must call itself: layouts are not a safe place for it, see the Next.js authentication guide.
+- **E2E tests** (Playwright, in `frontend/e2e/`): `npm run test:e2e` from `frontend/`. One-time setup: `npx playwright install chromium`. Nothing needs to be started by hand, but Postgres must be running with the dev credentials (user secrets or `appsettings.Development.json`) and `dotnet-ef` installed. A run compiles the API into `frontend/e2e/.artifacts`, **recreates the separate database `client_portal_e2e`** (never the dev one: `e2e/start-api.mjs` refuses any database name that does not end in `_e2e`), starts the API on port 5151 and a production build of the frontend on 3100, so it can run while the dev servers are up. Override the database with `E2E_POSTGRES_CONNECTION`. Add a test when a new user-facing flow lands.
+- UI text is in English; the visual direction (status colours done / in progress / up next, Bricolage Grotesque + IBM Plex Sans) is defined in `src/app/globals.css` and `src/app/layout.tsx`.
 
 ## Skills (`.claude/skills/`)
 
