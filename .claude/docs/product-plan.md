@@ -360,6 +360,15 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Ștergerea workspace-ului e amânată** până există proiecte și invitații, ca să știm ce înseamnă „șterge”. Până atunci FK-ul clienților către workspace e `Restrict`, ca nimic să nu se șteargă în cascadă din greșeală.
 - **Frontend:** `/` doar redirecționează (0 → creare, 1 → direct în workspace, mai multe → listă). URL-urile folosesc id-ul (`/w/{id}`), fără slug.
 
+### Clienți
+
+- **Câmpuri:** nume și email obligatorii; companie, telefon și note opționale. Un câmp opțional gol se salvează `null`, ca API-ul să nu întoarcă șiruri goale.
+- **Arhivare, nu ștergere** (`ArchivedAtUtc`, cu restaurare). Clientul va avea proiecte, livrabile și istoric, pe care o ștergere le-ar pierde. Lista implicită ascunde clienții arhivați (`?includeArchived=true` îi arată). Ștergerea definitivă se decide odată cu ștergerea workspace-ului.
+- **Emailul rămâne unic în workspace și față de clienții arhivați**, ca restaurarea să nu dea niciodată conflict.
+- **Orice membru** poate adăuga, edita, arhiva și restaura clienți (nu doar ownerul).
+- **Editarea e `PUT` (înlocuiește tot); arhivarea și restaurarea sunt acțiuni separate** (`POST .../archive`, `.../restore`), nu un câmp în formularul de editare.
+- **Istoricul colaborării se amână** până la Proiecte și Timeline, fiindcă fără proiecte nu există încă ce afișa.
+
 ### Generale
 
 - **Backend organizat pe roluri, nu pe feature-uri** (`Domain/Entities`, `Application/Interfaces/Repositories|Services`, `Application/Services`, `Application/DTOs/<Feature>`, `Infrastructure/Authentication`). Folderele se creează doar când apare primul fișier. Regulile de dependență dintre straturi sunt verificate de `ClientPortal.ArchitectureTests` (NetArchTest), nu doar scrise în documentație. Validarea rămâne pe data annotations.

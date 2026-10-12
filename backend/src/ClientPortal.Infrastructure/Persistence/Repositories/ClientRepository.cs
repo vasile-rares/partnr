@@ -9,8 +9,18 @@ internal sealed class ClientRepository(ApplicationDbContext dbContext) : IClient
     public Task<Client?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
         dbContext.Clients.FirstOrDefaultAsync(c => c.WorkspaceId == workspaceId && c.Id == id, cancellationToken);
 
-    public Task<bool> EmailExistsAsync(Guid workspaceId, string email, CancellationToken cancellationToken) =>
-        dbContext.Clients.AnyAsync(c => c.WorkspaceId == workspaceId && c.Email == email, cancellationToken);
+    public async Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, bool includeArchived, CancellationToken cancellationToken) =>
+        await dbContext.Clients
+            .AsNoTracking()
+            .Where(c => c.WorkspaceId == workspaceId && (includeArchived || c.ArchivedAtUtc == null))
+            .OrderBy(c => c.Name)
+            .ThenBy(c => c.Email)
+            .ToListAsync(cancellationToken);
+
+    public Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken) =>
+        dbContext.Clients.AnyAsync(
+            c => c.WorkspaceId == workspaceId && c.Email == email && c.Id != exceptClientId,
+            cancellationToken);
 
     public void Add(Client client) => dbContext.Clients.Add(client);
 }

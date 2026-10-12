@@ -6,5 +6,13 @@ namespace ClientPortal.Application.Mappings;
 internal static class ClientMappings
 {
     public static ClientResponse ToResponse(this Client client) =>
-        new(client.Id, client.Name, client.Email, client.CreatedAtUtc);
+        new(
+            client.Id,
+            client.Name,
+            client.Email,
+            client.Company,
+            client.Phone,
+            client.Notes,
+            client.CreatedAtUtc,
+            client.ArchivedAtUtc);
 }

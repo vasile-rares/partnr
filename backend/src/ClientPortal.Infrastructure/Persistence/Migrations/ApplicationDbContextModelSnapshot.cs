@@ -22,10 +22,17 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ClientPortal.Domain.Clients.Client", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Client", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Company")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -40,6 +47,14 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid");
 
@@ -51,7 +66,7 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                     b.ToTable("clients", (string)null);
                 });
 
-            modelBuilder.Entity("ClientPortal.Domain.Workspaces.Workspace", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Workspace", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -69,7 +84,7 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                     b.ToTable("workspaces", (string)null);
                 });
 
-            modelBuilder.Entity("ClientPortal.Domain.Workspaces.WorkspaceMember", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Entities.WorkspaceMember", b =>
                 {
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid");
@@ -92,7 +107,7 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                     b.ToTable("workspace_members", (string)null);
                 });
 
-            modelBuilder.Entity("ClientPortal.Infrastructure.Identity.ApplicationUser", b =>
+            modelBuilder.Entity("ClientPortal.Infrastructure.Authentication.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -229,24 +244,24 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
-            modelBuilder.Entity("ClientPortal.Domain.Clients.Client", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Client", b =>
                 {
-                    b.HasOne("ClientPortal.Domain.Workspaces.Workspace", null)
+                    b.HasOne("ClientPortal.Domain.Entities.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ClientPortal.Domain.Workspaces.WorkspaceMember", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Entities.WorkspaceMember", b =>
                 {
-                    b.HasOne("ClientPortal.Infrastructure.Identity.ApplicationUser", null)
+                    b.HasOne("ClientPortal.Infrastructure.Authentication.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ClientPortal.Domain.Workspaces.Workspace", null)
+                    b.HasOne("ClientPortal.Domain.Entities.Workspace", null)
                         .WithMany("Members")
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -255,7 +270,7 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("ClientPortal.Infrastructure.Identity.ApplicationUser", null)
+                    b.HasOne("ClientPortal.Infrastructure.Authentication.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -264,7 +279,7 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("ClientPortal.Infrastructure.Identity.ApplicationUser", null)
+                    b.HasOne("ClientPortal.Infrastructure.Authentication.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -273,14 +288,14 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("ClientPortal.Infrastructure.Identity.ApplicationUser", null)
+                    b.HasOne("ClientPortal.Infrastructure.Authentication.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ClientPortal.Domain.Workspaces.Workspace", b =>
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Workspace", b =>
                 {
                     b.Navigation("Members");
                 });

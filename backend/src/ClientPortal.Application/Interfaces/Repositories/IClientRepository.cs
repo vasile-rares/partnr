@@ -7,7 +7,12 @@ public interface IClientRepository
 {
     Task<Client?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 
-    Task<bool> EmailExistsAsync(Guid workspaceId, string email, CancellationToken cancellationToken);
+    /// <summary>The workspace's clients ordered by name; archived ones only when asked for.</summary>
+    Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, bool includeArchived, CancellationToken cancellationToken);
+
+    /// <summary>Whether another client of the workspace (archived ones included) already uses the email.</summary>
+    /// <param name="exceptClientId">The client being edited, which may keep its own email.</param>
+    Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken);
 
     /// <summary>Tracks the client; it is persisted by <see cref="Common.IUnitOfWork.SaveChangesAsync"/>.</summary>
     void Add(Client client);
