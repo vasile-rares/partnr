@@ -6,7 +6,7 @@ namespace ClientPortal.Api.Controllers;
 
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/clients")]
-public sealed class ClientsController(IClientService service) : ControllerBase
+public sealed class ClientsController(IClientService service, IClientInvitationService invitations) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Register(Guid workspaceId, RegisterClientRequest request, CancellationToken cancellationToken)
@@ -27,6 +27,15 @@ public sealed class ClientsController(IClientService service) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid workspaceId, Guid id, UpdateClientRequest request, CancellationToken cancellationToken) =>
         Ok(await service.UpdateAsync(workspaceId, id, request, cancellationToken));
+
+    // Sending again replaces the previous invitation, so POST is both "invite" and "resend".
+    [HttpPost("{id:guid}/invitation")]
+    public async Task<IActionResult> Invite(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
+        Ok(await invitations.InviteAsync(workspaceId, id, cancellationToken));
+
+    [HttpDelete("{id:guid}/invitation")]
+    public async Task<IActionResult> CancelInvitation(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
+        Ok(await invitations.CancelAsync(workspaceId, id, cancellationToken));
 
     // Archive / restore are actions, not field edits, so they get their own endpoints instead of a flag in PUT.
     [HttpPost("{id:guid}/archive")]

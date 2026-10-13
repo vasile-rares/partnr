@@ -1,6 +1,8 @@
+using ClientPortal.Application.Authorization;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Interfaces.Repositories;
+using ClientPortal.Application.Mappings;
 using ClientPortal.Application.Services;
 using ClientPortal.Domain.Entities;
 using ClientPortal.Domain.Enums;
@@ -11,6 +13,9 @@ public class ClientServiceTests
 {
     private readonly Guid _me = Guid.NewGuid();
     private readonly FakeClientRepository _clients = new();
+    private readonly FakeClientInvitationRepository _invitations = new();
+    private readonly FakeIdentityService _identity = new();
+    private readonly FakeTimeProvider _time = new();
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly Workspace _workspace;
@@ -20,7 +25,13 @@ public class ClientServiceTests
     {
         _workspace = Workspace.Create("Studio", _me);
         _workspaces.Items.Add(_workspace);
-        _service = new ClientService(_clients, new WorkspaceAccess(_workspaces, new FakeCurrentUser(_me)), _unitOfWork);
+        _service = new ClientService(
+            _clients,
+            _invitations,
+            new ClientResponseBuilder(_identity, _invitations, _time),
+            new WorkspaceAccess(_workspaces, new FakeCurrentUser(_me)),
+            _unitOfWork,
+            _time);
     }
 
     [Fact]
@@ -295,22 +306,172 @@ public class ClientServiceTests
         return (workspace, client);
     }
 
-    private sealed class FakeClientRepository : IClientRepository
+    private ClientInvitation AddPendingInvitation(Client client)
     {
-        public List<Client> Items { get; } = [];
+        var invitation = ClientInvitation.Create(
+            client.WorkspaceId, client.Id, client.Email, "hash-" + Guid.NewGuid(), _me, _time.Now.UtcDateTime);
+        _invitations.Items.Add(invitation);
 
-        public Task<Client?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
-            Task.FromResult(Items.FirstOrDefault(c => c.WorkspaceId == workspaceId && c.Id == id));
+        return invitation;
+    }
 
-        public Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, bool includeArchived, CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<Client>>(Items
-                .Where(c => c.WorkspaceId == workspaceId && (includeArchived || !c.IsArchived))
-                .OrderBy(c => c.Name)
-                .ToList());
+    [Fact]
+    public async Task Update_WhileAnInvitationIsPending_RefusesToChangeTheDetails_ButTheNotesGoThrough()
+    {
+        var client = Client.Register(_workspace.Id, "Acme", "contact@acme.com", "Acme Group", "0700", "old note");
+        _clients.Items.Add(client);
+        AddPendingInvitation(client);
 
-        public Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken) =>
-            Task.FromResult(Items.Any(c => c.WorkspaceId == workspaceId && c.Email == email && c.Id != exceptClientId));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.UpdateAsync(
+            _workspace.Id,
+            client.Id,
+            new UpdateClientRequest { Name = "Renamed", Email = "contact@acme.com", Company = "Acme Group", Phone = "0700", Notes = "x" },
+            CancellationToken.None));
+        Assert.Equal("Acme", client.Name);
+        Assert.Equal("old note", client.Notes);
 
-        public void Add(Client client) => Items.Add(client);
+        // The form sends the unchanged details back together with the new notes.
+        var response = await _service.UpdateAsync(
+            _workspace.Id,
+            client.Id,
+            new UpdateClientRequest { Name = "Acme", Email = "CONTACT@acme.com", Company = "Acme Group", Phone = " 0700 ", Notes = "new note" },
+            CancellationToken.None);
+
+        Assert.Equal("new note", response.Notes);
+        Assert.Equal("Acme", response.Name);
+        Assert.True(response.DetailsLocked);
+    }
+
+    [Theory]
+    [InlineData("email")]
+    [InlineData("phone")]
+    [InlineData("company")]
+    public async Task Update_WhileAnInvitationIsPending_RefusesEveryIdentityField(string field)
+    {
+        var client = Client.Register(_workspace.Id, "Acme", "contact@acme.com", "Acme Group", "0700");
+        _clients.Items.Add(client);
+        AddPendingInvitation(client);
+
+        var request = new UpdateClientRequest
+        {
+            Name = "Acme",
+            Email = field == "email" ? "other@acme.com" : "contact@acme.com",
+            Company = field == "company" ? "Other" : "Acme Group",
+            Phone = field == "phone" ? "999" : "0700",
+        };
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.UpdateAsync(_workspace.Id, client.Id, request, CancellationToken.None));
+        Assert.Equal(0, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Update_AfterTheInvitationExpired_EditsEverythingAgain()
+    {
+        var client = Client.Register(_workspace.Id, "Acme", "wrong@acme.com");
+        _clients.Items.Add(client);
+        AddPendingInvitation(client);
+        _time.Now = _time.Now.AddDays(8);
+
+        var response = await _service.UpdateAsync(
+            _workspace.Id,
+            client.Id,
+            new UpdateClientRequest { Name = "Acme", Email = "right@acme.com" },
+            CancellationToken.None);
+
+        Assert.Equal("right@acme.com", response.Email);
+        Assert.False(response.DetailsLocked);
+        Assert.Equal("Expired", response.Portal.Status);
+    }
+
+    [Fact]
+    public async Task ALinkedClient_ShowsTheAccountsDetails_NotTheCards()
+    {
+        var account = _identity.AddAccount("elena@newjob.example", "correct horse", "Elena Ionescu");
+        await _identity.UpdateProfileAsync(account.Id, "Elena Ionescu", "0722", "Newjob SRL", CancellationToken.None);
+        var client = Client.Register(_workspace.Id, "Elena (card)", "elena@oldjob.example", "Oldjob", "000", "Prefers calls.");
+        client.LinkTo(account.Id, _time.Now.UtcDateTime);
+        _clients.Items.Add(client);
+
+        var response = await _service.GetByIdAsync(_workspace.Id, client.Id, CancellationToken.None);
+
+        Assert.Equal("Elena Ionescu", response.Name);
+        Assert.Equal("elena@newjob.example", response.Email);
+        Assert.Equal("0722", response.Phone);
+        Assert.Equal("Newjob SRL", response.Company);
+        Assert.Equal("Prefers calls.", response.Notes);
+        Assert.Equal("Active", response.Portal.Status);
+        Assert.True(response.DetailsLocked);
+    }
+
+    [Fact]
+    public async Task ALinkedClient_OnlyTheNotesCanBeEdited()
+    {
+        var account = _identity.AddAccount("elena@acme.com", "correct horse", "Elena Ionescu");
+        var client = Client.Register(_workspace.Id, "Elena (card)", "elena@acme.com");
+        client.LinkTo(account.Id, _time.Now.UtcDateTime);
+        _clients.Items.Add(client);
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.UpdateAsync(
+            _workspace.Id,
+            client.Id,
+            new UpdateClientRequest { Name = "Elena (card)", Email = "elena@acme.com" },
+            CancellationToken.None));
+
+        var response = await _service.UpdateAsync(
+            _workspace.Id,
+            client.Id,
+            new UpdateClientRequest { Name = "Elena Ionescu", Email = "elena@acme.com", Notes = "Great client." },
+            CancellationToken.None);
+
+        Assert.Equal("Great client.", response.Notes);
+        Assert.Equal("Elena Ionescu", response.Name);
+        Assert.Equal("Elena (card)", client.Name); // the card itself is not rewritten
+    }
+
+    [Fact]
+    public async Task List_ShowsThePortalStatusOfEachClient()
+    {
+        var notInvited = Client.Register(_workspace.Id, "A one", "a@example.com");
+        var invited = Client.Register(_workspace.Id, "B two", "b@example.com");
+        var expired = Client.Register(_workspace.Id, "C three", "c@example.com");
+        var active = Client.Register(_workspace.Id, "D four", "d@example.com");
+        active.LinkTo(_identity.AddAccount("d@example.com", "correct horse").Id, _time.Now.UtcDateTime);
+        _clients.Items.AddRange([notInvited, invited, expired, active]);
+        AddPendingInvitation(invited);
+        _invitations.Items.Add(ClientInvitation.Create(
+            _workspace.Id, expired.Id, expired.Email, "hash-expired", _me, _time.Now.UtcDateTime.AddDays(-8)));
+
+        var list = await _service.ListAsync(_workspace.Id, includeArchived: false, CancellationToken.None);
+
+        Assert.Equal(["NotInvited", "Invited", "Expired", "Active"], list.Select(c => c.Portal.Status));
+        Assert.Equal([false, true, false, true], list.Select(c => c.DetailsLocked));
+    }
+
+    [Fact]
+    public async Task Archive_CancelsThePendingInvitation_SoItsLinkStopsWorking()
+    {
+        var client = Client.Register(_workspace.Id, "Acme", "contact@acme.com");
+        _clients.Items.Add(client);
+        var invitation = AddPendingInvitation(client);
+
+        var response = await _service.ArchiveAsync(_workspace.Id, client.Id, CancellationToken.None);
+
+        Assert.NotNull(invitation.CancelledAtUtc);
+        Assert.Equal("NotInvited", response.Portal.Status);
+        Assert.False(response.DetailsLocked);
+    }
+
+    [Fact]
+    public async Task Archive_ALinkedClient_KeepsTheLinkToTheAccount()
+    {
+        var accountId = _identity.AddAccount("elena@acme.com", "correct horse").Id;
+        var client = Client.Register(_workspace.Id, "Elena", "elena@acme.com");
+        client.LinkTo(accountId, _time.Now.UtcDateTime);
+        _clients.Items.Add(client);
+
+        await _service.ArchiveAsync(_workspace.Id, client.Id, CancellationToken.None);
+        await _service.RestoreAsync(_workspace.Id, client.Id, CancellationToken.None);
+
+        Assert.Equal(accountId, client.UserId);
     }
 }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.DTOs.Clients;
+using ClientPortal.Application.DTOs.Invitations;
 using ClientPortal.Application.DTOs.Workspaces;
 using ClientPortal.Infrastructure;
 
@@ -25,8 +26,21 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var studio = workspaces![0];
         var active = await owner.GetFromJsonAsync<ClientResponse[]>($"/api/workspaces/{studio.Id}/clients");
         var all = await owner.GetFromJsonAsync<ClientResponse[]>($"/api/workspaces/{studio.Id}/clients?includeArchived=true");
-        Assert.Equal(6, active!.Length);
-        Assert.Equal(8, all!.Length);
+        Assert.Equal(8, active!.Length);
+        Assert.Equal(10, all!.Length);
+
+        // The client who accepted shows the account's details; the other one waits for an invitation that works.
+        var elena = Assert.Single(all, c => c.Portal.Status == "Active");
+        Assert.Equal("Elena Client", elena.Name);
+        Assert.Equal("Elena Design", elena.Company);
+        var pat = Assert.Single(all, c => c.Name == "Pat Pending");
+        Assert.Equal("Invited", pat.Portal.Status);
+        Assert.True(pat.DetailsLocked);
+        var preview = await factory.CreateClient()
+            .GetFromJsonAsync<InvitationPreviewResponse>($"/api/invitations/{DevelopmentSeed.PendingInvitationToken}");
+        Assert.Equal("Pending", preview!.Status);
+        Assert.Equal("Studio Pop", preview.WorkspaceName);
+        await SignIn(DevelopmentSeed.ClientEmail);
 
         var ownerProfile = await owner.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
         Assert.Equal("Studio Pop SRL", ownerProfile!.Company);

@@ -12,6 +12,12 @@ public interface IIdentityService
 
     Task<CurrentUserResponse?> FindByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>The accounts with these ids (those that exist), in no particular order.</summary>
+    Task<IReadOnlyList<CurrentUserResponse>> FindByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
+    /// <summary>Marks the account's email as confirmed: the person proved they own it by using a link sent there.</summary>
+    Task ConfirmEmailAsync(Guid id, CancellationToken cancellationToken);
+
     /// <exception cref="Common.Exceptions.ValidationFailedException">The password does not meet the policy.</exception>
     /// <exception cref="Common.Exceptions.ConflictException">The email is already used (lost a race with a concurrent registration).</exception>
     Task<CurrentUserResponse> CreateAsync(string email, string fullName, string password, CancellationToken cancellationToken);

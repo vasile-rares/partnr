@@ -83,6 +83,22 @@ public class LayerDependencyTests
         AssertSuccessful(result);
     }
 
+    // Helpers, mappers and access rules have their own folders (Mappings, Authorization, Common); this one is for use cases.
+    [Fact]
+    public void Application_services_folder_holds_only_services()
+    {
+        var result = Types.InAssembly(Application)
+            .That()
+            .ResideInNamespace("ClientPortal.Application.Services")
+            .And()
+            .AreClasses()
+            .Should()
+            .HaveNameEndingWith("Service")
+            .GetResult();
+
+        AssertSuccessful(result);
+    }
+
     [Fact]
     public void Controllers_are_named_with_the_controller_suffix()
     {

@@ -1,3 +1,4 @@
+using ClientPortal.Application.Common;
 using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Interfaces.Services;
@@ -48,12 +49,9 @@ internal sealed class AuthService(IIdentityService identity, ICurrentUser curren
             throw new ValidationFailedException("Full name is required.");
         }
 
-        return await identity.UpdateProfileAsync(userId, fullName, Optional(request.Phone), Optional(request.Company), cancellationToken)
+        return await identity.UpdateProfileAsync(userId, fullName, TextHelpers.Optional(request.Phone), TextHelpers.Optional(request.Company), cancellationToken)
             ?? throw new UnauthorizedException(NotSignedInMessage);
     }
 
     private Guid RequireUserId() => currentUser.UserId ?? throw new UnauthorizedException(NotSignedInMessage);
-
-    // Optional details are stored as null when left empty, so the API never returns blank strings.
-    private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

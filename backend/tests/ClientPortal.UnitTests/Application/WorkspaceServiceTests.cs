@@ -1,3 +1,4 @@
+using ClientPortal.Application.Authorization;
 using ClientPortal.Application.DTOs.Workspaces;
 using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Services;

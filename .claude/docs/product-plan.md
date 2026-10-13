@@ -321,7 +321,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Workspace
 - [x] Gestionarea clienților
 - [x] Profil cont (nume, telefon, companie), înaintea invitațiilor
-- [ ] Invitații pentru clienți
+- [ ] Invitații pentru clienți (email și backend gata; rămân paginile: starea în UI pentru freelancer, `/invite/[token]` și `/portal`)
 - [ ] Proiecte
 - [ ] Portal pentru clienți
 - [ ] Timeline
@@ -388,6 +388,19 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **`/register` rămâne scurt** (email, parolă, nume); telefonul și compania se completează din profil. Formularul de înregistrare din invitație le va cere.
 - **Telefonul folosește coloana `PhoneNumber` din Identity** (limitată la 50), nu una nouă; compania e o coloană nouă pe `users`.
 - **Profilul e al contului, nu al unui workspace:** pagina e la `/account`, accesibilă și fără workspace, cu link „Account" în header.
+
+### Invitații pentru clienți
+
+- **Email prin SMTP, în spatele lui `IEmailSender`.** În dezvoltare, Mailpit (în `docker-compose.yml`, inbox la `localhost:8025`) prinde toate emailurile; în producție se schimbă doar configurația. Setările `Email` și `App` (adresa aplicației web, pentru linkuri) se validează la pornire.
+- **Doar invitații pentru clienți**; cele pentru membri vin într-un pas separat, pe același mecanism de token și email.
+- **Tokenul** are 256 de biți aleatori; în bază se păstrează doar hash-ul SHA-256 (definit în `ClientInvitation.HashToken`), deci o scurgere din bază nu dă linkuri valide. Un token mai lung de 100 de caractere e respins imediat.
+- **Valabilitate 7 zile.** Un client are cel mult o invitație deschisă (index unic parțial în bază): trimiterea din nou o anulează pe cea veche, deci doar cel mai nou link funcționează. Anularea veche se salvează separat de inserarea celei noi, fiindcă baza ar vedea inserarea înaintea actualizării.
+- **Orice membru** poate invita, retrimite și anula. Cine nu e membru primește 404.
+- **Arhivarea anulează invitația în așteptare**, iar un client arhivat nu poate fi invitat. După acceptare, arhivarea păstrează legătura cu contul.
+- **Acceptarea:** doar contul cu emailul invitat (403 altfel). Un membru al workspace-ului și un cont deja client acolo sunt refuzate (409). Un link expirat, anulat sau folosit dă 409 cu un mesaj clar, iar un link necunoscut 404. Contul creat sau logat prin invitație își primește emailul confirmat, fiindcă linkul a ajuns la adresa respectivă.
+- **Fișa legată citește din cont:** `name`, `email`, `phone` și `company` din răspuns vin din contul clientului (`ClientResponseBuilder`), nu din fișă; fișa păstrează doar notele. Câmpul `detailsLocked` spune dacă freelancerul le mai poate edita (invitație în așteptare sau cont existent); o cerere care le schimbă primește 409, iar notele trec mereu.
+- **Emailul fișei rămâne unic în workspace pe valoarea stocată** (indexul nu e parțial). Planul inițial era un index doar pentru fișele nelegate, dar emailul unui cont nu se poate schimba încă, deci emailul stocat al unei fișe legate e mereu cel real; indexul trece pe fișele nelegate când apare schimbarea emailului, ca emailul vechi să nu blocheze fișe noi.
+- **Un cont este client al unui workspace cel mult o dată** (`(WorkspaceId, UserId)` unic).
 
 ### Generale
 

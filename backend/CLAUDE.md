@@ -17,9 +17,11 @@ src/
   ClientPortal.Application/      Only the DI abstractions package.
     Interfaces/Repositories/     IClientRepository, IWorkspaceRepository, IUnitOfWork
     Interfaces/Services/         IAuthService, IClientService, IWorkspaceService, IIdentityService, ICurrentUser
-    Services/                    AuthService, ClientService, WorkspaceService, WorkspaceAccess (all internal)
+    Services/                    One use-case service per feature, nothing else (all internal, names end in "Service", enforced by an architecture test)
+    Authorization/               WorkspaceAccess (the one place that decides who may touch a workspace)
+    Common/                      TextHelpers (small helpers shared by services)
     DTOs/<Feature>/              Auth/, Clients/, Workspaces/ (requests and responses side by side)
-    Mappings/                    ClientMappings, WorkspaceMappings (ToResponse() extension methods)
+    Mappings/                    WorkspaceMappings (ToResponse() extension methods), ClientResponseBuilder (clients need the account and invitation data too, so it is a class, not an extension)
     Exceptions/                  AppException and its subclasses
     DependencyInjection.cs       AddApplication()
   ClientPortal.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
@@ -56,7 +58,7 @@ Domain         -> nothing
 - **Entities** have private setters and a static factory (`Client.Register`) that enforces invariants by throwing `DomainException`. Ids are UUID v7 (`Entity` base class).
 - **Errors**: expected failures are exceptions mapped to HTTP by `Api/Middleware/ApiExceptionHandler` as `ProblemDetails`. Services throw `NotFoundException` (404) / `ConflictException` (409), both `AppException`s from `Application/Exceptions/` (add a new subclass for another status code). Entities throw `DomainException` (400, `Domain/Exceptions/`) for broken invariants. Anything else becomes 500 via `UseExceptionHandler()`. Controllers stay free of error handling.
 - **Input validation** with data annotations (`[Required]`, `[MaxLength]`, `[EmailAddress]`) on the request DTOs in `Application/DTOs/<Feature>/` (`XRequest` and `XResponse` side by side), validated automatically by `[ApiController]` (returns 400 `ValidationProblemDetails`). Use non-positional records with `init` properties so the attributes sit on properties. Data annotations go on DTOs only, never on entities.
-- **Mapping** by hand with extension methods in `Application/Mappings/` (`ClientMappings.ToResponse()`), no AutoMapper.
+- **Mapping** by hand with extension methods in `Application/Mappings/` (`WorkspaceMappings.ToResponse()`), no AutoMapper.
 - **Unique-constraint violations** (Postgres `23505`) are translated to `ConflictException` inside `ApplicationDbContext.SaveChangesAsync`, so services need no try/catch for races.
 - **EF mapping** with Fluent API in `Infrastructure/Persistence/Configurations/` (`IEntityTypeConfiguration<T>`), never data annotations on entities.
 - Naming: plural folders for roles (`Entities/`, `Services/`, `Controllers/`), plural feature names under `DTOs/` (`DTOs/Clients/`); suffix files with their role (`ClientService`, `ClientRepository`, `ClientsController`, `ClientConfiguration`).
@@ -76,7 +78,7 @@ Domain         -> nothing
 ## Authorization (workspaces)
 
 - Everything a freelancer or agency owns lives in a **workspace**, and its routes say so: `/api/workspaces/{workspaceId}/clients/...`. Roles (`Owner`, `Member`) belong to the membership (`WorkspaceMember`), never to the account.
-- **Every service that touches data inside a workspace calls `WorkspaceAccess` first** (`Application/Services/WorkspaceAccess.cs`): `RequireMemberAsync` or `RequireOwnerAsync`. Do not re-implement the check in a service or a controller.
+- **Every service that touches data inside a workspace calls `WorkspaceAccess` first** (`Application/Authorization/WorkspaceAccess.cs`): `RequireMemberAsync` or `RequireOwnerAsync`. Do not re-implement the check in a service or a controller.
 - A non-member gets **404**, exactly like a missing workspace, so ids cannot be probed. A member doing an owner-only action gets **403** (`ForbiddenException`), since they already know the workspace exists.
 - Repositories of workspace data take the `workspaceId` in every lookup (`GetByIdAsync(workspaceId, id)`), so a record of another workspace is not found even by its id.
 - Clients are not members: their portal access will come from invitations, scoped to their own projects.
@@ -120,7 +122,7 @@ dotnet run --project src/ClientPortal.Api --launch-profile http   # http://local
 dotnet run --project src/ClientPortal.Api --launch-profile http -- --seed   # test data, then exits
 ```
 
-- **Test data (development only):** `-- --seed` (VS Code task `db-seed`) applies pending migrations and adds demo accounts, workspaces and clients, then exits. It is never automatic, so the e2e and integration databases stay empty. It is safe to run again: when `demo@example.com` exists it does nothing. Sign in as `demo@example.com` (owner of "Studio Pop" and "Side Project") or `member@example.com` (a plain member of "Studio Pop"), password `demo-password`. The data lives in `Infrastructure/Persistence/Seeding/DevelopmentDataSeeder.cs`; add to it when a new feature needs something to click through. Stop the running API first (a debugger locks the DLLs `dotnet run` has to rebuild).
+- **Test data (development only):** `-- --seed` (VS Code task `db-seed`) applies pending migrations and adds demo accounts, workspaces and clients, then exits. It is never automatic, so the e2e and integration databases stay empty. It is safe to run again: when `demo@example.com` exists it does nothing. Sign in as `demo@example.com` (owner of "Studio Pop" and "Side Project"), `member@example.com` (a plain member of "Studio Pop") or `client@example.com` (a client of "Studio Pop" who accepted an invitation), password `demo-password`. "Pat Pending" in "Studio Pop" has an invitation waiting, openable at `/invite/dev-pending-invitation-token` without any email. The data lives in `Infrastructure/Persistence/Seeding/DevelopmentDataSeeder.cs`; add to it when a new feature needs something to click through. Stop the running API first (a debugger locks the DLLs `dotnet run` has to rebuild).
 
 - API docs (Development only): Scalar at `http://localhost:5051/scalar/v1`, spec at `/openapi/v1.json`.
 - CORS allows `http://localhost:3000` (frontend).

@@ -14,6 +14,9 @@ public interface IClientRepository
     /// <param name="exceptClientId">The client being edited, which may keep its own email.</param>
     Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken);
 
+    /// <summary>Whether this account is already linked to a client of the workspace.</summary>
+    Task<bool> IsLinkedAsync(Guid workspaceId, Guid userId, CancellationToken cancellationToken);
+
     /// <summary>Tracks the client; it is persisted by <see cref="Common.IUnitOfWork.SaveChangesAsync"/>.</summary>
     void Add(Client client);
 }

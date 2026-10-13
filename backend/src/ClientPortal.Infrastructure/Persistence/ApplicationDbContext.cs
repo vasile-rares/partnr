@@ -16,6 +16,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<Client> Clients => Set<Client>();
 
+    public DbSet<ClientInvitation> ClientInvitations => Set<ClientInvitation>();
+
     public DbSet<Workspace> Workspaces => Set<Workspace>();
 
     public override async Task<int> SaveChangesAsync(

@@ -22,5 +22,8 @@ internal sealed class ClientRepository(ApplicationDbContext dbContext) : IClient
             c => c.WorkspaceId == workspaceId && c.Email == email && c.Id != exceptClientId,
             cancellationToken);
 
+    public Task<bool> IsLinkedAsync(Guid workspaceId, Guid userId, CancellationToken cancellationToken) =>
+        dbContext.Clients.AnyAsync(c => c.WorkspaceId == workspaceId && c.UserId == userId, cancellationToken);
+
     public void Add(Client client) => dbContext.Clients.Add(client);
 }

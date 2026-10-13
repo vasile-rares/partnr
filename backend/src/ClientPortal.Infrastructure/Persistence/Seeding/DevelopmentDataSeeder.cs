@@ -16,6 +16,8 @@ internal sealed class DevelopmentDataSeeder(
     IIdentityService identity,
     IWorkspaceRepository workspaces,
     IClientRepository clients,
+    IClientInvitationRepository invitations,
+    IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
 {
@@ -44,6 +46,25 @@ internal sealed class DevelopmentDataSeeder(
             clients.Add(client);
         }
 
+        // A client who accepted an invitation: the card is linked to a real account and reads its details from it.
+        var account = await identity.CreateAsync(DevelopmentSeed.ClientEmail, "Elena Client", DevelopmentSeed.Password, cancellationToken);
+        await identity.UpdateProfileAsync(account.Id, account.FullName, "+40 723 000 000", "Elena Design", cancellationToken);
+        await identity.ConfirmEmailAsync(account.Id, cancellationToken);
+        var linked = Client.Register(studio.Id, "Elena (card)", DevelopmentSeed.ClientEmail, "Old company", "000", "Prefers morning calls.");
+        linked.LinkTo(account.Id, DateTime.UtcNow);
+        clients.Add(linked);
+
+        // A client with an invitation waiting, to try the invitation page and see the locked details.
+        var pending = Client.Register(studio.Id, "Pat Pending", "pat@pending.example", "Pending Co");
+        clients.Add(pending);
+        invitations.Add(ClientInvitation.Create(
+            studio.Id,
+            pending.Id,
+            pending.Email,
+            ClientInvitation.HashToken(DevelopmentSeed.PendingInvitationToken),
+            owner.Id,
+            DateTime.UtcNow));
+
         // A workspace with no clients, to see the empty states and the workspace picker.
         workspaces.Add(Workspace.Create("Side Project", owner.Id));
 
@@ -59,6 +80,10 @@ internal sealed class DevelopmentDataSeeder(
             DevelopmentSeed.OwnerEmail,
             DevelopmentSeed.MemberEmail,
             DevelopmentSeed.Password);
+        logger.LogInformation(
+            "Also: {Client} is a client of Studio Pop (same password); the pending invitation is {Link}.",
+            DevelopmentSeed.ClientEmail,
+            links.InvitationUrl(DevelopmentSeed.PendingInvitationToken));
     }
 
     private static IEnumerable<Client> StudioClients(Guid workspaceId)

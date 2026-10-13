@@ -4,7 +4,7 @@ using ClientPortal.Application.Interfaces.Services;
 using ClientPortal.Domain.Entities;
 using ClientPortal.Domain.Enums;
 
-namespace ClientPortal.Application.Services;
+namespace ClientPortal.Application.Authorization;
 
 internal sealed record WorkspaceMembership(Workspace Workspace, Guid UserId, WorkspaceRole Role);
 

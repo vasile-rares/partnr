@@ -2,6 +2,7 @@ using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClientPortal.Infrastructure.Authentication;
 
@@ -15,6 +16,30 @@ internal sealed class IdentityService(
 
     public async Task<CurrentUserResponse?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         ToResponse(await userManager.FindByIdAsync(id.ToString()));
+
+    public async Task<IReadOnlyList<CurrentUserResponse>> FindByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        var wanted = ids.ToArray();
+        var users = await userManager.Users.AsNoTracking().Where(u => wanted.Contains(u.Id)).ToListAsync(cancellationToken);
+
+        return users.Select(u => ToResponse(u)!).ToList();
+    }
+
+    public async Task ConfirmEmailAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user is null || user.EmailConfirmed)
+        {
+            return;
+        }
+
+        user.EmailConfirmed = true;
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Could not confirm the email of account '{id}': {string.Join(" ", result.Errors.Select(e => e.Description))}");
+        }
+    }
 
     public async Task<CurrentUserResponse> CreateAsync(string email, string fullName, string password, CancellationToken cancellationToken)
     {
