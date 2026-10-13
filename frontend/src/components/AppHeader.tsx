@@ -30,9 +30,14 @@ export function AppHeader({ workspace }: AppHeaderProps) {
 
         <nav aria-label="Account" className="flex items-center gap-1">
           {workspace ? (
-            <Link href={`/w/${workspace.id}/settings`} className={buttonVariants({ variant: "ghost" })}>
-              Settings
-            </Link>
+            <>
+              <Link href={`/w/${workspace.id}/clients`} className={buttonVariants({ variant: "ghost" })}>
+                Clients
+              </Link>
+              <Link href={`/w/${workspace.id}/settings`} className={buttonVariants({ variant: "ghost" })}>
+                Settings
+              </Link>
+            </>
           ) : null}
           <Link href="/workspaces" className={buttonVariants({ variant: "ghost" })}>
             All workspaces

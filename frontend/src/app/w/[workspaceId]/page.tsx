@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
 import { getWorkspace } from "@/lib/workspaces/server";
 
@@ -28,8 +30,11 @@ export default async function WorkspacePage({ params }: PageProps<"/w/[workspace
             Clients
           </h2>
           <p className="mt-2 max-w-prose text-muted-foreground">
-            No clients yet. Clients you add to this workspace will show up here, each with their own projects.
+            The people you work for. Each client will get their own projects and portal.
           </p>
+          <Link href={`/w/${workspace.id}/clients`} className={`${buttonVariants()} mt-4`}>
+            Manage clients
+          </Link>
         </section>
       </main>
     </>

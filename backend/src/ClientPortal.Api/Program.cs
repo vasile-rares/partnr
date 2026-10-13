@@ -31,6 +31,19 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// `dotnet run -- --seed` fills the development database with test data and exits. Never on its own, so tests and
+// other environments never get demo accounts by accident.
+if (args.Contains("--seed"))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException("--seed only works in the Development environment.");
+    }
+
+    await app.Services.SeedDevelopmentDataAsync();
+    return;
+}
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

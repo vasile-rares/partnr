@@ -1,0 +1,83 @@
+using ClientPortal.Application.Interfaces.Repositories;
+using ClientPortal.Application.Interfaces.Services;
+using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace ClientPortal.Infrastructure.Persistence.Seeding;
+
+/// <summary>
+/// Fills an empty development database with accounts, workspaces and clients to click through. It goes through the same
+/// ports as the services (identity, repositories, unit of work), so the data obeys the same rules as real data.
+/// </summary>
+internal sealed class DevelopmentDataSeeder(
+    ApplicationDbContext dbContext,
+    IIdentityService identity,
+    IWorkspaceRepository workspaces,
+    IClientRepository clients,
+    IUnitOfWork unitOfWork,
+    ILogger<DevelopmentDataSeeder> logger)
+{
+    public async Task SeedAsync(CancellationToken cancellationToken)
+    {
+        await dbContext.Database.MigrateAsync(cancellationToken);
+
+        // The owner account marks the seed as done, so running it again changes nothing.
+        if (await identity.FindByEmailAsync(DevelopmentSeed.OwnerEmail, cancellationToken) is not null)
+        {
+            logger.LogInformation("Development data is already there ({Email}); nothing to do.", DevelopmentSeed.OwnerEmail);
+            return;
+        }
+
+        var owner = await identity.CreateAsync(DevelopmentSeed.OwnerEmail, "Ana Pop", DevelopmentSeed.Password, cancellationToken);
+        var member = await identity.CreateAsync(DevelopmentSeed.MemberEmail, "Mihai Member", DevelopmentSeed.Password, cancellationToken);
+
+        // The main workspace: the owner plus a member, with a mix of complete, sparse and archived clients.
+        var studio = Workspace.Create("Studio Pop", owner.Id);
+        studio.AddMember(member.Id, WorkspaceRole.Member);
+        workspaces.Add(studio);
+        foreach (var client in StudioClients(studio.Id))
+        {
+            clients.Add(client);
+        }
+
+        // A workspace with no clients, to see the empty states and the workspace picker.
+        workspaces.Add(Workspace.Create("Side Project", owner.Id));
+
+        // A workspace the owner does not belong to, to check that it stays invisible.
+        var other = Workspace.Create("Other Studio", member.Id);
+        workspaces.Add(other);
+        clients.Add(Client.Register(other.Id, "Hidden Client", "hidden@example.com"));
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Seeded development data. Sign in as {Owner} (owner) or {Member} (member) with password '{Password}'.",
+            DevelopmentSeed.OwnerEmail,
+            DevelopmentSeed.MemberEmail,
+            DevelopmentSeed.Password);
+    }
+
+    private static IEnumerable<Client> StudioClients(Guid workspaceId)
+    {
+        yield return Client.Register(
+            workspaceId, "Acme SRL", "contact@acme.example", "Acme Group", "+40 721 000 001", "Main contact: Elena. Pays within 14 days.");
+        yield return Client.Register(
+            workspaceId, "Bright Bakery", "hello@brightbakery.example", "Bright Bakery", "+40 721 000 002", "Wants a new website before the spring opening.");
+        yield return Client.Register(workspaceId, "Cosmin Dobre", "cosmin@dobre.example");
+        yield return Client.Register(workspaceId, "Delta Dental", "office@deltadental.example", "Delta Dental Clinic", "+40 721 000 004");
+        yield return Client.Register(
+            workspaceId, "Evergreen Studio", "team@evergreen.example", "Evergreen", notes: "Prefers email over phone calls.");
+        yield return Client.Register(workspaceId, "Fabrica de Idei", "info@fabricadeidei.example", "Fabrica de Idei SA", "+40 721 000 006");
+
+        // Archived clients, hidden from the default list.
+        var oldClient = Client.Register(workspaceId, "Old Client SRL", "old@oldclient.example", "Old Client", notes: "Project finished in 2025.");
+        oldClient.Archive();
+        yield return oldClient;
+
+        var paused = Client.Register(workspaceId, "Paused Partners", "paused@partners.example", "Paused Partners", "+40 721 000 008");
+        paused.Archive();
+        yield return paused;
+    }
+}

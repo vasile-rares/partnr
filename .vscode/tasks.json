@@ -45,6 +45,14 @@
       ],
       "options": { "cwd": "${workspaceFolder}/backend" },
       "problemMatcher": []
+    },
+    {
+      "label": "db-seed",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run", "--project", "src/ClientPortal.Api", "--launch-profile", "http", "--", "--seed"],
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "problemMatcher": []
     }
   ]
 }

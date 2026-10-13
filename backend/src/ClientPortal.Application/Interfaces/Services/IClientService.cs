@@ -19,8 +19,10 @@ public interface IClientService
     Task<ClientResponse> UpdateAsync(Guid workspaceId, Guid id, UpdateClientRequest request, CancellationToken cancellationToken);
 
     /// <exception cref="Common.Exceptions.NotFoundException">The workspace or the client does not exist, or the user is not a member.</exception>
+    /// <exception cref="Common.Exceptions.ForbiddenException">The user is a member but not the owner.</exception>
     Task<ClientResponse> ArchiveAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 
     /// <exception cref="Common.Exceptions.NotFoundException">The workspace or the client does not exist, or the user is not a member.</exception>
+    /// <exception cref="Common.Exceptions.ForbiddenException">The user is a member but not the owner.</exception>
     Task<ClientResponse> RestoreAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 }

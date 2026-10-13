@@ -23,7 +23,7 @@ src/
     Exceptions/                  AppException and its subclasses
     DependencyInjection.cs       AddApplication()
   ClientPortal.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
-    Persistence/                 ApplicationDbContext, Configurations/, Repositories/, Migrations/
+    Persistence/                 ApplicationDbContext, Configurations/, Repositories/, Seeding/, Migrations/
     Authentication/              ApplicationUser, IdentityService, CurrentUser, cookie setup
     DependencyInjection.cs       AddInfrastructure()
   ClientPortal.Api/              Controllers/ (thin), Middleware/ (exception handler), Program.cs (composition root)
@@ -80,6 +80,7 @@ Domain         -> nothing
 - A non-member gets **404**, exactly like a missing workspace, so ids cannot be probed. A member doing an owner-only action gets **403** (`ForbiddenException`), since they already know the workspace exists.
 - Repositories of workspace data take the `workspaceId` in every lookup (`GetByIdAsync(workspaceId, id)`), so a record of another workspace is not found even by its id.
 - Clients are not members: their portal access will come from invitations, scoped to their own projects.
+- Clients: any member adds and edits them and sees all of them; **archiving and restoring is owner-only** (`RequireOwnerAsync`).
 - Members cannot be added through the API yet (invitations step); integration tests add them straight to the database.
 
 ## Adding a new feature (e.g. `Projects`)
@@ -114,7 +115,10 @@ docker compose up -d                                              # Postgres
 dotnet build                                                      # must be 0 warnings
 dotnet test
 dotnet run --project src/ClientPortal.Api --launch-profile http   # http://localhost:5051
+dotnet run --project src/ClientPortal.Api --launch-profile http -- --seed   # test data, then exits
 ```
+
+- **Test data (development only):** `-- --seed` (VS Code task `db-seed`) applies pending migrations and adds demo accounts, workspaces and clients, then exits. It is never automatic, so the e2e and integration databases stay empty. It is safe to run again: when `demo@example.com` exists it does nothing. Sign in as `demo@example.com` (owner of "Studio Pop" and "Side Project") or `member@example.com` (a plain member of "Studio Pop"), password `demo-password`. The data lives in `Infrastructure/Persistence/Seeding/DevelopmentDataSeeder.cs`; add to it when a new feature needs something to click through. Stop the running API first (a debugger locks the DLLs `dotnet run` has to rebuild).
 
 - API docs (Development only): Scalar at `http://localhost:5051/scalar/v1`, spec at `/openapi/v1.json`.
 - CORS allows `http://localhost:3000` (frontend).

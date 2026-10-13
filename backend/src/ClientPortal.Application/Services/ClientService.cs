@@ -67,7 +67,7 @@ internal sealed class ClientService(IClientRepository clients, WorkspaceAccess a
 
     public async Task<ClientResponse> ArchiveAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
     {
-        await access.RequireMemberAsync(workspaceId, cancellationToken);
+        await access.RequireOwnerAsync(workspaceId, cancellationToken);
         var client = await RequireClientAsync(workspaceId, id, cancellationToken);
 
         client.Archive();
@@ -78,7 +78,7 @@ internal sealed class ClientService(IClientRepository clients, WorkspaceAccess a
 
     public async Task<ClientResponse> RestoreAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
     {
-        await access.RequireMemberAsync(workspaceId, cancellationToken);
+        await access.RequireOwnerAsync(workspaceId, cancellationToken);
         var client = await RequireClientAsync(workspaceId, id, cancellationToken);
 
         client.Restore();

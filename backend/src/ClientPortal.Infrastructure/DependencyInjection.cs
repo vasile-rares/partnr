@@ -3,6 +3,7 @@ using ClientPortal.Application.Interfaces.Services;
 using ClientPortal.Infrastructure.Authentication;
 using ClientPortal.Infrastructure.Persistence;
 using ClientPortal.Infrastructure.Persistence.Repositories;
+using ClientPortal.Infrastructure.Persistence.Seeding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
+        services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();

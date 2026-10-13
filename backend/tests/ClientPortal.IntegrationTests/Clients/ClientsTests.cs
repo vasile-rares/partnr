@@ -1,7 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Workspaces;
+using ClientPortal.Domain.Enums;
+using ClientPortal.Infrastructure.Persistence;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ClientPortal.IntegrationTests.Clients;
 
@@ -135,18 +139,64 @@ public sealed class ClientsTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.NotFound, archive.StatusCode);
     }
 
+    [Fact]
+    public async Task Member_CanAddAndEditClients_ButNotArchiveOrRestoreThem()
+    {
+        var (owner, workspaceId) = await SignedInWithWorkspace();
+        var acme = await Register(owner, workspaceId, new { name = "Acme", email = NewEmail() });
+        var old = await Register(owner, workspaceId, new { name = "Old", email = NewEmail() });
+        await owner.PostAsync($"/api/workspaces/{workspaceId}/clients/{old.Id}/archive", null);
+        var (member, memberId) = await SignedIn();
+        await AddMember(workspaceId, memberId);
+
+        var added = await member.PostAsJsonAsync($"/api/workspaces/{workspaceId}/clients", new { name = "By member", email = NewEmail() });
+        var edited = await member.PutAsJsonAsync($"/api/workspaces/{workspaceId}/clients/{acme.Id}", new { name = "Acme SRL", email = NewEmail() });
+        var archive = await member.PostAsync($"/api/workspaces/{workspaceId}/clients/{acme.Id}/archive", null);
+        var restore = await member.PostAsync($"/api/workspaces/{workspaceId}/clients/{old.Id}/restore", null);
+
+        Assert.Equal(HttpStatusCode.Created, added.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, archive.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, restore.StatusCode);
+
+        // The refused calls changed nothing.
+        var stillActive = await owner.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{acme.Id}");
+        var stillArchived = await owner.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{old.Id}");
+        Assert.Null(stillActive!.ArchivedAtUtc);
+        Assert.NotNull(stillArchived!.ArchivedAtUtc);
+    }
+
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 
     private async Task<(HttpClient Http, Guid WorkspaceId)> SignedInWithWorkspace()
+    {
+        var (http, _) = await SignedIn();
+        var workspace = await CreateWorkspace(http, "Studio");
+
+        return (http, workspace.Id);
+    }
+
+    private async Task<(HttpClient Http, Guid UserId)> SignedIn()
     {
         var http = factory.CreateClient();
         var response = await http.PostAsJsonAsync(
             "/api/auth/register",
             new { email = NewEmail(), password = "correct horse", fullName = "Test User" });
         response.EnsureSuccessStatusCode();
+        var user = await response.Content.ReadFromJsonAsync<CurrentUserResponse>();
 
-        var workspace = await CreateWorkspace(http, "Studio");
-        return (http, workspace.Id);
+        return (http, user!.Id);
+    }
+
+    // There is no endpoint for adding members yet (that comes with invitations), so tests add one straight to the database.
+    private async Task AddMember(Guid workspaceId, Guid userId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var workspace = await db.Workspaces.FindAsync(workspaceId);
+        await db.Entry(workspace!).Collection(w => w.Members).LoadAsync();
+        workspace!.AddMember(userId, WorkspaceRole.Member);
+        await db.SaveChangesAsync();
     }
 
     private static async Task<WorkspaceResponse> CreateWorkspace(HttpClient http, string name)

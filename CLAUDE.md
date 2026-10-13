@@ -54,7 +54,7 @@ Project rules in this file take precedence over any skill. A skill never authori
 ## VS Code (`.vscode/`)
 
 - Launch: **API**, **Frontend**, **Full stack** (compound, F5).
-- Tasks: `build-api`, `test` (default), `db-up`, `db-migrate`. `db-up` / `db-migrate` are not tied to F5.
+- Tasks: `build-api`, `test` (default), `db-up`, `db-migrate`, `db-seed`. The `db-*` tasks are not tied to F5.
 
 ## Prerequisites
 

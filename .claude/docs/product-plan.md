@@ -319,7 +319,8 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 
 - [x] Autentificare
 - [x] Workspace
-- [ ] Gestionarea clienților
+- [x] Gestionarea clienților
+- [ ] Profil cont (nume, telefon, companie), înaintea invitațiilor
 - [ ] Invitații pentru clienți
 - [ ] Proiecte
 - [ ] Portal pentru clienți
@@ -365,9 +366,19 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Câmpuri:** nume și email obligatorii; companie, telefon și note opționale. Un câmp opțional gol se salvează `null`, ca API-ul să nu întoarcă șiruri goale.
 - **Arhivare, nu ștergere** (`ArchivedAtUtc`, cu restaurare). Clientul va avea proiecte, livrabile și istoric, pe care o ștergere le-ar pierde. Lista implicită ascunde clienții arhivați (`?includeArchived=true` îi arată). Ștergerea definitivă se decide odată cu ștergerea workspace-ului.
 - **Emailul rămâne unic în workspace și față de clienții arhivați**, ca restaurarea să nu dea niciodată conflict.
-- **Orice membru** poate adăuga, edita, arhiva și restaura clienți (nu doar ownerul).
+- **Permisiuni:** `Member` adaugă și editează clienți; **arhivarea și restaurarea sunt doar pentru `Owner`** (scot clientul din lista tuturor, deci e o decizie a ownerului). API-ul răspunde 403, iar pagina clientului ascunde butonul pentru membri.
+- **Toți membrii văd toți clienții workspace-ului**, fără atribuire pe client în MVP. Se poate restrânge mai târziu printr-un singur loc, `WorkspaceAccess`.
+- **Cine deține datele unui client (model pe două straturi, se construiește la Profil și Invitații).** Fișa e a freelancerului doar cât timp clientul nu are cont. După acceptarea invitației, **tot în afară de note** (nume, email, telefon, companie) aparține clientului și vine din contul lui.
+  - **Fișa legată nu are copie a datelor:** citește mereu din cont, deci nu poate diverge și nu e nimic de sincronizat; emailul nou al clientului apare automat. Unicitatea emailului se aplică fișelor nelegate, cele legate sunt unice pe cont. Dacă două fișe din același workspace ajung la același email, ambele rămân, marcate în UI ca posibil duplicat.
+  - **Blocare la invitație:** de la trimiterea invitației, freelancerul nu mai poate edita nume, email, telefon și companie (notele rămân editabile). Blocarea se ridică prin **anularea** sau **expirarea** invitației, așa se corectează un email greșit; după acceptare e permanentă.
+  - **Notele sunt interne:** clientul nu le vede niciodată, în niciun răspuns al portalului.
+  - **Profilul contului vine înaintea Invitațiilor:** freelancerul nu mai poate corecta datele, deci clientul trebuie să le poată corecta singur. Contul primește telefon și companie, plus o pagină de profil pentru orice utilizator.
+  - **Invitația se acceptă doar cu emailul invitat:** o invitație e legată de adresa la care a fost trimisă. Cine se loghează sau își face cont cu alt email nu o poate accepta. Adresa invitată dovedește că persoana o deține; altfel oricine ar primi linkul ar putea prelua fișa altcuiva.
+  - **Formularul de înregistrare din invitație nu se precompletează cu datele din fișă:** clientul își introduce singur numele, telefonul și compania, iar datele scrise de freelancer nu ajung în contul lui. Fișa legată citește doar din cont. (Emailul din acel formular rămâne cel invitat, nu se poate schimba, fiindcă regula de mai sus o cere.)
+  - **De decis la pasul Profil:** schimbarea emailului în profil ar trebui confirmată pe email (altfel clientul poate pune orice adresă, iar fișa o arată freelancerului), dar serviciul de email vine abia la Invitații. Variante: emailul nu se poate schimba până atunci, sau se schimbă doar cu confirmare după ce există serviciul de email.
 - **Editarea e `PUT` (înlocuiește tot); arhivarea și restaurarea sunt acțiuni separate** (`POST .../archive`, `.../restore`), nu un câmp în formularul de editare.
 - **Istoricul colaborării se amână** până la Proiecte și Timeline, fiindcă fără proiecte nu există încă ce afișa.
+- **Frontend:** lista are filtrul „Show archived clients" în URL (`?archived=1`), ca vizualizarea să poată fi trimisă ca link și să nu fie nevoie de stare în client. Adăugarea și editarea folosesc același formular (`ClientForm`); arhivarea / restaurarea e un buton separat, în josul paginii clientului. Un client inexistent și unul din alt workspace arată la fel (404).
 
 ### Generale
 

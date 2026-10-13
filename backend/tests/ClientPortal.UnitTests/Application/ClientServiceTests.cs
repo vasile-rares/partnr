@@ -3,6 +3,7 @@ using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Interfaces.Repositories;
 using ClientPortal.Application.Services;
 using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Enums;
 
 namespace ClientPortal.UnitTests.Application;
 
@@ -244,6 +245,54 @@ public class ClientServiceTests
             _service.ArchiveAsync(someoneElses.Id, theirs.Id, CancellationToken.None));
 
         Assert.False(theirs.IsArchived);
+    }
+
+    [Fact]
+    public async Task ArchiveAndRestore_AsAMember_ThrowForbidden_AndChangeNothing()
+    {
+        var (workspace, client) = AWorkspaceWhereIAmOnlyAMember();
+        var archived = Client.Register(workspace.Id, "Old", "old@acme.com");
+        archived.Archive();
+        _clients.Items.Add(archived);
+
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _service.ArchiveAsync(workspace.Id, client.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _service.RestoreAsync(workspace.Id, archived.Id, CancellationToken.None));
+
+        Assert.False(client.IsArchived);
+        Assert.True(archived.IsArchived);
+        Assert.Equal(0, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task RegisterAndUpdate_AsAMember_AreAllowed()
+    {
+        var (workspace, client) = AWorkspaceWhereIAmOnlyAMember();
+
+        await _service.RegisterAsync(
+            workspace.Id,
+            new RegisterClientRequest { Name = "New", Email = "new@acme.com" },
+            CancellationToken.None);
+        var updated = await _service.UpdateAsync(
+            workspace.Id,
+            client.Id,
+            new UpdateClientRequest { Name = "Renamed", Email = "contact@acme.com" },
+            CancellationToken.None);
+
+        Assert.Equal("Renamed", updated.Name);
+        Assert.Equal(2, _clients.Items.Count);
+    }
+
+    private (Workspace Workspace, Client Client) AWorkspaceWhereIAmOnlyAMember()
+    {
+        var workspace = Workspace.Create("Someone else's studio", Guid.NewGuid());
+        workspace.AddMember(_me, WorkspaceRole.Member);
+        _workspaces.Items.Add(workspace);
+        var client = Client.Register(workspace.Id, "Acme", "contact@acme.com");
+        _clients.Items.Add(client);
+
+        return (workspace, client);
     }
 
     private sealed class FakeClientRepository : IClientRepository
