@@ -102,6 +102,7 @@ External services (email, OAuth, AI, file storage) follow the same rule as repos
 ## Database and migrations
 
 - PostgreSQL 17 via `docker-compose.yml` (db `client_portal`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/ClientPortal.Api/appsettings.Development.json`. To use a different Postgres (e.g. one installed locally), override it with user secrets instead of editing that file: `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=...;Password=..." --project src/ClientPortal.Api`.
+- **Email** goes through `IEmailSender` (Application), implemented by `Infrastructure/Email/SmtpEmailSender` (MailKit) and configured by the `Email` section (`From`, `SmtpHost`, `SmtpPort`, `SmtpUsername`, `SmtpPassword`, `UseTls`), validated at startup. In development the SMTP server is **Mailpit** from `docker-compose.yml` (SMTP on 1025, inbox UI on http://localhost:8025): every email is caught there, none reaches a real inbox. Production only changes the configuration. Integration tests replace the sender with `FakeEmailSender` (`ApiFactory.Emails`); `Email/SmtpEmailSenderTests` checks the real sender against a Mailpit container.
 - Migrations are created in Infrastructure, started from Api (commands work in any shell):
 
 ```bash
@@ -112,7 +113,7 @@ dotnet ef database update --project src/ClientPortal.Infrastructure --startup-pr
 ## Common commands
 
 ```bash
-docker compose up -d                                              # Postgres
+docker compose up -d                                              # Postgres + Mailpit (http://localhost:8025)
 dotnet build                                                      # must be 0 warnings
 dotnet test
 dotnet run --project src/ClientPortal.Api --launch-profile http   # http://localhost:5051

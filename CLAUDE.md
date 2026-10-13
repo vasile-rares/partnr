@@ -58,5 +58,5 @@ Project rules in this file take precedence over any skill. A skill never authori
 
 ## Prerequisites
 
-- Backend: .NET SDK 10, `dotnet-ef`, Docker (details in `backend/CLAUDE.md`). Frontend: Node.js + npm.
+- Backend: .NET SDK 10, `dotnet-ef`, Docker for Postgres and Mailpit, the local email catcher (details in `backend/CLAUDE.md`). Frontend: Node.js + npm.
 - Works on Windows, macOS and Linux; use forward slashes and shell-agnostic commands in docs and scripts.

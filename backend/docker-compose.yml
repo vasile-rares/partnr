@@ -11,5 +11,13 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  # Catches every email the API sends in development (nothing reaches real inboxes). Web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    container_name: client-portal-mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI and API
+
 volumes:
   postgres-data:

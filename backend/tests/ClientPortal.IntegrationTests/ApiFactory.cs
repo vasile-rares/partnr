@@ -1,9 +1,11 @@
+using ClientPortal.Application.Interfaces.Services;
 using ClientPortal.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace ClientPortal.IntegrationTests;
@@ -12,6 +14,9 @@ namespace ClientPortal.IntegrationTests;
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17").Build();
+
+    /// <summary>Every email the API sent during the tests; nothing goes over SMTP.</summary>
+    public FakeEmailSender Emails { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -35,6 +40,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await postgres.DisposeAsync();
     }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
         builder.UseSetting("ConnectionStrings:Postgres", postgres.GetConnectionString());
+        builder.ConfigureServices(services => services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails)));
+    }
 }

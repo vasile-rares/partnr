@@ -1,6 +1,7 @@
 using ClientPortal.Application.Interfaces.Repositories;
 using ClientPortal.Application.Interfaces.Services;
 using ClientPortal.Infrastructure.Authentication;
+using ClientPortal.Infrastructure.Email;
 using ClientPortal.Infrastructure.Persistence;
 using ClientPortal.Infrastructure.Persistence.Repositories;
 using ClientPortal.Infrastructure.Persistence.Seeding;
@@ -25,6 +26,12 @@ public static class DependencyInjection
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
+
+        services.AddOptions<EmailOptions>()
+            .Bind(configuration.GetSection(EmailOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
 
         return services;
     }
