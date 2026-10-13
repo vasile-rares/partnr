@@ -34,13 +34,26 @@ internal sealed class AuthService(IIdentityService identity, ICurrentUser curren
 
     public async Task<CurrentUserResponse> GetCurrentUserAsync(CancellationToken cancellationToken)
     {
-        if (currentUser.UserId is not { } userId)
-        {
-            throw new UnauthorizedException(NotSignedInMessage);
-        }
-
         // The account may have been deleted while its cookie is still valid.
-        return await identity.FindByIdAsync(userId, cancellationToken)
+        return await identity.FindByIdAsync(RequireUserId(), cancellationToken)
             ?? throw new UnauthorizedException(NotSignedInMessage);
     }
+
+    public async Task<CurrentUserResponse> UpdateProfileAsync(UpdateProfileRequest request, CancellationToken cancellationToken)
+    {
+        var userId = RequireUserId();
+        var fullName = request.FullName.Trim();
+        if (fullName.Length == 0)
+        {
+            throw new ValidationFailedException("Full name is required.");
+        }
+
+        return await identity.UpdateProfileAsync(userId, fullName, Optional(request.Phone), Optional(request.Company), cancellationToken)
+            ?? throw new UnauthorizedException(NotSignedInMessage);
+    }
+
+    private Guid RequireUserId() => currentUser.UserId ?? throw new UnauthorizedException(NotSignedInMessage);
+
+    // Optional details are stored as null when left empty, so the API never returns blank strings.
+    private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -42,6 +42,9 @@ export function AppHeader({ workspace }: AppHeaderProps) {
           <Link href="/workspaces" className={buttonVariants({ variant: "ghost" })}>
             All workspaces
           </Link>
+          <Link href="/account" className={buttonVariants({ variant: "ghost" })}>
+            Account
+          </Link>
           <ThemeToggle />
           <SignOutButton />
         </nav>

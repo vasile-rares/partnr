@@ -31,6 +31,8 @@ internal sealed class DevelopmentDataSeeder(
         }
 
         var owner = await identity.CreateAsync(DevelopmentSeed.OwnerEmail, "Ana Pop", DevelopmentSeed.Password, cancellationToken);
+        // The owner has a complete profile; the member leaves the optional details empty.
+        await identity.UpdateProfileAsync(owner.Id, owner.FullName, "+40 722 000 000", "Studio Pop SRL", cancellationToken);
         var member = await identity.CreateAsync(DevelopmentSeed.MemberEmail, "Mihai Member", DevelopmentSeed.Password, cancellationToken);
 
         // The main workspace: the owner plus a member, with a mix of complete, sparse and archived clients.

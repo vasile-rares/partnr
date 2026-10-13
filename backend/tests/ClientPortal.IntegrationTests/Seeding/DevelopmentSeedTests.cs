@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Workspaces;
 using ClientPortal.Infrastructure;
@@ -26,6 +27,10 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var all = await owner.GetFromJsonAsync<ClientResponse[]>($"/api/workspaces/{studio.Id}/clients?includeArchived=true");
         Assert.Equal(6, active!.Length);
         Assert.Equal(8, all!.Length);
+
+        var ownerProfile = await owner.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
+        Assert.Equal("Studio Pop SRL", ownerProfile!.Company);
+        Assert.NotNull(ownerProfile.Phone);
 
         var member = await SignIn(DevelopmentSeed.MemberEmail);
         var asMember = await member.GetFromJsonAsync<WorkspaceResponse>($"/api/workspaces/{studio.Id}");

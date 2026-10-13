@@ -35,6 +35,28 @@ internal sealed class IdentityService(
         return ToResponse(user)!;
     }
 
+    public async Task<CurrentUserResponse?> UpdateProfileAsync(
+        Guid id, string fullName, string? phone, string? company, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+        {
+            return null;
+        }
+
+        user.FullName = fullName;
+        user.PhoneNumber = phone;
+        user.Company = company;
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new ValidationFailedException(string.Join(" ", result.Errors.Select(e => e.Description)));
+        }
+
+        return ToResponse(user);
+    }
+
     public async Task SignInAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
@@ -59,5 +81,5 @@ internal sealed class IdentityService(
     public Task SignOutAsync() => signInManager.SignOutAsync();
 
     private static CurrentUserResponse? ToResponse(ApplicationUser? user) =>
-        user is null ? null : new(user.Id, user.Email ?? string.Empty, user.FullName);
+        user is null ? null : new(user.Id, user.Email ?? string.Empty, user.FullName, user.PhoneNumber, user.Company);
 }

@@ -16,6 +16,9 @@ public interface IIdentityService
     /// <exception cref="Common.Exceptions.ConflictException">The email is already used (lost a race with a concurrent registration).</exception>
     Task<CurrentUserResponse> CreateAsync(string email, string fullName, string password, CancellationToken cancellationToken);
 
+    /// <summary>Saves the profile details (already trimmed; optional ones are null when empty). Null when the account no longer exists.</summary>
+    Task<CurrentUserResponse?> UpdateProfileAsync(Guid id, string fullName, string? phone, string? company, CancellationToken cancellationToken);
+
     Task SignInAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>Checks the password (counting failures towards lockout) and signs in. Null for an unknown email, a wrong password or a locked-out account.</summary>

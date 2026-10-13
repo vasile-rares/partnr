@@ -8,6 +8,9 @@ export type CurrentUser = {
   id: string;
   email: string;
   fullName: string;
+  /** Optional profile details, null when not set. */
+  phone: string | null;
+  company: string | null;
 };
 
 /**

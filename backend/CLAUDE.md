@@ -80,6 +80,7 @@ Domain         -> nothing
 - A non-member gets **404**, exactly like a missing workspace, so ids cannot be probed. A member doing an owner-only action gets **403** (`ForbiddenException`), since they already know the workspace exists.
 - Repositories of workspace data take the `workspaceId` in every lookup (`GetByIdAsync(workspaceId, id)`), so a record of another workspace is not found even by its id.
 - Clients are not members: their portal access will come from invitations, scoped to their own projects.
+- The account profile (`PUT /api/auth/me`: full name, phone, company) is the user's own; the email is not part of it and cannot be changed yet. The phone is Identity's `PhoneNumber` column.
 - Clients: any member adds and edits them and sees all of them; **archiving and restoring is owner-only** (`RequireOwnerAsync`).
 - Members cannot be added through the API yet (invitations step); integration tests add them straight to the database.
 

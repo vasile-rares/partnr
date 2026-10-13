@@ -16,4 +16,9 @@ public interface IAuthService
 
     /// <exception cref="Common.Exceptions.UnauthorizedException">There is no signed-in user.</exception>
     Task<CurrentUserResponse> GetCurrentUserAsync(CancellationToken cancellationToken);
+
+    /// <summary>Changes the signed-in user's name, phone and company. The email cannot be changed here.</summary>
+    /// <exception cref="Common.Exceptions.UnauthorizedException">There is no signed-in user.</exception>
+    /// <exception cref="Common.Exceptions.ValidationFailedException">The name is blank.</exception>
+    Task<CurrentUserResponse> UpdateProfileAsync(UpdateProfileRequest request, CancellationToken cancellationToken);
 }

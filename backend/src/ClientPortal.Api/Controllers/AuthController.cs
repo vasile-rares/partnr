@@ -32,4 +32,8 @@ public sealed class AuthController(IAuthService service) : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken cancellationToken) =>
         Ok(await service.GetCurrentUserAsync(cancellationToken));
+
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request, CancellationToken cancellationToken) =>
+        Ok(await service.UpdateProfileAsync(request, cancellationToken));
 }

@@ -320,7 +320,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Autentificare
 - [x] Workspace
 - [x] Gestionarea clienților
-- [ ] Profil cont (nume, telefon, companie), înaintea invitațiilor
+- [x] Profil cont (nume, telefon, companie), înaintea invitațiilor
 - [ ] Invitații pentru clienți
 - [ ] Proiecte
 - [ ] Portal pentru clienți
@@ -379,6 +379,15 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Editarea e `PUT` (înlocuiește tot); arhivarea și restaurarea sunt acțiuni separate** (`POST .../archive`, `.../restore`), nu un câmp în formularul de editare.
 - **Istoricul colaborării se amână** până la Proiecte și Timeline, fiindcă fără proiecte nu există încă ce afișa.
 - **Frontend:** lista are filtrul „Show archived clients" în URL (`?archived=1`), ca vizualizarea să poată fi trimisă ca link și să nu fie nevoie de stare în client. Adăugarea și editarea folosesc același formular (`ClientForm`); arhivarea / restaurarea e un buton separat, în josul paginii clientului. Un client inexistent și unul din alt workspace arată la fel (404).
+
+### Profil cont
+
+- **Câmpuri:** numele complet e obligatoriu; telefonul și compania sunt opționale (un câmp gol se salvează `null`), ca la fișa clientului.
+- **Emailul se afișează, dar nu se poate schimba** încă. Schimbarea vine după ce există serviciul de email, cu confirmare pe noua adresă; fără confirmare, un cont și-ar putea pune o adresă străină, ceea ce ar contrazice regula „invitația se acceptă doar cu emailul invitat". `PUT /api/auth/me` nici nu primește emailul.
+- **Schimbarea parolei se amână** până la resetarea parolei, la pasul cu email.
+- **`/register` rămâne scurt** (email, parolă, nume); telefonul și compania se completează din profil. Formularul de înregistrare din invitație le va cere.
+- **Telefonul folosește coloana `PhoneNumber` din Identity** (limitată la 50), nu una nouă; compania e o coloană nouă pe `users`.
+- **Profilul e al contului, nu al unui workspace:** pagina e la `/account`, accesibilă și fără workspace, cu link „Account" în header.
 
 ### Generale
 

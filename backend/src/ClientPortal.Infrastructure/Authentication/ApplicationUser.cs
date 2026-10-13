@@ -12,5 +12,8 @@ public sealed class ApplicationUser : IdentityUser<Guid>
 
     public string FullName { get; set; } = string.Empty;
 
+    /// <summary>Optional. The phone lives in Identity's own <see cref="IdentityUser{TKey}.PhoneNumber"/> column.</summary>
+    public string? Company { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
 }

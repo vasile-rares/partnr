@@ -142,6 +142,74 @@ public sealed class AuthTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task UpdateProfile_SavesTheDetails_AndMeReturnsThem()
+    {
+        var client = factory.CreateClient();
+        var email = NewEmail();
+        await Register(client, email);
+
+        var response = await client.PutAsJsonAsync(
+            "/api/auth/me",
+            new { fullName = " Ana Popescu ", phone = "+40 721 000 000", company = "Acme SRL" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var me = await client.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
+        Assert.Equal("Ana Popescu", me!.FullName);
+        Assert.Equal("+40 721 000 000", me.Phone);
+        Assert.Equal("Acme SRL", me.Company);
+        Assert.Equal(email, me.Email);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_EmptyOptionalDetails_AreCleared()
+    {
+        var client = factory.CreateClient();
+        await Register(client, NewEmail());
+        await client.PutAsJsonAsync("/api/auth/me", new { fullName = "Ana", phone = "0700", company = "Acme" });
+
+        await client.PutAsJsonAsync("/api/auth/me", new { fullName = "Ana", phone = "", company = (string?)null });
+
+        var me = await client.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
+        Assert.Null(me!.Phone);
+        Assert.Null(me.Company);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_IgnoresAnEmailInTheRequest()
+    {
+        var client = factory.CreateClient();
+        var email = NewEmail();
+        await Register(client, email);
+
+        var response = await client.PutAsJsonAsync("/api/auth/me", new { fullName = "Ana", email = NewEmail() });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var me = await client.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
+        Assert.Equal(email, me!.Email);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_WithBlankName_ReturnsBadRequest()
+    {
+        var client = factory.CreateClient();
+        await Register(client, NewEmail());
+
+        var response = await client.PutAsJsonAsync("/api/auth/me", new { fullName = "  " });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var me = await client.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
+        Assert.Equal("Test User", me!.FullName);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_WithoutLogin_ReturnsUnauthorized()
+    {
+        var response = await factory.CreateClient().PutAsJsonAsync("/api/auth/me", new { fullName = "Ana" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     private static async Task<string?> ReadDetail(HttpResponseMessage response)
     {
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
