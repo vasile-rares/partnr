@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ArchiveProjectButton } from "@/components/projects/ArchiveProjectButton";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
+import { StageList } from "@/components/projects/StageList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { requireUser } from "@/lib/auth/session";
 import { getProject } from "@/lib/projects/server";
@@ -57,6 +58,8 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
             </AlertDescription>
           </Alert>
         ) : null}
+
+        <StageList workspaceId={workspace.id} project={project} />
 
         <ProjectForm workspaceId={workspace.id} project={project} />
 

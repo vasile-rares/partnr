@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +21,7 @@ export function ProjectsTable({ workspaceId, projects, showClient = true }: Proj
           <TableHead>Project</TableHead>
           {showClient ? <TableHead>Client</TableHead> : null}
           <TableHead>Status</TableHead>
+          <TableHead>Progress</TableHead>
           <TableHead>Due</TableHead>
         </TableRow>
       </TableHeader>
@@ -45,6 +47,9 @@ export function ProjectsTable({ workspaceId, projects, showClient = true }: Proj
             ) : null}
             <TableCell>
               <ProjectStatusBadge status={project.status} />
+            </TableCell>
+            <TableCell>
+              <ProjectProgress progress={project.progress} />
             </TableCell>
             <TableCell>{project.dueDate ? formatDate(project.dueDate) : "—"}</TableCell>
           </TableRow>

@@ -27,15 +27,21 @@ internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientRe
         var names = (await clientResponses.BuildAsync(cards, cancellationToken))
             .ToDictionary(c => c.Id, c => c.Name ?? c.Email);
 
-        return projects.Select(p => new ProjectResponse(
-            p.Id,
-            new ProjectClientResponse(p.ClientId, names.GetValueOrDefault(p.ClientId, "Unknown client")),
-            p.Name,
-            p.Description,
-            p.StartDate,
-            p.DueDate,
-            p.Status.ToString(),
-            p.CreatedAtUtc,
-            p.ArchivedAtUtc)).ToList();
+        return projects.Select(p =>
+        {
+            var stages = p.Stages; // sorted on every read, so read it once
+            return new ProjectResponse(
+                p.Id,
+                new ProjectClientResponse(p.ClientId, names.GetValueOrDefault(p.ClientId, "Unknown client")),
+                p.Name,
+                p.Description,
+                p.StartDate,
+                p.DueDate,
+                p.Status.ToString(),
+                p.CreatedAtUtc,
+                p.ArchivedAtUtc,
+                new ProjectProgressResponse(p.DoneStageCount, stages.Count),
+                stages.Select(s => new StageResponse(s.Id, s.Name, s.Description, s.DueDate, s.Status.ToString())).ToList());
+        }).ToList();
     }
 }

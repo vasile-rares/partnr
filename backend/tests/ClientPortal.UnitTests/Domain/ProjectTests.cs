@@ -79,4 +79,112 @@ public class ProjectTests
         project.Restore();
         Assert.False(project.IsArchived);
     }
+
+    [Fact]
+    public void AddStage_AppendsToTheEnd_AsToDo()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+
+        var design = project.AddStage("  Design  ", " ", new DateOnly(2026, 11, 1));
+        var launch = project.AddStage("Launch", null, null);
+
+        Assert.Equal(["Design", "Launch"], project.Stages.Select(s => s.Name));
+        Assert.Equal([0, 1], project.Stages.Select(s => s.Position));
+        Assert.Equal(StageStatus.ToDo, design.Status);
+        Assert.Null(design.Description);
+        Assert.Equal(project.Id, launch.ProjectId);
+    }
+
+    [Fact]
+    public void AddStage_WithoutAName_Throws()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+
+        Assert.Throws<DomainException>(() => project.AddStage(" ", null, null));
+        Assert.Empty(project.Stages);
+    }
+
+    [Fact]
+    public void UpdateStage_ChangesTheDetailsAndTheStatus_NotThePosition()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+        project.AddStage("Design", null, null);
+        var launch = project.AddStage("Launch", null, null);
+
+        project.UpdateStage(launch.Id, "Go live", "Publish it", new DateOnly(2026, 12, 15), StageStatus.InProgress);
+
+        Assert.Equal("Go live", launch.Name);
+        Assert.Equal(StageStatus.InProgress, launch.Status);
+        Assert.Equal(1, launch.Position);
+    }
+
+    [Fact]
+    public void UpdateStage_OfAnotherProject_Throws()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+        var other = Project.Create(WorkspaceId, ClientId, "Other");
+        var foreign = other.AddStage("Design", null, null);
+
+        Assert.Throws<DomainException>(() => project.UpdateStage(foreign.Id, "Hijacked", null, null, StageStatus.Done));
+        Assert.Equal("Design", foreign.Name);
+    }
+
+    [Fact]
+    public void MoveStage_SwapsWithTheNeighbour()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+        project.AddStage("A", null, null);
+        var b = project.AddStage("B", null, null);
+        project.AddStage("C", null, null);
+
+        project.MoveStage(b.Id, up: true);
+        Assert.Equal(["B", "A", "C"], project.Stages.Select(s => s.Name));
+
+        project.MoveStage(b.Id, up: false);
+        project.MoveStage(b.Id, up: false);
+        Assert.Equal(["A", "C", "B"], project.Stages.Select(s => s.Name));
+        Assert.Equal([0, 1, 2], project.Stages.Select(s => s.Position));
+    }
+
+    [Fact]
+    public void MoveStage_AtEitherEnd_ChangesNothing()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+        var first = project.AddStage("A", null, null);
+        var last = project.AddStage("B", null, null);
+
+        project.MoveStage(first.Id, up: true);
+        project.MoveStage(last.Id, up: false);
+
+        Assert.Equal(["A", "B"], project.Stages.Select(s => s.Name));
+    }
+
+    [Fact]
+    public void RemoveStage_ClosesTheGap()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+        project.AddStage("A", null, null);
+        var b = project.AddStage("B", null, null);
+        project.AddStage("C", null, null);
+
+        project.RemoveStage(b.Id);
+
+        Assert.Equal(["A", "C"], project.Stages.Select(s => s.Name));
+        Assert.Equal([0, 1], project.Stages.Select(s => s.Position));
+        Assert.False(project.HasStage(b.Id));
+    }
+
+    [Fact]
+    public void DoneStageCount_CountsOnlyDoneStages()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website");
+        var a = project.AddStage("A", null, null);
+        var b = project.AddStage("B", null, null);
+        project.AddStage("C", null, null);
+        project.UpdateStage(a.Id, "A", null, null, StageStatus.Done);
+        project.UpdateStage(b.Id, "B", null, null, StageStatus.InProgress);
+
+        Assert.Equal(1, project.DoneStageCount);
+        Assert.Equal(3, project.Stages.Count);
+    }
 }

@@ -4,6 +4,7 @@ using ClientPortal.Domain.Entities;
 using ClientPortal.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace ClientPortal.Infrastructure.Persistence.Seeding;
 
@@ -22,6 +23,72 @@ internal sealed class DevelopmentDataSeeder(
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
 {
+    private const string FingerprintPrefix = "seed:";
+
+    /// <summary>
+    /// Seeds, and empties the database first (every table is dropped and the migrations recreate them) when the test data changed
+    /// since it was last seeded. Everything in it is lost, including data entered by hand, so it only ever runs against a
+    /// database on this machine. The fingerprint of the
+    /// seed that filled the database is kept as the database's own comment, which needs no table and no migration.
+    /// </summary>
+    public async Task ReseedIfChangedAsync(CancellationToken cancellationToken)
+    {
+        await dbContext.Database.MigrateAsync(cancellationToken); // also creates the database when it does not exist
+
+        var seeded = await identity.FindByEmailAsync(DevelopmentSeed.OwnerEmail, cancellationToken) is not null;
+        var stored = await ReadFingerprintAsync(cancellationToken);
+
+        if (seeded && stored == SeedFingerprint.Current)
+        {
+            logger.LogInformation("Development data is up to date with the seed ({Fingerprint}).", SeedFingerprint.Current);
+            return;
+        }
+
+        if (seeded)
+        {
+            EnsureDatabaseIsLocal();
+            logger.LogWarning(
+                "The seed data changed ({Stored} -> {Current}). Recreating the development tables; anything entered by hand is lost.",
+                stored ?? "unknown",
+                SeedFingerprint.Current);
+
+            // Dropping the schema instead of the database: dropping needs a connection to another database and fails while any
+            // other program (a SQL client, say) is connected, and this works whatever the database is called.
+            await dbContext.Database.ExecuteSqlRawAsync("DROP SCHEMA public CASCADE; CREATE SCHEMA public;", cancellationToken);
+        }
+
+        await SeedAsync(cancellationToken);
+        await WriteFingerprintAsync(cancellationToken);
+    }
+
+    private void EnsureDatabaseIsLocal()
+    {
+        var host = new NpgsqlConnectionStringBuilder(dbContext.Database.GetConnectionString()).Host;
+        if (host is not ("localhost" or "127.0.0.1" or "::1"))
+        {
+            throw new InvalidOperationException($"Refusing to recreate a database on '{host}': automatic reseeding only works on this machine.");
+        }
+    }
+
+    private async Task<string?> ReadFingerprintAsync(CancellationToken cancellationToken)
+    {
+        var comment = await dbContext.Database
+            .SqlQueryRaw<string>(
+                "SELECT COALESCE(shobj_description(oid, 'pg_database'), '') AS \"Value\" FROM pg_database WHERE datname = current_database()")
+            .SingleAsync(cancellationToken);
+
+        return comment.StartsWith(FingerprintPrefix, StringComparison.Ordinal) ? comment[FingerprintPrefix.Length..] : null;
+    }
+
+    // COMMENT and DO blocks cannot take parameters. The value is 16 hex digits we computed ourselves (SeedFingerprint), never
+    // input, so building the statement as text is safe here.
+#pragma warning disable EF1002
+    private Task WriteFingerprintAsync(CancellationToken cancellationToken) =>
+        dbContext.Database.ExecuteSqlRawAsync(
+            $"DO $$ BEGIN EXECUTE format('COMMENT ON DATABASE %I IS %L', current_database(), '{FingerprintPrefix}{SeedFingerprint.Current}'); END $$",
+            cancellationToken);
+#pragma warning restore EF1002
+
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
         await dbContext.Database.MigrateAsync(cancellationToken);
@@ -64,6 +131,13 @@ internal sealed class DevelopmentDataSeeder(
             new DateOnly(2026, 10, 1),
             new DateOnly(2026, 12, 15));
         website.ChangeStatus(ProjectStatus.Active);
+        var discovery = website.AddStage("Discovery", "Goals, audience and the pages needed.", new DateOnly(2026, 10, 15));
+        var design = website.AddStage("Design", "Layouts for every page, approved by the client.", new DateOnly(2026, 11, 5));
+        var development = website.AddStage("Development", null, new DateOnly(2026, 12, 1));
+        website.AddStage("Launch", null, new DateOnly(2026, 12, 15));
+        website.UpdateStage(discovery.Id, discovery.Name, discovery.Description, discovery.DueDate, StageStatus.Done);
+        website.UpdateStage(design.Id, design.Name, design.Description, design.DueDate, StageStatus.Done);
+        website.UpdateStage(development.Id, development.Name, development.Description, development.DueDate, StageStatus.InProgress);
         projects.Add(website);
         projects.Add(Project.Create(studio.Id, linked.Id, "Brand refresh", "Logo and colours, after the website."));
 

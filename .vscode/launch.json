@@ -10,7 +10,8 @@
       "cwd": "${workspaceFolder}/backend/src/ClientPortal.Api",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:5051"
+        "ASPNETCORE_URLS": "http://localhost:5051",
+        "Seed__ReseedOnChange": "true"
       }
     },
     {

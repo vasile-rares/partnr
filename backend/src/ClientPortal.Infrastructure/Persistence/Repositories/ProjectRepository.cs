@@ -7,7 +7,7 @@ namespace ClientPortal.Infrastructure.Persistence.Repositories;
 internal sealed class ProjectRepository(ApplicationDbContext dbContext) : IProjectRepository
 {
     public Task<Project?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
-        dbContext.Projects.FirstOrDefaultAsync(p => p.WorkspaceId == workspaceId && p.Id == id, cancellationToken);
+        dbContext.Projects.Include(p => p.Stages).FirstOrDefaultAsync(p => p.WorkspaceId == workspaceId && p.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Project>> ListAsync(
         Guid workspaceId,
@@ -16,6 +16,7 @@ internal sealed class ProjectRepository(ApplicationDbContext dbContext) : IProje
         CancellationToken cancellationToken) =>
         await dbContext.Projects
             .AsNoTracking()
+            .Include(p => p.Stages)
             .Where(p => p.WorkspaceId == workspaceId
                 && (includeArchived || p.ArchivedAtUtc == null)
                 && (clientId == null || p.ClientId == clientId))

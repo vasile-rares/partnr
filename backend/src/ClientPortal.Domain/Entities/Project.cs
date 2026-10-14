@@ -12,6 +12,8 @@ public sealed class Project : Entity
     public const int NameMaxLength = 200;
     public const int DescriptionMaxLength = 4000;
 
+    private readonly List<ProjectStage> _stages = [];
+
     private Project()
     {
     }
@@ -43,6 +45,11 @@ public sealed class Project : Entity
     public DateTime? ArchivedAtUtc { get; private set; }
 
     public bool IsArchived => ArchivedAtUtc is not null;
+
+    /// <summary>The stages in order. The database returns them in no particular order, so the position decides.</summary>
+    public IReadOnlyList<ProjectStage> Stages => _stages.OrderBy(s => s.Position).ToList();
+
+    public int DoneStageCount => _stages.Count(s => s.Status == StageStatus.Done);
 
     /// <summary>Starts in <see cref="ProjectStatus.Planning"/>, so the client sees nothing until the project is ready.</summary>
     public static Project Create(
@@ -89,6 +96,55 @@ public sealed class Project : Entity
 
     /// <summary>Any status can follow any other; going back to Planning hides the project from the client again.</summary>
     public void ChangeStatus(ProjectStatus status) => Status = status;
+
+    /// <summary>Adds a stage at the end, still to do.</summary>
+    public ProjectStage AddStage(string name, string? description, DateOnly? dueDate)
+    {
+        var stage = new ProjectStage(Id, name, description, dueDate, _stages.Count);
+        _stages.Add(stage);
+
+        return stage;
+    }
+
+    public void UpdateStage(Guid stageId, string name, string? description, DateOnly? dueDate, StageStatus status) =>
+        RequireStage(stageId).Update(name, description, dueDate, status);
+
+    /// <summary>Removes the stage and closes the gap, so the positions stay 0, 1, 2...</summary>
+    public void RemoveStage(Guid stageId)
+    {
+        _stages.Remove(RequireStage(stageId));
+        Renumber();
+    }
+
+    /// <summary>Swaps the stage with its neighbour. At either end there is nothing to swap with, and nothing changes.</summary>
+    public void MoveStage(Guid stageId, bool up)
+    {
+        var ordered = Stages;
+        var stage = RequireStage(stageId);
+        var index = ordered.ToList().IndexOf(stage);
+        var neighbourIndex = up ? index - 1 : index + 1;
+        if (neighbourIndex < 0 || neighbourIndex >= ordered.Count)
+        {
+            return;
+        }
+
+        var neighbour = ordered[neighbourIndex];
+        (stage.Position, neighbour.Position) = (neighbour.Position, stage.Position);
+    }
+
+    public bool HasStage(Guid stageId) => _stages.Any(s => s.Id == stageId);
+
+    private ProjectStage RequireStage(Guid stageId) =>
+        _stages.FirstOrDefault(s => s.Id == stageId) ?? throw new DomainException("This project has no such stage.");
+
+    private void Renumber()
+    {
+        var position = 0;
+        foreach (var stage in Stages)
+        {
+            stage.Position = position++;
+        }
+    }
 
     /// <summary>Hides the project from the default list and from the portal. Archiving twice keeps the first date.</summary>
     public void Archive() => ArchivedAtUtc ??= DateTime.UtcNow;

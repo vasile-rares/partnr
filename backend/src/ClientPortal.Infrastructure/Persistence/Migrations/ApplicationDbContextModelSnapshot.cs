@@ -175,6 +175,41 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                     b.ToTable("projects", (string)null);
                 });
 
+            modelBuilder.Entity("ClientPortal.Domain.Entities.ProjectStage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("project_stages", (string)null);
+                });
+
             modelBuilder.Entity("ClientPortal.Domain.Entities.Workspace", b =>
                 {
                     b.Property<Guid>("Id")
@@ -408,6 +443,15 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ClientPortal.Domain.Entities.ProjectStage", b =>
+                {
+                    b.HasOne("ClientPortal.Domain.Entities.Project", null)
+                        .WithMany("Stages")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ClientPortal.Domain.Entities.WorkspaceMember", b =>
                 {
                     b.HasOne("ClientPortal.Infrastructure.Authentication.ApplicationUser", null)
@@ -448,6 +492,11 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Project", b =>
+                {
+                    b.Navigation("Stages");
                 });
 
             modelBuilder.Entity("ClientPortal.Domain.Entities.Workspace", b =>

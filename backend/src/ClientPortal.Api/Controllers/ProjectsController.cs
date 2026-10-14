@@ -32,6 +32,33 @@ public sealed class ProjectsController(IProjectService service) : ControllerBase
     public async Task<IActionResult> Update(Guid workspaceId, Guid id, UpdateProjectRequest request, CancellationToken cancellationToken) =>
         Ok(await service.UpdateAsync(workspaceId, id, request, cancellationToken));
 
+    // Stages belong to the project, so they are changed through it; each call answers with the whole project (stages in order).
+    [HttpPost("{id:guid}/stages")]
+    public async Task<IActionResult> AddStage(Guid workspaceId, Guid id, CreateStageRequest request, CancellationToken cancellationToken) =>
+        Ok(await service.AddStageAsync(workspaceId, id, request, cancellationToken));
+
+    [HttpPut("{id:guid}/stages/{stageId:guid}")]
+    public async Task<IActionResult> UpdateStage(
+        Guid workspaceId,
+        Guid id,
+        Guid stageId,
+        UpdateStageRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await service.UpdateStageAsync(workspaceId, id, stageId, request, cancellationToken));
+
+    [HttpPost("{id:guid}/stages/{stageId:guid}/move")]
+    public async Task<IActionResult> MoveStage(
+        Guid workspaceId,
+        Guid id,
+        Guid stageId,
+        MoveStageRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await service.MoveStageAsync(workspaceId, id, stageId, request, cancellationToken));
+
+    [HttpDelete("{id:guid}/stages/{stageId:guid}")]
+    public async Task<IActionResult> RemoveStage(Guid workspaceId, Guid id, Guid stageId, CancellationToken cancellationToken) =>
+        Ok(await service.RemoveStageAsync(workspaceId, id, stageId, cancellationToken));
+
     // Archive / restore are actions, not field edits, so they get their own endpoints instead of a flag in PUT.
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> Archive(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>

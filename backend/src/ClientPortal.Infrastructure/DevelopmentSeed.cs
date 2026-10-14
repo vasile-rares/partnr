@@ -24,6 +24,16 @@ public static class DevelopmentSeed
     /// <summary>Shared by all the seeded accounts. Local development only.</summary>
     public const string Password = "demo-password";
 
+    /// <summary>
+    /// Like <see cref="SeedDevelopmentDataAsync"/>, but when the seed itself was edited since the database was seeded, the database
+    /// is emptied and rebuilt first, so it always matches the current test data. Everything in it is lost. Only for a database on this machine.
+    /// </summary>
+    public static async Task ReseedDevelopmentDataIfChangedAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<DevelopmentDataSeeder>().ReseedIfChangedAsync(cancellationToken);
+    }
+
     /// <summary>Applies pending migrations, then adds the test data unless it is already there.</summary>
     public static async Task SeedDevelopmentDataAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {

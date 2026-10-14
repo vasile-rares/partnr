@@ -62,6 +62,13 @@ if (args.Contains("--seed"))
     return;
 }
 
+// Opt-in (the "API" launch profile sets it): recreate the development database when the seed data was edited. Off by default,
+// because the integration and e2e runs are in Development too and must never recreate anything.
+if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Seed:ReseedOnChange"))
+{
+    await app.Services.ReseedDevelopmentDataIfChangedAsync();
+}
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

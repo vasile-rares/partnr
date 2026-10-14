@@ -57,6 +57,65 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(page.getByText("No active projects")).toBeVisible();
 });
 
+test("stages are added, reordered, finished and deleted, and the progress follows", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
+  expect(created.status()).toBe(201);
+  const project = await created.json();
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  const stages = page.getByRole("region", { name: "Stages" });
+  await expect(stages.getByText("No stages yet. Break the project")).toBeVisible();
+
+  for (const name of ["Design", "Development", "Launch"]) {
+    await stages.getByLabel("Stage name").fill(name);
+    await stages.getByRole("button", { name: "Add stage" }).click();
+    await expect(stages.getByRole("listitem").filter({ hasText: name })).toBeVisible();
+  }
+  await expect(stages.getByText("0 of 3 done")).toBeVisible();
+  const order = stages.getByRole("listitem").getByRole("paragraph").filter({ hasText: /^(Design|Development|Launch)$/ });
+  await expect(order).toHaveText(["Design", "Development", "Launch"]);
+
+  // The first stage cannot go up and the last cannot go down; moving Launch up puts it before Development.
+  await expect(stages.getByRole("button", { name: "Move Design up" })).toBeDisabled();
+  await expect(stages.getByRole("button", { name: "Move Launch down" })).toBeDisabled();
+  await stages.getByRole("button", { name: "Move Launch up" }).click();
+  await expect(order).toHaveText(["Design", "Launch", "Development"]);
+
+  // Finishing a stage moves the progress.
+  await stages.getByRole("button", { name: "Edit Design" }).click();
+  await stages.getByLabel("Status").selectOption("Done");
+  await stages.getByRole("button", { name: "Save stage" }).click();
+  await expect(stages.getByText("1 of 3 done")).toBeVisible();
+  await expect(stages.getByRole("listitem").filter({ hasText: "Design" })).toContainText("Done");
+
+  // Deleting asks first; keeping the stage changes nothing.
+  await stages.getByRole("button", { name: "Delete Launch" }).click();
+  await page.getByRole("button", { name: "Keep stage" }).click();
+  await expect(order).toHaveText(["Design", "Launch", "Development"]);
+  await stages.getByRole("button", { name: "Delete Launch" }).click();
+  await page.getByRole("button", { name: "Delete stage" }).click();
+  await expect(order).toHaveText(["Design", "Development"]);
+  await expect(stages.getByText("1 of 2 done")).toBeVisible();
+
+  // The list of projects shows the same progress.
+  await page.goto(`/w/${workspace.id}/projects`);
+  await expect(page.getByRole("row", { name: /Website/ })).toContainText("1 of 2 done");
+
+  // Once the project is archived the stages can still be read, but not changed.
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  await page.getByRole("button", { name: "Archive project" }).click();
+  await expect(page.getByText("This project is archived")).toBeVisible();
+  await expect(stages.getByRole("listitem")).toHaveCount(2);
+  await expect(stages.getByRole("button", { name: "Add stage" })).toBeHidden();
+  await expect(stages.getByRole("button", { name: "Edit Design" })).toBeHidden();
+});
+
 test("a workspace with no clients is asked to add one before starting a project", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");

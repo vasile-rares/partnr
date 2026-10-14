@@ -20,6 +20,11 @@ internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         // Stored as text so the database stays readable and reordering the enum cannot silently change statuses.
         builder.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
 
+        // Stages belong to the aggregate: loaded and saved with it, through the private _stages field, and gone with it.
+        builder.HasMany(p => p.Stages).WithOne().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(p => p.Stages).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Ignore(p => p.DoneStageCount);
+
         // The list and a client's page both filter by workspace first, then by client.
         builder.HasIndex(p => new { p.WorkspaceId, p.ClientId });
 

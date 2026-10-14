@@ -324,7 +324,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Invitații pentru clienți
 - [ ] Proiecte, în trei pași:
   - [x] Pas 1: proiecte pentru freelancer (API, listă, pagina proiectului, secțiune pe pagina clientului, arhivare)
-  - [ ] Pas 2: etape (ordonate, cu status) și progres
+  - [x] Pas 2: etape (ordonate, cu status) și progres
   - [ ] Pas 3: proiectele și etapele în portalul clientului
 - [ ] Portal pentru clienți
 - [ ] Timeline
@@ -419,6 +419,12 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Planning = ciornă:** clientul vede proiectul doar după ce iese din Planning. Întoarcerea în Planning îl ascunde din nou. Nu există o bifă separată „share with client”, care ar fi fost încă o stare de uitat.
 - **Arhivare, nu ștergere**, ca la clienți: doar Owner-ul arhivează și restaurează (403 pentru membri). **Un proiect arhivat e doar de citit** (409 la orice modificare) până la restaurare. Arhivarea clientului păstrează proiectele, dar îi ia accesul la portal.
 - **Etape:** listă ordonată de etape cu status To do / In progress / Done, fără task-uri în MVP. Se reordonează cu butoane „sus/jos” (accesibile, fără bibliotecă de drag & drop). Pot fi mai multe etape In progress deodată.
+  - **Etapa aparține proiectului (agregat):** se schimbă doar prin `Project` (`AddStage`, `UpdateStage`, `MoveStage`, `RemoveStage`), se încarcă și se salvează odată cu el și dispare odată cu el (cascadă). Pozițiile sunt mereu 0, 1, 2...: etapa nouă merge la final, ștergerea închide golul, mutarea schimbă două poziții între ele (la capete nu se întâmplă nimic și nu e eroare).
+  - **Fără index unic pe `(ProjectId, Position)`:** la mutare se schimbă două poziții într-o singură salvare, iar baza ar vedea o poziție dublată la jumătate (aceeași problemă ca la invitații). Ordinea o păstrează agregatul.
+  - **Etapa nouă începe mereu „To do”**; statusul se schimbă la editare. Etapele se pot șterge definitiv (cu confirmare în UI), fiindcă nu au încă livrabile; asta se reconsideră la Livrabile.
+  - **Un proiect arhivat își blochează și etapele** (409). O etapă a altui proiect dă 404, la fel ca una inexistentă.
+  - **Fiecare schimbare răspunde cu proiectul întreg**, etapele în ordine și progresul (`done` / `total`), iar pagina doar se reîncarcă. Endpoint-urile sunt separate (nu un `PUT` care înlocuiește toată lista), fiindcă Timeline-ul va înregistra câte un eveniment pe schimbare.
+  - **Progresul** (etape Done din total) apare în listă și pe pagina proiectului; un proiect fără etape spune „No stages yet”, nu o bară goală. Lista de proiecte încarcă și etapele, fiindcă sunt puține; de reconsiderat dacă proiectele ajung să aibă zeci.
 - **Frontend:** pagina „Projects” în header (cu `?archived=1`, ca la clienți), plus secțiunea „Projects” pe pagina clientului, cu „New project” care preselectează clientul (`?clientId=`). Clientul se alege dintr-un select nativ (`native-select` din shadcn), fiindcă merge direct cu `FormData` și cu validarea nativă.
 
 ### Generale

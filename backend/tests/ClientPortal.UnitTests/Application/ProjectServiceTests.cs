@@ -201,6 +201,120 @@ public class ProjectServiceTests
         Assert.False(project.IsArchived);
     }
 
+    [Fact]
+    public async Task AddStage_AppendsAStage_AndAnswersWithTheWholeProject()
+    {
+        var project = AddProject(_acme.Id, "Website");
+
+        await _service.AddStageAsync(_workspace.Id, project.Id, new CreateStageRequest { Name = "Design" }, CancellationToken.None);
+        var response = await _service.AddStageAsync(
+            _workspace.Id,
+            project.Id,
+            new CreateStageRequest { Name = "Launch", DueDate = new DateOnly(2026, 12, 15) },
+            CancellationToken.None);
+
+        Assert.Equal(["Design", "Launch"], response.Stages.Select(s => s.Name));
+        Assert.Equal(new ProjectProgressResponse(0, 2), response.Progress);
+        Assert.Equal(2, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task UpdateStage_MarkingAStageDone_MovesTheProgress()
+    {
+        var project = AddProject(_acme.Id, "Website");
+        var design = project.AddStage("Design", null, null);
+        project.AddStage("Launch", null, null);
+
+        var response = await _service.UpdateStageAsync(
+            _workspace.Id,
+            project.Id,
+            design.Id,
+            new UpdateStageRequest { Name = "Design", Status = "Done" },
+            CancellationToken.None);
+
+        Assert.Equal(new ProjectProgressResponse(1, 2), response.Progress);
+        Assert.Equal("Done", response.Stages[0].Status);
+    }
+
+    [Fact]
+    public async Task MoveStage_ReordersTheStages()
+    {
+        var project = AddProject(_acme.Id, "Website");
+        project.AddStage("Design", null, null);
+        var launch = project.AddStage("Launch", null, null);
+
+        var response = await _service.MoveStageAsync(
+            _workspace.Id,
+            project.Id,
+            launch.Id,
+            new MoveStageRequest { Direction = "up" },
+            CancellationToken.None);
+
+        Assert.Equal(["Launch", "Design"], response.Stages.Select(s => s.Name));
+    }
+
+    [Fact]
+    public async Task RemoveStage_DeletesIt()
+    {
+        var project = AddProject(_acme.Id, "Website");
+        var design = project.AddStage("Design", null, null);
+
+        var response = await _service.RemoveStageAsync(_workspace.Id, project.Id, design.Id, CancellationToken.None);
+
+        Assert.Empty(response.Stages);
+    }
+
+    [Fact]
+    public async Task StageChanges_OnAnArchivedProject_ThrowConflict_AndChangeNothing()
+    {
+        var project = AddProject(_acme.Id, "Website");
+        var design = project.AddStage("Design", null, null);
+        project.Archive();
+        var ct = CancellationToken.None;
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            _service.AddStageAsync(_workspace.Id, project.Id, new CreateStageRequest { Name = "New" }, ct));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.UpdateStageAsync(
+            _workspace.Id, project.Id, design.Id, new UpdateStageRequest { Name = "Changed", Status = "Done" }, ct));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.MoveStageAsync(
+            _workspace.Id, project.Id, design.Id, new MoveStageRequest { Direction = "down" }, ct));
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            _service.RemoveStageAsync(_workspace.Id, project.Id, design.Id, ct));
+
+        Assert.Equal("Design", Assert.Single(project.Stages).Name);
+        Assert.Equal(0, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task StageOfAnotherProject_IsNotFound()
+    {
+        var project = AddProject(_acme.Id, "Website");
+        var other = AddProject(_acme.Id, "Other");
+        var foreign = other.AddStage("Design", null, null);
+        var ct = CancellationToken.None;
+
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.UpdateStageAsync(
+            _workspace.Id, project.Id, foreign.Id, new UpdateStageRequest { Name = "Hijacked", Status = "Done" }, ct));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.MoveStageAsync(
+            _workspace.Id, project.Id, foreign.Id, new MoveStageRequest { Direction = "up" }, ct));
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.RemoveStageAsync(_workspace.Id, project.Id, foreign.Id, ct));
+
+        Assert.Equal("Design", Assert.Single(other.Stages).Name);
+    }
+
+    [Fact]
+    public async Task StageChanges_InAWorkspaceIAmNotAMemberOf_ThrowNotFound()
+    {
+        var project = AddProject(_acme.Id, "Website");
+        _currentUser.UserId = Guid.NewGuid();
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.AddStageAsync(_workspace.Id, project.Id, new CreateStageRequest { Name = "Design" }, CancellationToken.None));
+
+        Assert.Empty(project.Stages);
+    }
+
     private static CreateProjectRequest NewProject(Guid clientId) => new() { ClientId = clientId, Name = "Website" };
 
     private Project AddProject(Guid clientId, string name)

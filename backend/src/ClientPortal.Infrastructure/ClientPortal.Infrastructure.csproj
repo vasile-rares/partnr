@@ -16,6 +16,11 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The seed's own source, embedded so SeedFingerprint can tell when the test data changed (see DevelopmentDataSeeder). -->
+    <EmbeddedResource Include="DevelopmentSeed.cs;Persistence/Seeding/DevelopmentDataSeeder.cs" LogicalName="SeedSource/%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <PropertyGroup>
   </PropertyGroup>
 

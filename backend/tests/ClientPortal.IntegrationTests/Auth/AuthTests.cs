@@ -2,6 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ClientPortal.Application.DTOs.Auth;
+using ClientPortal.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ClientPortal.IntegrationTests.Auth;
 
@@ -208,6 +211,30 @@ public sealed class AuthTests(ApiFactory factory)
         var response = await factory.CreateClient().PutAsJsonAsync("/api/auth/me", new { fullName = "Ana" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cookie_OfADeletedAccount_IsSignedOutOnTheNextRequest_EverywhereNotOnlyOnMe()
+    {
+        var client = factory.CreateClient();
+        var registered = await Register(client, NewEmail());
+        var user = await registered.Content.ReadFromJsonAsync<CurrentUserResponse>();
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/workspaces")).StatusCode);
+
+        // The account is gone (deleted, or the development database was reseeded) while the browser still holds its cookie.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            await db.Database.ExecuteSqlAsync($"DELETE FROM users WHERE \"Id\" = {user!.Id}");
+        }
+
+        // Every endpoint answers 401 the same way. Without a check on each request, /api/workspaces answered 200 with an empty
+        // list, and /api/auth/me threw from inside the service.
+        var workspaces = await client.GetAsync("/api/workspaces");
+        var me = await client.GetAsync("/api/auth/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, workspaces.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, me.StatusCode);
     }
 
     private static async Task<string?> ReadDetail(HttpResponseMessage response)
