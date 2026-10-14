@@ -15,6 +15,13 @@ public interface IIdentityService
     /// <summary>The accounts with these ids (those that exist), in no particular order.</summary>
     Task<IReadOnlyList<CurrentUserResponse>> FindByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Accounts whose email starts with the text (case-insensitive; the text is matched literally, `%` and `_` are not wildcards),
+    /// ordered by email, at most `limit`, skipping the given accounts.
+    /// </summary>
+    Task<IReadOnlyList<CurrentUserResponse>> SearchByEmailStartAsync(
+        string emailStart, int limit, IReadOnlyCollection<Guid> excludeIds, CancellationToken cancellationToken);
+
     /// <summary>Marks the account's email as confirmed: the person proved they own it by using a link sent there.</summary>
     Task ConfirmEmailAsync(Guid id, CancellationToken cancellationToken);
 

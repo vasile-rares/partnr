@@ -25,6 +25,22 @@ internal sealed class IdentityService(
         return users.Select(u => ToResponse(u)!).ToList();
     }
 
+    public async Task<IReadOnlyList<CurrentUserResponse>> SearchByEmailStartAsync(
+        string emailStart, int limit, IReadOnlyCollection<Guid> excludeIds, CancellationToken cancellationToken)
+    {
+        // NormalizedEmail is stored upper-cased. StartsWith becomes LIKE with the text escaped, so a typed % or _ is literal.
+        var start = emailStart.ToUpperInvariant();
+        var excluded = excludeIds.ToArray();
+        var users = await userManager.Users
+            .AsNoTracking()
+            .Where(u => u.NormalizedEmail != null && u.NormalizedEmail.StartsWith(start) && !excluded.Contains(u.Id))
+            .OrderBy(u => u.NormalizedEmail)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return users.Select(u => ToResponse(u)!).ToList();
+    }
+
     public async Task ConfirmEmailAsync(Guid id, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByIdAsync(id.ToString());

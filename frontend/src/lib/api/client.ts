@@ -27,19 +27,34 @@ const messages = {
   notFound: "This no longer exists, or you don't have access to it.",
 };
 
+/** Reads the JSON of a GET. A request cancelled through `signal` is reported as `aborted`, which callers simply ignore. */
+export async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise<ApiResult<T> | { aborted: true }> {
+  return request<T>(path, { method: "GET", signal });
+}
+
 export async function sendJson<T = unknown>(
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
+  const result = await request<T>(path, {
+    method,
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  // Only a caller that passes a signal can see "aborted"; sendJson never does.
+  return "aborted" in result ? failure(0, messages.network) : result;
+}
+
+async function request<T>(path: string, init: RequestInit): Promise<ApiResult<T> | { aborted: true }> {
   let response: Response;
   try {
-    response = await fetch(path, {
-      method,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch {
+    response = await fetch(path, init);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { aborted: true };
+    }
     return failure(0, messages.network);
   }
 

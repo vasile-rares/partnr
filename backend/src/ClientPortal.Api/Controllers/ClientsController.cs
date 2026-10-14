@@ -1,12 +1,16 @@
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ClientPortal.Api.Controllers;
 
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/clients")]
-public sealed class ClientsController(IClientService service, IClientInvitationService invitations) : ControllerBase
+public sealed class ClientsController(
+    IClientService service,
+    IClientInvitationService invitations,
+    IClientSuggestionService suggestions) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Register(Guid workspaceId, RegisterClientRequest request, CancellationToken cancellationToken)
@@ -19,6 +23,12 @@ public sealed class ClientsController(IClientService service, IClientInvitationS
     // includeArchived is false when the query string leaves it out.
     public async Task<IActionResult> List(Guid workspaceId, [FromQuery] bool includeArchived, CancellationToken cancellationToken) =>
         Ok(await service.ListAsync(workspaceId, includeArchived, cancellationToken));
+
+    // Typing in the add-client form calls this on every pause, so it has its own, stricter rate limit (see Program.cs).
+    [EnableRateLimiting(RateLimitPolicies.Suggestions)]
+    [HttpGet("suggestions")]
+    public async Task<IActionResult> Suggest(Guid workspaceId, [FromQuery] string? email, CancellationToken cancellationToken) =>
+        Ok(await suggestions.SuggestAsync(workspaceId, email, cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>

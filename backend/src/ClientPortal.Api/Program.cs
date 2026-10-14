@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+using ClientPortal.Api;
 using ClientPortal.Api.Middleware;
 using ClientPortal.Application;
 using ClientPortal.Infrastructure;
@@ -15,6 +18,21 @@ builder.Services
 // Every endpoint requires a signed-in user unless it opts out with [AllowAnonymous].
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
+// Looking up accounts is limited per signed-in user (and per address for the rare anonymous call), answering 429.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(RateLimitPolicies.Suggestions, context => RateLimitPartition.GetSlidingWindowLimiter(
+        context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = RateLimitPolicies.SuggestionsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
+            QueueLimit = 0,
+        }));
+});
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -55,6 +73,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors(FrontendCorsPolicy);
 app.UseAuthentication();
+app.UseRateLimiter(); // after authentication, so the limit can follow the signed-in user
 app.UseAuthorization();
 
 app.MapControllers();

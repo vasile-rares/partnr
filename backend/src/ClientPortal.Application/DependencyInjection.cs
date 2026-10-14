@@ -14,8 +14,10 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<ClientResponseBuilder>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IClientSuggestionService, ClientSuggestionService>();
         services.AddScoped<IClientInvitationService, ClientInvitationService>();
         services.AddScoped<IInvitationService, InvitationService>();
+        services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<WorkspaceAccess>();
         services.AddScoped<IWorkspaceService, WorkspaceService>();

@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
-import { ClientForm } from "@/components/clients/ClientForm";
+import { AddClientForm } from "@/components/clients/AddClientForm";
 import { requireUser } from "@/lib/auth/session";
+import { getClients } from "@/lib/clients/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
 export const metadata: Metadata = { title: "Add client" };
@@ -14,6 +15,8 @@ export default async function NewClientPage({ params }: PageProps<"/w/[workspace
   if (!workspace) {
     notFound();
   }
+  // Every client, archived ones too: the email is unique in the workspace, so the form can warn about a duplicate early.
+  const existingEmails = (await getClients(workspace.id, true)).map((client) => client.email);
 
   return (
     <>
@@ -22,9 +25,13 @@ export default async function NewClientPage({ params }: PageProps<"/w/[workspace
         <Link href={`/w/${workspace.id}/clients`} className="text-sm text-muted-foreground hover:underline">
           ← Clients
         </Link>
-        <h1 className="mb-8 mt-2 font-heading text-3xl font-semibold">Add client</h1>
+        <h1 className="mb-3 mt-2 font-heading text-3xl font-semibold">Add a client</h1>
+        <p className="mb-8 max-w-prose text-muted-foreground">
+          Enter their email. They get an invitation to follow their projects, and their name, phone and company come from
+          their own account once they accept.
+        </p>
 
-        <ClientForm workspaceId={workspace.id} />
+        <AddClientForm workspaceId={workspace.id} existingEmails={existingEmails} />
       </main>
     </>
   );

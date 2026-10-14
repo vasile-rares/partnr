@@ -20,6 +20,8 @@ const apiDll = path.join(artifactsPath, "bin", "ClientPortal.Api", "debug", "Cli
 
 const TEST_DATABASE = "client_portal_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
+// Emails go to Mailpit (from docker-compose.yml), the same catcher as in development; tests find their own messages by recipient.
+const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
 
 /** The dev connection string: user secrets first (that is where a local Postgres password lives), then appsettings. */
 function devConnectionString() {
@@ -62,12 +64,25 @@ if (!database?.endsWith("_e2e")) {
   process.exit(1);
 }
 
+// Invitations send real SMTP, so a missing Mailpit would fail the tests with a confusing 500. Say so up front instead.
+try {
+  const response = await fetch(`${mailpitUrl}/livez`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+} catch {
+  console.error(`Mailpit is not reachable at ${mailpitUrl}. Start it with "docker compose up -d" in backend/ (the e2e tests read invitation emails from it).`);
+  process.exit(1);
+}
+
 const env = {
   ...process.env,
   ArtifactsPath: artifactsPath,
   ConnectionStrings__Postgres: connectionString,
   ASPNETCORE_ENVIRONMENT: "Development", // outside Development the auth cookie is Secure-only and would not work over http
   ASPNETCORE_URLS: `http://localhost:${apiPort}`,
+  // Links in emails must open the frontend that the tests run against (see playwright.config.ts), not the dev one on :3000.
+  App__FrontendUrl: process.env.E2E_FRONTEND_URL ?? "http://localhost:3100",
 };
 
 function dotnet(args, { cwd = backendDir } = {}) {

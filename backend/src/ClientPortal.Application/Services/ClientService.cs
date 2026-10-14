@@ -135,7 +135,7 @@ internal sealed class ClientService(
     }
 
     private static bool ChangesIdentity(ClientResponse current, UpdateClientRequest request) =>
-        request.Name.Trim() != current.Name
+        TextHelpers.Optional(request.Name) != current.Name
         || Client.NormalizeEmail(request.Email) != current.Email
         || TextHelpers.Optional(request.Phone) != current.Phone
         || TextHelpers.Optional(request.Company) != current.Company;

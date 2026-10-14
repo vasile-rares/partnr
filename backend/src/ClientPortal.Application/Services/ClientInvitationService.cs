@@ -90,12 +90,13 @@ internal sealed class ClientInvitationService(
     {
         var from = string.IsNullOrWhiteSpace(inviterName) ? workspaceName : $"{inviterName} ({workspaceName})";
         var expires = invitation.ExpiresAtUtc.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+        var greeting = string.IsNullOrWhiteSpace(client.Name) ? "Hi," : $"Hi {client.Name},";
 
         return new EmailMessage(
             invitation.Email,
             $"{workspaceName} invited you to follow your projects",
             $"""
-            Hi {client.Name},
+            {greeting}
 
             {from} invited you to Client Portal, where you can follow your projects and see what is happening.
 

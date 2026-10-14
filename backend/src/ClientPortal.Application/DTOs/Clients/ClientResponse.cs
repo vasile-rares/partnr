@@ -10,7 +10,7 @@ namespace ClientPortal.Application.DTOs.Clients;
 /// </param>
 public sealed record ClientResponse(
     Guid Id,
-    string Name,
+    string? Name,
     string Email,
     string? Company,
     string? Phone,

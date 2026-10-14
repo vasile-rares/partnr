@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Invitations;
+using ClientPortal.Application.DTOs.Portal;
 using ClientPortal.Application.DTOs.Workspaces;
 using ClientPortal.Domain.Enums;
 using ClientPortal.Infrastructure.Persistence;
@@ -264,6 +265,58 @@ public sealed partial class InvitationsTests(ApiFactory factory)
         var response = await member.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/invitation", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Portal_ListsTheWorkspaceOfAClientWhoAccepted_ButTheClientIsNotAMember()
+    {
+        var (studio, workspaceId, client) = await StudioWithClient();
+        var token = await Invite(studio, workspaceId, client);
+        var elena = factory.CreateClient();
+        await elena.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = "Elena", password = Password });
+
+        var portal = await elena.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
+        var asMember = await elena.GetAsync($"/api/workspaces/{workspaceId}");
+        var theirClients = await elena.GetAsync($"/api/workspaces/{workspaceId}/clients");
+        var memberships = await elena.GetFromJsonAsync<WorkspaceResponse[]>("/api/workspaces");
+
+        var shown = Assert.Single(portal!);
+        Assert.Equal(workspaceId, shown.Id);
+        Assert.Equal("Studio", shown.Name);
+        Assert.Equal(HttpStatusCode.NotFound, asMember.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, theirClients.StatusCode);
+        Assert.Empty(memberships!);
+    }
+
+    [Fact]
+    public async Task Portal_ArchivingTheClientTakesTheAccessAway_AndRestoringGivesItBack()
+    {
+        var (studio, workspaceId, client) = await StudioWithClient();
+        var token = await Invite(studio, workspaceId, client);
+        var elena = factory.CreateClient();
+        await elena.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = "Elena", password = Password });
+
+        await studio.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/archive", null);
+        var whileArchived = await elena.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
+        await studio.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/restore", null);
+        var afterRestore = await elena.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
+
+        Assert.Empty(whileArchived!);
+        Assert.Equal(workspaceId, Assert.Single(afterRestore!).Id);
+    }
+
+    [Fact]
+    public async Task Portal_IsEmptyForSomeoneWhoIsNotAClient_AndNeedsSignIn()
+    {
+        var (stranger, _, _) = await SignedInWithEmail();
+        var (studio, workspaceId, client) = await StudioWithClient();
+        await Invite(studio, workspaceId, client); // invited, but nobody accepted
+
+        var list = await stranger.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
+        var anonymous = await factory.CreateClient().GetAsync("/api/portal/workspaces");
+
+        Assert.Empty(list!);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
     }
 
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";

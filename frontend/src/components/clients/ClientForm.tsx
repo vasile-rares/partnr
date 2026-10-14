@@ -21,18 +21,16 @@ type FormState = {
   emailTaken?: boolean;
 };
 
-const empty: Values = { name: "", email: "", company: "", phone: "", notes: "" };
-
 const valuesOf = (client: Client): Values => ({
-  name: client.name,
+  name: client.name ?? "",
   email: client.email,
   company: client.company ?? "",
   phone: client.phone ?? "",
   notes: client.notes ?? "",
 });
 
-/** Adds a client, or edits `client` when given. */
-export function ClientForm({ workspaceId, client }: { workspaceId: string; client?: Client }) {
+/** Edits a client. A new one is added with `AddClientForm`. */
+export function ClientForm({ workspaceId, client }: { workspaceId: string; client: Client }) {
   const router = useRouter();
 
   const [state, submit, pending] = useActionState(
@@ -46,37 +44,34 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
         notes: text("notes"),
       };
 
-      const result = client
-        ? await sendJson<Client>("PUT", `/api/workspaces/${workspaceId}/clients/${client.id}`, values)
-        : await sendJson<Client>("POST", `/api/workspaces/${workspaceId}/clients`, values);
+      const result = await sendJson<Client>("PUT", `/api/workspaces/${workspaceId}/clients/${client.id}`, values);
 
       if (result.ok) {
-        if (client) {
-          // Refresh so the title and everything else showing the client pick up the change.
-          router.refresh();
-          return { values: valuesOf(result.data), saved: true };
-        }
-        router.replace(`/w/${workspaceId}/clients`);
+        // Refresh so the title and everything else showing the client pick up the change.
         router.refresh();
-        return { values };
+        return { values: valuesOf(result.data), saved: true };
       }
       return { values, message: result.message, fieldErrors: result.fieldErrors, emailTaken: result.status === 409 };
     },
-    { values: client ? valuesOf(client) : empty },
+    { values: valuesOf(client) },
   );
 
   const errors = state.fieldErrors ?? {};
   const emailError = errors.email ?? (state.emailTaken ? state.message : undefined);
   const hasFieldError = Object.keys(errors).length > 0 || state.emailTaken;
+  // Locked while an invitation waits or the client has an account: the inputs stay in the form (read-only, so screen
+  // readers still read them and their values are sent back unchanged), only the notes can change.
+  const locked = client.detailsLocked;
 
   return (
     <form action={submit} className="flex max-w-lg flex-col gap-6">
       <TextField
         label="Name"
         name="name"
-        required
         maxLength={200}
+        readOnly={locked}
         defaultValue={state.values.name}
+        hint={locked ? undefined : "Optional. Until they have an account, the list shows their email."}
         error={errors.name}
       />
       <TextField
@@ -86,6 +81,7 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
         required
         maxLength={320}
         autoComplete="off"
+        readOnly={locked}
         defaultValue={state.values.email}
         error={emailError}
       />
@@ -93,6 +89,7 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
         label="Company"
         name="company"
         maxLength={200}
+        readOnly={locked}
         defaultValue={state.values.company}
         error={errors.company}
       />
@@ -101,6 +98,7 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
         name="phone"
         type="tel"
         maxLength={50}
+        readOnly={locked}
         defaultValue={state.values.phone}
         error={errors.phone}
       />
@@ -122,7 +120,7 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
       ) : null}
 
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {client ? (pending ? "Saving…" : "Save changes") : pending ? "Adding client…" : "Add client"}
+        {pending ? "Saving…" : locked ? "Save notes" : "Save changes"}
       </Button>
     </form>
   );

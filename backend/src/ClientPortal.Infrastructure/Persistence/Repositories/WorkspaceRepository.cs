@@ -16,5 +16,12 @@ internal sealed class WorkspaceRepository(ApplicationDbContext dbContext) : IWor
             .OrderBy(w => w.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Workspace>> ListForClientAsync(Guid userId, CancellationToken cancellationToken) =>
+        await dbContext.Workspaces
+            .AsNoTracking()
+            .Where(w => dbContext.Clients.Any(c => c.WorkspaceId == w.Id && c.UserId == userId && c.ArchivedAtUtc == null))
+            .OrderBy(w => w.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
     public void Add(Workspace workspace) => dbContext.Workspaces.Add(workspace);
 }

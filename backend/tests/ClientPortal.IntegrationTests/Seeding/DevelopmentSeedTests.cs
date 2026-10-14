@@ -26,8 +26,8 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var studio = workspaces![0];
         var active = await owner.GetFromJsonAsync<ClientResponse[]>($"/api/workspaces/{studio.Id}/clients");
         var all = await owner.GetFromJsonAsync<ClientResponse[]>($"/api/workspaces/{studio.Id}/clients?includeArchived=true");
-        Assert.Equal(8, active!.Length);
-        Assert.Equal(10, all!.Length);
+        Assert.Equal(9, active!.Length);
+        Assert.Equal(11, all!.Length);
 
         // The client who accepted shows the account's details; the other one waits for an invitation that works.
         var elena = Assert.Single(all, c => c.Portal.Status == "Active");

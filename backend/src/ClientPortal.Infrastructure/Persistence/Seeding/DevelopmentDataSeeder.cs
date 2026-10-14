@@ -93,6 +93,8 @@ internal sealed class DevelopmentDataSeeder(
         yield return Client.Register(
             workspaceId, "Bright Bakery", "hello@brightbakery.example", "Bright Bakery", "+40 721 000 002", "Wants a new website before the spring opening.");
         yield return Client.Register(workspaceId, "Cosmin Dobre", "cosmin@dobre.example");
+        // Added with just an email, the way the add-client form does: the list shows the address until the client has an account.
+        yield return Client.Register(workspaceId, null, "just.an.email@example.com");
         yield return Client.Register(workspaceId, "Delta Dental", "office@deltadental.example", "Delta Dental Clinic", "+40 721 000 004");
         yield return Client.Register(
             workspaceId, "Evergreen Studio", "team@evergreen.example", "Evergreen", notes: "Prefers email over phone calls.");

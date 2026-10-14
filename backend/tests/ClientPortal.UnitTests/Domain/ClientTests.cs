@@ -23,9 +23,8 @@ public class ClientTests
     }
 
     [Theory]
-    [InlineData("", "contact@acme.com")]
     [InlineData("Acme", " ")]
-    public void Register_WithMissingData_Throws(string name, string email) =>
+    public void Register_WithoutAnEmail_Throws(string name, string email) =>
         Assert.Throws<DomainException>(() => Client.Register(WorkspaceId, name, email));
 
     [Fact]
@@ -47,12 +46,13 @@ public class ClientTests
     }
 
     [Fact]
-    public void UpdateDetails_WithoutName_Throws_AndChangesNothing()
+    public void UpdateDetails_WithoutAnEmail_Throws_AndChangesNothing()
     {
         var client = Client.Register(WorkspaceId, "Acme", "contact@acme.com");
 
-        Assert.Throws<DomainException>(() => client.UpdateDetails(" ", "new@acme.com", null, null, null));
+        Assert.Throws<DomainException>(() => client.UpdateDetails("New name", " ", null, null, null));
         Assert.Equal("contact@acme.com", client.Email);
+        Assert.Equal("Acme", client.Name);
     }
 
     [Fact]
@@ -114,5 +114,27 @@ public class ClientTests
         Assert.Equal("0700", client.Phone);
         client.UpdateNotes(" ");
         Assert.Null(client.Notes);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Register_WithoutAName_IsAllowed_AndTheNameStaysEmpty(string? name)
+    {
+        var client = Client.Register(WorkspaceId, name, "  Contact@Acme.COM ");
+
+        Assert.Null(client.Name);
+        Assert.Equal("contact@acme.com", client.Email);
+    }
+
+    [Fact]
+    public void UpdateDetails_CanClearTheName()
+    {
+        var client = Client.Register(WorkspaceId, "Acme", "contact@acme.com");
+
+        client.UpdateDetails(" ", "contact@acme.com", null, null, null);
+
+        Assert.Null(client.Name);
     }
 }

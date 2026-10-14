@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { PortalStatusBadge } from "@/components/clients/PortalStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
 import { getClients } from "@/lib/clients/server";
+import { displayName } from "@/lib/clients/types";
 import { getWorkspace } from "@/lib/workspaces/server";
 
 export const metadata: Metadata = { title: "Clients" };
@@ -51,6 +53,7 @@ export default async function ClientsPage({ params, searchParams }: PageProps<"/
                 <TableHead>Name</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Portal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -58,7 +61,7 @@ export default async function ClientsPage({ params, searchParams }: PageProps<"/
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
                     <Link href={`${base}/${client.id}`} className="hover:underline">
-                      {client.name}
+                      {displayName(client)}
                     </Link>
                     {client.archivedAtUtc ? (
                       <Badge variant="secondary" className="ml-2">
@@ -68,6 +71,9 @@ export default async function ClientsPage({ params, searchParams }: PageProps<"/
                   </TableCell>
                   <TableCell>{client.company ?? "—"}</TableCell>
                   <TableCell>{client.email}</TableCell>
+                  <TableCell>
+                    <PortalStatusBadge status={client.portal.status} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

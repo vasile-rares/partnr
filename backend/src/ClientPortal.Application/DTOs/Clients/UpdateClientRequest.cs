@@ -5,9 +5,8 @@ namespace ClientPortal.Application.DTOs.Clients;
 /// <summary>Replaces all editable details; an optional field left empty is cleared.</summary>
 public sealed record UpdateClientRequest
 {
-    [Required]
     [MaxLength(200)]
-    public string Name { get; init; } = string.Empty;
+    public string? Name { get; init; }
 
     [Required]
     [EmailAddress]

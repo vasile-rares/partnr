@@ -13,7 +13,7 @@ internal sealed class ClientRepository(ApplicationDbContext dbContext) : IClient
         await dbContext.Clients
             .AsNoTracking()
             .Where(c => c.WorkspaceId == workspaceId && (includeArchived || c.ArchivedAtUtc == null))
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.Name ?? c.Email)
             .ThenBy(c => c.Email)
             .ToListAsync(cancellationToken);
 
@@ -21,6 +21,18 @@ internal sealed class ClientRepository(ApplicationDbContext dbContext) : IClient
         dbContext.Clients.AnyAsync(
             c => c.WorkspaceId == workspaceId && c.Email == email && c.Id != exceptClientId,
             cancellationToken);
+
+    public async Task<IReadOnlySet<string>> ExistingEmailsAsync(Guid workspaceId, IReadOnlyCollection<string> emails, CancellationToken cancellationToken)
+    {
+        var wanted = emails.ToArray();
+        var found = await dbContext.Clients
+            .AsNoTracking()
+            .Where(c => c.WorkspaceId == workspaceId && wanted.Contains(c.Email))
+            .Select(c => c.Email)
+            .ToListAsync(cancellationToken);
+
+        return found.ToHashSet();
+    }
 
     public Task<bool> IsLinkedAsync(Guid workspaceId, Guid userId, CancellationToken cancellationToken) =>
         dbContext.Clients.AnyAsync(c => c.WorkspaceId == workspaceId && c.UserId == userId, cancellationToken);

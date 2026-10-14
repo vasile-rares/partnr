@@ -22,7 +22,8 @@ public sealed class Client : Entity
 
     public Guid WorkspaceId { get; private set; }
 
-    public string Name { get; private set; } = string.Empty;
+    /// <summary>Optional: a card can start with just an email. Until the client has an account, the UI shows the email instead.</summary>
+    public string? Name { get; private set; }
 
     public string Email { get; private set; } = string.Empty;
 
@@ -47,7 +48,7 @@ public sealed class Client : Entity
 
     public static Client Register(
         Guid workspaceId,
-        string name,
+        string? name,
         string email,
         string? company = null,
         string? phone = null,
@@ -64,19 +65,14 @@ public sealed class Client : Entity
         return client;
     }
 
-    public void UpdateDetails(string name, string email, string? company, string? phone, string? notes)
+    public void UpdateDetails(string? name, string email, string? company, string? phone, string? notes)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new DomainException("Client name is required.");
-        }
-
         if (string.IsNullOrWhiteSpace(email))
         {
             throw new DomainException("Client email is required.");
         }
 
-        Name = name.Trim();
+        Name = Optional(name);
         Email = NormalizeEmail(email);
         Company = Optional(company);
         Phone = Optional(phone);
