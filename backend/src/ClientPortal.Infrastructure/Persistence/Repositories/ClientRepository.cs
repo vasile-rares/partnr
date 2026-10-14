@@ -17,6 +17,15 @@ internal sealed class ClientRepository(ApplicationDbContext dbContext) : IClient
             .ThenBy(c => c.Email)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Client>> ListByIdsAsync(Guid workspaceId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        var wanted = ids.ToArray();
+        return await dbContext.Clients
+            .AsNoTracking()
+            .Where(c => c.WorkspaceId == workspaceId && wanted.Contains(c.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken) =>
         dbContext.Clients.AnyAsync(
             c => c.WorkspaceId == workspaceId && c.Email == email && c.Id != exceptClientId,

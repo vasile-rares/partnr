@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientInvitationRepository, ClientInvitationRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
+        services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();

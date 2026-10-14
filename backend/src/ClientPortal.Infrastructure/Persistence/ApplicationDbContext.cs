@@ -20,6 +20,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<Workspace> Workspaces => Set<Workspace>();
 
+    public DbSet<Project> Projects => Set<Project>();
+
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)

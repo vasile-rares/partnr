@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Invitations;
+using ClientPortal.Application.DTOs.Projects;
 using ClientPortal.Application.DTOs.Workspaces;
 using ClientPortal.Infrastructure;
 
@@ -36,6 +37,12 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var pat = Assert.Single(all, c => c.Name == "Pat Pending");
         Assert.Equal("Invited", pat.Portal.Status);
         Assert.True(pat.DetailsLocked);
+
+        // Elena's projects: one under way and one still a draft, both named after her account.
+        var projects = await owner.GetFromJsonAsync<ProjectResponse[]>($"/api/workspaces/{studio.Id}/projects?clientId={elena.Id}");
+        Assert.Equal(["Active", "Planning"], projects!.Select(p => p.Status).Order());
+        Assert.All(projects!, p => Assert.Equal("Elena Client", p.Client.DisplayName));
+
         var preview = await factory.CreateClient()
             .GetFromJsonAsync<InvitationPreviewResponse>($"/api/invitations/{DevelopmentSeed.PendingInvitationToken}");
         Assert.Equal("Pending", preview!.Status);

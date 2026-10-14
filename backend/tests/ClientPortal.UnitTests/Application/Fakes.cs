@@ -58,6 +58,9 @@ internal sealed class FakeClientRepository : IClientRepository
             .OrderBy(c => c.Name)
             .ToList());
 
+    public Task<IReadOnlyList<Client>> ListByIdsAsync(Guid workspaceId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Client>>(Items.Where(c => c.WorkspaceId == workspaceId && ids.Contains(c.Id)).ToList());
+
     public Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken) =>
         Task.FromResult(Items.Any(c => c.WorkspaceId == workspaceId && c.Email == email && c.Id != exceptClientId));
 
@@ -71,6 +74,21 @@ internal sealed class FakeClientRepository : IClientRepository
         Task.FromResult(Items.Any(c => c.WorkspaceId == workspaceId && c.UserId == userId));
 
     public void Add(Client client) => Items.Add(client);
+}
+
+internal sealed class FakeProjectRepository : IProjectRepository
+{
+    public List<Project> Items { get; } = [];
+
+    public Task<Project?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(p => p.WorkspaceId == workspaceId && p.Id == id));
+
+    public Task<IReadOnlyList<Project>> ListAsync(Guid workspaceId, bool includeArchived, Guid? clientId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Project>>(Items
+            .Where(p => p.WorkspaceId == workspaceId && (includeArchived || !p.IsArchived) && (clientId is null || p.ClientId == clientId))
+            .ToList());
+
+    public void Add(Project project) => Items.Add(project);
 }
 
 internal sealed class FakeClientInvitationRepository : IClientInvitationRepository

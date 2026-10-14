@@ -321,8 +321,11 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Workspace
 - [x] Gestionarea clienților
 - [x] Profil cont (nume, telefon, companie), înaintea invitațiilor
-- [x] Invitații pentru clienți (email și backend gata; rămân paginile: starea în UI pentru freelancer, `/invite/[token]` și `/portal`)
-- [ ] Proiecte
+- [x] Invitații pentru clienți
+- [ ] Proiecte, în trei pași:
+  - [x] Pas 1: proiecte pentru freelancer (API, listă, pagina proiectului, secțiune pe pagina clientului, arhivare)
+  - [ ] Pas 2: etape (ordonate, cu status) și progres
+  - [ ] Pas 3: proiectele și etapele în portalul clientului
 - [ ] Portal pentru clienți
 - [ ] Timeline
 - [ ] Livrabile
@@ -407,6 +410,16 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Sugestii de conturi la adăugare** (`GET .../clients/suggestions?email=`), cu nume, la cererea explicită a utilizatorului. Fiind un director de conturi, e îngustat: minim 3 caractere (altfel listă goală), maxim 5 rezultate, potrivire doar pe începutul emailului (nu pe nume, iar `%` și `_` sunt caractere obișnuite), doar pentru membri ai workspace-ului (altfel 404), fără membrii acelui workspace (nu pot accepta oricum) și **60 de cereri pe minut pe utilizator** (429). Formularul cere sugestii la 250 ms după ultima tastă și abandonează cererile depășite. Alegerea unui cont **nu leagă nimic**: persoana trebuie să accepte invitația. După un email complet, formularul spune „Has an account: <nume>", „No account with this email yet…" sau „Already a client in this workspace." (și blochează butonul), pe baza emailurilor clienților deja existenți, pasate din pagină.
 - **Risc cunoscut al sugestiilor:** oricine își face un cont și un workspace poate parcurge lista conturilor, încetinit de limita de cereri. De reconsiderat înainte de producție, de exemplu cu o setare „pot fi găsit de freelanceri", dezactivată implicit.
 - **Un cont este client al unui workspace cel mult o dată** (`(WorkspaceId, UserId)` unic).
+
+### Proiecte
+
+- **Un proiect are exact un client**, obligatoriu, din același workspace. Poate fi orice client nearhivat, invitat sau nu, ca proiectul să poată fi pregătit înainte de invitație. **Clientul nu se mai schimbă după creare** (`PUT` nu îl primește): altfel proiectul, cu istoricul lui, ar trece în portalul altcuiva. Accesul în portal rămâne o simplă verificare: `proiect.ClientId` = fișa legată de cont.
+- **Câmpuri:** nume (obligatoriu), descriere, dată de start și deadline (opționale, `DateOnly`, deadline-ul nu poate fi înaintea startului). Fără buget (vine cu Plățile) și fără note interne (există cele de pe client).
+- **Status ales manual:** Planning / Active / On hold / Completed, salvat ca text. Se poate trece din orice status în oricare altul și nu se schimbă automat (automatizările vin mai târziu). „On hold” nu se poate deduce din etape, de aceea nu e calculat. Progresul (etape terminate / total) se calculează, la pasul Etape.
+- **Planning = ciornă:** clientul vede proiectul doar după ce iese din Planning. Întoarcerea în Planning îl ascunde din nou. Nu există o bifă separată „share with client”, care ar fi fost încă o stare de uitat.
+- **Arhivare, nu ștergere**, ca la clienți: doar Owner-ul arhivează și restaurează (403 pentru membri). **Un proiect arhivat e doar de citit** (409 la orice modificare) până la restaurare. Arhivarea clientului păstrează proiectele, dar îi ia accesul la portal.
+- **Etape:** listă ordonată de etape cu status To do / In progress / Done, fără task-uri în MVP. Se reordonează cu butoane „sus/jos” (accesibile, fără bibliotecă de drag & drop). Pot fi mai multe etape In progress deodată.
+- **Frontend:** pagina „Projects” în header (cu `?archived=1`, ca la clienți), plus secțiunea „Projects” pe pagina clientului, cu „New project” care preselectează clientul (`?clientId=`). Clientul se alege dintr-un select nativ (`native-select` din shadcn), fiindcă merge direct cu `FormData` și cu validarea nativă.
 
 ### Generale
 

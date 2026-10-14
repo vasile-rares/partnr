@@ -6,11 +6,14 @@ import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { ClientPortalActions } from "@/components/clients/ClientPortalActions";
 import { PortalStatusBadge } from "@/components/clients/PortalStatusBadge";
+import { ProjectsTable } from "@/components/projects/ProjectsTable";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
 import { getClient } from "@/lib/clients/server";
 import { displayName, type Client } from "@/lib/clients/types";
 import { formatDateTimeUtc } from "@/lib/format";
+import { getProjects } from "@/lib/projects/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
 export async function generateMetadata({ params }: PageProps<"/w/[workspaceId]/clients/[clientId]">): Promise<Metadata> {
@@ -34,6 +37,8 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
   if (!client) {
     notFound();
   }
+  // Archived projects too, marked as such: this page is the client's whole history.
+  const projects = await getProjects(workspace.id, { includeArchived: true, clientId: client.id });
 
   return (
     <>
@@ -69,6 +74,28 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
           </div>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">{portalDescription(client)}</p>
           <ClientPortalActions workspaceId={workspace.id} client={client} />
+        </section>
+
+        <section aria-labelledby="projects-title" className="mb-10">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <h2 id="projects-title" className="font-heading text-xl font-semibold">
+              Projects
+            </h2>
+            {/* An archived client cannot get a new project (the API answers 409). */}
+            {client.archivedAtUtc ? null : (
+              <Link
+                href={`/w/${workspace.id}/projects/new?clientId=${client.id}`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                New project
+              </Link>
+            )}
+          </div>
+          {projects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No projects for this client yet.</p>
+          ) : (
+            <ProjectsTable workspaceId={workspace.id} projects={projects} showClient={false} />
+          )}
         </section>
 
         <ClientForm workspaceId={workspace.id} client={client} />

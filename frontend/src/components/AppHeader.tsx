@@ -34,6 +34,9 @@ export function AppHeader({ workspace }: AppHeaderProps) {
               <Link href={`/w/${workspace.id}/clients`} className={buttonVariants({ variant: "ghost" })}>
                 Clients
               </Link>
+              <Link href={`/w/${workspace.id}/projects`} className={buttonVariants({ variant: "ghost" })}>
+                Projects
+              </Link>
               <Link href={`/w/${workspace.id}/settings`} className={buttonVariants({ variant: "ghost" })}>
                 Settings
               </Link>

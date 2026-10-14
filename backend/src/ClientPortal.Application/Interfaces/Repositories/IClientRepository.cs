@@ -10,6 +10,9 @@ public interface IClientRepository
     /// <summary>The workspace's clients ordered by name; archived ones only when asked for.</summary>
     Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, bool includeArchived, CancellationToken cancellationToken);
 
+    /// <summary>The workspace's clients with these ids, archived ones included (ids of other workspaces are ignored).</summary>
+    Task<IReadOnlyList<Client>> ListByIdsAsync(Guid workspaceId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     /// <summary>Whether another client of the workspace (archived ones included) already uses the email.</summary>
     /// <param name="exceptClientId">The client being edited, which may keep its own email.</param>
     Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken);

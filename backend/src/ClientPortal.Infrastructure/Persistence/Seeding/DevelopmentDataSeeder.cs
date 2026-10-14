@@ -17,6 +17,7 @@ internal sealed class DevelopmentDataSeeder(
     IWorkspaceRepository workspaces,
     IClientRepository clients,
     IClientInvitationRepository invitations,
+    IProjectRepository projects,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -53,6 +54,18 @@ internal sealed class DevelopmentDataSeeder(
         var linked = Client.Register(studio.Id, "Elena (card)", DevelopmentSeed.ClientEmail, "Old company", "000", "Prefers morning calls.");
         linked.LinkTo(account.Id, DateTime.UtcNow);
         clients.Add(linked);
+
+        // Projects for that client: an active one Elena sees in her portal, and a draft in Planning she does not.
+        var website = Project.Create(
+            studio.Id,
+            linked.Id,
+            "Elena Design website",
+            "A new portfolio website with a booking page.",
+            new DateOnly(2026, 10, 1),
+            new DateOnly(2026, 12, 15));
+        website.ChangeStatus(ProjectStatus.Active);
+        projects.Add(website);
+        projects.Add(Project.Create(studio.Id, linked.Id, "Brand refresh", "Logo and colours, after the website."));
 
         // A client with an invitation waiting, to try the invitation page and see the locked details.
         var pending = Client.Register(studio.Id, "Pat Pending", "pat@pending.example", "Pending Co");
