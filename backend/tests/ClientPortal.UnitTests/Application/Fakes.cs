@@ -4,6 +4,7 @@ using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Interfaces.Repositories;
 using ClientPortal.Application.Interfaces.Services;
 using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Enums;
 
 namespace ClientPortal.UnitTests.Application;
 
@@ -87,6 +88,21 @@ internal sealed class FakeProjectRepository : IProjectRepository
         Task.FromResult<IReadOnlyList<Project>>(Items
             .Where(p => p.WorkspaceId == workspaceId && (includeArchived || !p.IsArchived) && (clientId is null || p.ClientId == clientId))
             .ToList());
+
+    /// <summary>The clients the "shared with a client" rule looks at (a project is shared through its client's linked account).</summary>
+    public FakeClientRepository Clients { get; init; } = new();
+
+    // The same rule as the real query: linked, not archived, project not archived and out of Planning.
+    private IEnumerable<Project> SharedWith(Guid userId) =>
+        Items.Where(p => !p.IsArchived
+            && p.Status != ProjectStatus.Planning
+            && Clients.Items.Any(c => c.Id == p.ClientId && c.UserId == userId && !c.IsArchived));
+
+    public Task<IReadOnlyList<Project>> ListSharedWithClientAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Project>>(SharedWith(userId).ToList());
+
+    public Task<Project?> GetSharedWithClientAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(SharedWith(userId).FirstOrDefault(p => p.Id == id));
 
     public void Add(Project project) => Items.Add(project);
 }

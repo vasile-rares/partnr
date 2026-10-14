@@ -322,11 +322,11 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Gestionarea clienților
 - [x] Profil cont (nume, telefon, companie), înaintea invitațiilor
 - [x] Invitații pentru clienți
-- [ ] Proiecte, în trei pași:
+- [x] Proiecte, în trei pași:
   - [x] Pas 1: proiecte pentru freelancer (API, listă, pagina proiectului, secțiune pe pagina clientului, arhivare)
   - [x] Pas 2: etape (ordonate, cu status) și progres
-  - [ ] Pas 3: proiectele și etapele în portalul clientului
-- [ ] Portal pentru clienți
+  - [x] Pas 3: proiectele și etapele în portalul clientului
+- [ ] Portal pentru clienți (început: lista proiectelor și pagina unui proiect, cu etape și progres; urmează ce cere clientul să facă: livrabile, feedback, aprobări)
 - [ ] Timeline
 - [ ] Livrabile
 - [ ] Feedback
@@ -425,6 +425,11 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
   - **Un proiect arhivat își blochează și etapele** (409). O etapă a altui proiect dă 404, la fel ca una inexistentă.
   - **Fiecare schimbare răspunde cu proiectul întreg**, etapele în ordine și progresul (`done` / `total`), iar pagina doar se reîncarcă. Endpoint-urile sunt separate (nu un `PUT` care înlocuiește toată lista), fiindcă Timeline-ul va înregistra câte un eveniment pe schimbare.
   - **Progresul** (etape Done din total) apare în listă și pe pagina proiectului; un proiect fără etape spune „No stages yet”, nu o bară goală. Lista de proiecte încarcă și etapele, fiindcă sunt puține; de reconsiderat dacă proiectele ajung să aibă zeci.
+- **Proiectele în portal:** `GET /api/portal/projects` (listă) și `GET /api/portal/projects/{id}` (cu etape). Regula „clientul poate vedea proiectul” are o singură definiție, în `ProjectRepository`: fișa clientului e legată de contul care întreabă și nu e arhivată, iar proiectul nu e arhivat și nu e în Planning. De aceea un proiect în Planning, unul arhivat, unul al altui client (chiar în același workspace) și unul inexistent dau **toate 404**, la fel; arhivarea clientului îi ia și proiectele, restaurarea le dă înapoi.
+  - **Portalul are DTO-uri proprii** (`PortalProjectSummaryResponse`, `PortalProjectResponse`), separate de `ProjectResponse`: fără fișa clientului, fără note, fără `clientId`. Un câmp adăugat pe proiectul din workspace nu ajunge în portal din greșeală; un test verifică că notele clientului nu apar în niciun răspuns al portalului.
+  - **Portalul e doar al clientului:** proprietarul workspace-ului nu e clientul nimănui, deci prin `/api/portal` nu vede nimic.
+  - **Fără workspace în rută**, ca restul `/api/portal`: clientul vede proiectele din toate workspace-urile cu care lucrează, grupate pe freelancer în `/portal`; pagina unui proiect e `/portal/projects/{id}`.
+  - **„Unde suntem / ce urmează”** se scrie în `lib/portal/summary.ts`, din statusul proiectului și din etape: statusul câștigă (un proiect Completed sau On hold spune asta), altfel „Working on …” (etapele In progress) și „Up next” (prima etapă To do). Pagina e doar de citit; nu are încă nimic de făcut pentru client (aprobările vin mai târziu).
 - **Frontend:** pagina „Projects” în header (cu `?archived=1`, ca la clienți), plus secțiunea „Projects” pe pagina clientului, cu „New project” care preselectează clientul (`?clientId=`). Clientul se alege dintr-un select nativ (`native-select` din shadcn), fiindcă merge direct cu `FormData` și cu validarea nativă.
 
 ### Generale

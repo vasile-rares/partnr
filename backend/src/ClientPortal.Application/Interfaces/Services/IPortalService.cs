@@ -11,4 +11,19 @@ public interface IPortalService
     /// </summary>
     /// <exception cref="Common.Exceptions.UnauthorizedException">Nobody is signed in.</exception>
     Task<IReadOnlyList<PortalWorkspaceResponse>> ListWorkspacesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The projects shared with the signed-in client, across all their workspaces, soonest due first. A project is shared once it
+    /// leaves Planning; archived projects, and projects of an archived client, are left out.
+    /// </summary>
+    /// <exception cref="Common.Exceptions.UnauthorizedException">Nobody is signed in.</exception>
+    Task<IReadOnlyList<PortalProjectSummaryResponse>> ListProjectsAsync(CancellationToken cancellationToken);
+
+    /// <summary>One shared project with its stages.</summary>
+    /// <exception cref="Common.Exceptions.UnauthorizedException">Nobody is signed in.</exception>
+    /// <exception cref="Common.Exceptions.NotFoundException">
+    /// There is no such project, it is not shared with this account (a draft, archived, or someone else's), or it belongs to no
+    /// workspace the account is a client of. All look the same.
+    /// </exception>
+    Task<PortalProjectResponse> GetProjectAsync(Guid id, CancellationToken cancellationToken);
 }

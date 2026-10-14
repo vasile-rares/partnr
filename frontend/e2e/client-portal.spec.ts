@@ -134,3 +134,84 @@ test("the portal asks you to sign in, and is empty for someone who is nobody's c
   await page.goto("/portal");
   await expect(page.getByText("You are not connected to anyone yet.")).toBeVisible();
 });
+
+test("a client sees the projects shared with them, and what is done and what comes next", async ({ page, request }) => {
+  await createAccount(request);
+  const clientEmail = newClientEmail();
+  const { workspace, client, token } = await inviteClient(request, "Studio Pop", clientEmail);
+
+  // The freelancer prepares two projects through the API: one under way, one still a draft.
+  const createProject = async (name: string, extra: object = {}) => {
+    const response = await request.post(`/api/workspaces/${workspace.id}/projects`, {
+      data: { clientId: client.id, name, ...extra },
+    });
+    expect(response.status()).toBe(201);
+    return response.json();
+  };
+  // The update replaces every field, so the ones that must stay are sent back as they are.
+  const setStatus = async (
+    project: { id: string; name: string; description: string | null; startDate: string | null; dueDate: string | null },
+    status: string,
+  ) => {
+    const { name, description, startDate, dueDate } = project;
+    const response = await request.put(`/api/workspaces/${workspace.id}/projects/${project.id}`, {
+      data: { name, description, startDate, dueDate, status },
+    });
+    expect(response.ok()).toBe(true);
+  };
+  const addStage = async (projectId: string, name: string, status: string) => {
+    const added = await (await request.post(`/api/workspaces/${workspace.id}/projects/${projectId}/stages`, { data: { name } })).json();
+    const stage = added.stages.at(-1);
+    const response = await request.put(`/api/workspaces/${workspace.id}/projects/${projectId}/stages/${stage.id}`, {
+      data: { name, status },
+    });
+    expect(response.ok()).toBe(true);
+  };
+
+  const website = await createProject("Website", { description: "A new site with five pages.", dueDate: "2026-12-15" });
+  await addStage(website.id, "Design", "Done");
+  await addStage(website.id, "Development", "InProgress");
+  await addStage(website.id, "Launch", "ToDo");
+  await setStatus(website, "Active");
+  const draft = await createProject("Brand refresh");
+
+  await page.goto(`/invite/${token}`);
+  await page.getByLabel("Full name").fill("Elena Popescu");
+  await page.getByLabel("Password").fill("correct horse battery");
+  await page.getByRole("button", { name: "Create account and accept" }).click();
+  await expect(page).toHaveURL("/portal");
+
+  // The list: the active project with its status and progress, and no sign of the draft.
+  const project = page.getByRole("link", { name: /Website/ });
+  await expect(project).toContainText("1 of 3 done");
+  await expect(project).toContainText("Active");
+  await expect(project).toContainText("Due 15 Dec 2026");
+  await expect(page.getByText("Brand refresh")).toHaveCount(0);
+
+  // The page: where things stand, what is next, and the stages in order.
+  await project.click();
+  await expect(page).toHaveURL(`/portal/projects/${website.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
+  await expect(page.getByText("A new site with five pages.")).toBeVisible();
+  await expect(page.getByText("Working on Development.")).toBeVisible();
+  await expect(page.getByRole("term").filter({ hasText: "Up next" })).toBeVisible();
+  await expect(page.getByText("Launch").first()).toBeVisible();
+  const stages = page.getByRole("region", { name: "Stages" }).getByRole("listitem");
+  await expect(stages).toHaveCount(3);
+  await expect(stages.nth(0)).toContainText("Design");
+  await expect(stages.nth(0)).toContainText("Done");
+  await expect(stages.nth(1)).toContainText("In progress");
+  await expect(stages.nth(2)).toContainText("To do");
+  // Nothing the freelancer keeps to themselves: not the client's notes, not who else they work with.
+  await expect(page.getByText("Pays late.")).toHaveCount(0);
+
+  // The draft has no page for the client until the freelancer moves it out of Planning.
+  await page.goto(`/portal/projects/${draft.id}`);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await setStatus(draft, "Active");
+  await page.goto("/portal");
+  await expect(page.getByRole("link", { name: /Brand refresh/ })).toContainText("No stages yet");
+  await page.goto(`/portal/projects/${draft.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Brand refresh" })).toBeVisible();
+  await expect(page.getByText("The stages of this project haven't been set up yet.")).toBeVisible();
+});

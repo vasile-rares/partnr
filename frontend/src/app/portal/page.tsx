@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
-import { Card } from "@/components/ui/card";
+import { ProjectProgress } from "@/components/projects/ProjectProgress";
+import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { requireUser } from "@/lib/auth/session";
-import { getPortalWorkspaces } from "@/lib/portal/server";
+import { formatDate } from "@/lib/format";
+import { getPortalProjects, getPortalWorkspaces } from "@/lib/portal/server";
 
 export const metadata: Metadata = { title: "Your portal" };
 
-// What a client sees: the freelancers and agencies they work with. The projects, deliverables and approvals come in the
-// next steps; for now this is where accepting an invitation lands, so the client knows it worked.
+// What a client sees: for each freelancer or agency they work with, the projects shared with them. Files and approvals
+// come in the next steps.
 export default async function PortalPage() {
   await requireUser();
-  const workspaces = await getPortalWorkspaces();
+  const [workspaces, projects] = await Promise.all([getPortalWorkspaces(), getPortalProjects()]);
 
   return (
     <>
@@ -25,17 +28,49 @@ export default async function PortalPage() {
         ) : (
           <>
             <p className="mt-3 max-w-prose text-muted-foreground">
-              You work with the people below. Your projects, files and approvals will show up here.
+              Open a project to see where it stands and what comes next.
             </p>
-            <Card className="mt-8 gap-0 py-0">
-              <ul className="divide-y">
-                {workspaces.map((workspace) => (
-                  <li key={workspace.id} className="px-4 py-3 font-medium">
-                    {workspace.name}
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            <div className="mt-8 flex flex-col gap-10">
+              {workspaces.map((workspace) => {
+                // The API sends the projects soonest due first; filtering keeps that order.
+                const shared = projects.filter((project) => project.workspace.id === workspace.id);
+
+                return (
+                  <section key={workspace.id} aria-labelledby={`workspace-${workspace.id}`}>
+                    <h2 id={`workspace-${workspace.id}`} className="mb-3 font-heading text-xl font-semibold">
+                      {workspace.name}
+                    </h2>
+                    {shared.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nothing has been shared with you yet. Projects show up here as soon as they are ready.
+                      </p>
+                    ) : (
+                      <ul className="divide-y rounded-lg border">
+                        {shared.map((project) => (
+                          <li key={project.id}>
+                            <Link
+                              href={`/portal/projects/${project.id}`}
+                              className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4 hover:bg-muted/50"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium">{project.name}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {project.dueDate ? `Due ${formatDate(project.dueDate)}` : "No due date"}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <ProjectProgress progress={project.progress} />
+                                <ProjectStatusBadge status={project.status} />
+                              </div>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
           </>
         )}
       </main>
