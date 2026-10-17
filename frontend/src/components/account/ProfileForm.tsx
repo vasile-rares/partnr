@@ -11,7 +11,6 @@ import type { CurrentUser } from "@/lib/auth/session";
 type Values = { fullName: string; phone: string; company: string };
 
 type FormState = {
-  /** Kept so a failed attempt does not wipe what was typed. */
   values: Values;
   saved?: boolean;
   message?: string;
@@ -31,7 +30,6 @@ export function ProfileForm({ fullName, phone, company }: ProfileFormProps) {
       const result = await sendJson<CurrentUser>("PUT", "/api/auth/me", values);
 
       if (result.ok) {
-        // Refresh so every server-rendered place showing the user picks up the change.
         router.refresh();
         const saved = result.data;
         return { values: { fullName: saved.fullName, phone: saved.phone ?? "", company: saved.company ?? "" }, saved: true };

@@ -15,11 +15,10 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
-// Every endpoint requires a signed-in user unless it opts out with [AllowAnonymous].
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-// Looking up accounts is limited per signed-in user (and per address for the rare anonymous call), answering 429.
+// Per signed-in user (per address when anonymous); answers 429.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -49,8 +48,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// `dotnet run -- --seed` fills the development database with test data and exits. Never on its own, so tests and
-// other environments never get demo accounts by accident.
+// `--seed` fills the development database and exits. Never automatic, so tests never get demo accounts.
 if (args.Contains("--seed"))
 {
     if (!app.Environment.IsDevelopment())
@@ -62,8 +60,7 @@ if (args.Contains("--seed"))
     return;
 }
 
-// Opt-in (the "API" launch profile sets it): recreate the development database when the seed data was edited. Off by default,
-// because the integration and e2e runs are in Development too and must never recreate anything.
+// Opt-in via the launch profile: the integration and e2e runs are Development too and must never recreate anything.
 if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Seed:ReseedOnChange"))
 {
     await app.Services.ReseedDevelopmentDataIfChangedAsync();
@@ -87,5 +84,5 @@ app.MapControllers();
 
 app.Run();
 
-// Makes the entry point visible to WebApplicationFactory<Program> in the integration tests.
+// Visible to WebApplicationFactory<Program> in the integration tests.
 public partial class Program;

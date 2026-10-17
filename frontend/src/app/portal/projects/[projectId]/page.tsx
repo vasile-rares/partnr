@@ -16,11 +16,8 @@ export async function generateMetadata({ params }: PageProps<"/portal/projects/[
   return { title: project ? project.name : "Not found" };
 }
 
-// The client's view of one project: kept simple on purpose. It answers what has been done, where the project is now, what
-// comes next, and nothing the client has to act on yet (approvals come later).
 export default async function PortalProjectPage({ params }: PageProps<"/portal/projects/[projectId]">) {
   await requireUser();
-  // A draft, an archived project and someone else's all look the same as one that does not exist (the API answers 404).
   const project = await getPortalProject((await params).projectId);
   if (!project) {
     notFound();

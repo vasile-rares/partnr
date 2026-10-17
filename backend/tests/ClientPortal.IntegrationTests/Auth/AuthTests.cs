@@ -221,15 +221,13 @@ public sealed class AuthTests(ApiFactory factory)
         var user = await registered.Content.ReadFromJsonAsync<CurrentUserResponse>();
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/workspaces")).StatusCode);
 
-        // The account is gone (deleted, or the development database was reseeded) while the browser still holds its cookie.
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await db.Database.ExecuteSqlAsync($"DELETE FROM users WHERE \"Id\" = {user!.Id}");
         }
 
-        // Every endpoint answers 401 the same way. Without a check on each request, /api/workspaces answered 200 with an empty
-        // list, and /api/auth/me threw from inside the service.
+        // Without a check on every request, /api/workspaces answered 200 with an empty list and /api/auth/me threw.
         var workspaces = await client.GetAsync("/api/workspaces");
         var me = await client.GetAsync("/api/auth/me");
 

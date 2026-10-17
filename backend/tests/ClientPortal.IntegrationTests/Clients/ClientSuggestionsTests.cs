@@ -140,7 +140,6 @@ public sealed class ClientSuggestionsTests(ApiFactory factory)
 
         Assert.Equal(60, statuses.Count(s => s == HttpStatusCode.OK));
         Assert.Equal(10, statuses.Count(s => s == HttpStatusCode.TooManyRequests));
-        // Another user's allowance is untouched.
         Assert.Equal(HttpStatusCode.OK, (await calm.GetAsync($"/api/workspaces/{calmWorkspace}/clients/suggestions?email=abc")).StatusCode);
     }
 

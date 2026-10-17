@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ClientPortal.Api.Controllers;
 
-/// <summary>The client's side of an invitation. The token in the route is the credential for reading it.</summary>
+/// <summary>The token in the route is the credential for reading the invitation.</summary>
 [ApiController]
 [Route("api/invitations/{token}")]
 public sealed class InvitationsController(IInvitationService service) : ControllerBase
@@ -15,7 +15,7 @@ public sealed class InvitationsController(IInvitationService service) : Controll
     public async Task<IActionResult> Get(string token, CancellationToken cancellationToken) =>
         Ok(await service.GetAsync(token, cancellationToken));
 
-    // Needs a signed-in user (the fallback policy): the invited address is checked against that account's.
+    // Needs a signed-in user: the invited email is checked against theirs.
     [HttpPost("accept")]
     public async Task<IActionResult> Accept(string token, CancellationToken cancellationToken) =>
         Ok(await service.AcceptAsync(token, cancellationToken));

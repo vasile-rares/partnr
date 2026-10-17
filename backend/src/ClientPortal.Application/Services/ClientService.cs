@@ -67,8 +67,8 @@ internal sealed class ClientService(
         var current = await responses.BuildAsync(client, cancellationToken);
         if (current.DetailsLocked)
         {
-            // While an invitation is pending, or once the client has an account, the details are not ours to change.
-            // The form still sends them back unchanged, so only a real difference is refused; the notes always go through.
+            // Details are locked while an invitation is pending or the client has an account. The form sends them back unchanged,
+            // so only a real difference is refused; the notes always go through.
             if (ChangesIdentity(current, request))
             {
                 throw new ConflictException(client.IsLinked

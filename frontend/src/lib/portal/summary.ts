@@ -1,16 +1,13 @@
 import type { Stage, ProjectStatus } from "@/lib/projects/types";
 
-/** The two things a client wants to know first: where the project is, and what comes after. */
 export type ProjectSummary = {
-  /** Where things stand right now. */
   now: string;
-  /** What comes next, or null when nothing does. */
   next: string | null;
 };
 
 const names = (stages: Stage[]) => stages.map((s) => s.name).join(" and ");
 
-/** Puts the project's status and stages into words for the client. The status wins over the stages: a paused or finished project says so. */
+/** The status wins over the stages: a paused or finished project says so. */
 export function summarize(status: ProjectStatus, stages: Stage[]): ProjectSummary {
   if (status === "Completed") {
     return { now: "This project is complete.", next: null };

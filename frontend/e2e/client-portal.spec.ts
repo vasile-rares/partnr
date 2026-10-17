@@ -3,8 +3,8 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import { createAccount, newUser, signIn } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
-// The freelancer's side is set up through the API (it has its own tests): these tests are about what the client sees.
-// A client's address is the key to the email in Mailpit, so each test uses its own.
+// The freelancer's side goes through the API (tested elsewhere); these tests are about what the client sees.
+// Each test uses its own client address: it is the key to the email in Mailpit.
 const newClientEmail = () => `client-${randomUUID()}@example.com`;
 
 async function inviteClient(studio: APIRequestContext, workspaceName: string, clientEmail: string, clientName = "Elena Ionescu") {
@@ -25,7 +25,6 @@ test("someone without an account signs up through the invitation and lands in th
 
   await page.goto(`/invite/${token}`);
   await expect(page.getByRole("heading", { name: "Join Studio Pop" })).toBeVisible();
-  // The address is the invited one and can't be changed; nothing the freelancer wrote about the client is filled in.
   await expect(page.getByLabel("Email")).toHaveValue(clientEmail);
   await expect(page.getByLabel("Email")).not.toBeEditable();
   await expect(page.getByLabel("Full name")).toHaveValue("");
@@ -40,11 +39,9 @@ test("someone without an account signs up through the invitation and lands in th
   await expect(page.getByRole("heading", { level: 1, name: "Your portal" })).toBeVisible();
   await expect(page.getByText("Studio Pop")).toBeVisible();
 
-  // "/" now sends a client who has no workspace of their own to the portal, not to "Create your workspace".
   await page.goto("/");
   await expect(page).toHaveURL("/portal");
 
-  // The freelancer sees the account's own details, while the notes stay theirs.
   const seen = await (await request.get(`/api/workspaces/${workspace.id}/clients/${client.id}`)).json();
   expect(seen).toMatchObject({
     name: "Elena Popescu",
@@ -76,7 +73,6 @@ test("someone who already has an account signs in and accepts", async ({ page, r
   await expect(page).toHaveURL("/portal");
   await expect(page.getByText("Studio Pop")).toBeVisible();
 
-  // The same link doesn't work twice.
   await page.goto(`/invite/${token}`);
   await expect(page.getByRole("heading", { name: "Invitation already used" })).toBeVisible();
 });
@@ -140,7 +136,6 @@ test("a client sees the projects shared with them, and what is done and what com
   const clientEmail = newClientEmail();
   const { workspace, client, token } = await inviteClient(request, "Studio Pop", clientEmail);
 
-  // The freelancer prepares two projects through the API: one under way, one still a draft.
   const createProject = async (name: string, extra: object = {}) => {
     const response = await request.post(`/api/workspaces/${workspace.id}/projects`, {
       data: { clientId: client.id, name, ...extra },
@@ -181,14 +176,12 @@ test("a client sees the projects shared with them, and what is done and what com
   await page.getByRole("button", { name: "Create account and accept" }).click();
   await expect(page).toHaveURL("/portal");
 
-  // The list: the active project with its status and progress, and no sign of the draft.
   const project = page.getByRole("link", { name: /Website/ });
   await expect(project).toContainText("1 of 3 done");
   await expect(project).toContainText("Active");
   await expect(project).toContainText("Due 15 Dec 2026");
   await expect(page.getByText("Brand refresh")).toHaveCount(0);
 
-  // The page: where things stand, what is next, and the stages in order.
   await project.click();
   await expect(page).toHaveURL(`/portal/projects/${website.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
@@ -202,7 +195,6 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(stages.nth(0)).toContainText("Done");
   await expect(stages.nth(1)).toContainText("In progress");
   await expect(stages.nth(2)).toContainText("To do");
-  // Nothing the freelancer keeps to themselves: not the client's notes, not who else they work with.
   await expect(page.getByText("Pays late.")).toHaveCount(0);
 
   // The draft has no page for the client until the freelancer moves it out of Planning.

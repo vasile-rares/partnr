@@ -9,7 +9,6 @@ import type { Project } from "@/lib/projects/types";
 
 type State = { message?: string };
 
-/** Archives the project, or restores it when it is already archived. */
 export function ArchiveProjectButton({ workspaceId, project }: { workspaceId: string; project: Project }) {
   const router = useRouter();
   const archived = project.archivedAtUtc !== null;

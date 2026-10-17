@@ -12,7 +12,6 @@ test("registering creates the account and asks for a first workspace", async ({ 
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Create account" }).click();
 
-  // A new account has no workspace yet, so "/" sends it to create one.
   await expect(page).toHaveURL("/workspaces/new");
   await expect(page.getByRole("heading", { name: "Create your workspace" })).toBeVisible();
 });

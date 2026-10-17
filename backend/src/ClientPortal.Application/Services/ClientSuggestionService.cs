@@ -23,8 +23,7 @@ internal sealed class ClientSuggestionService(WorkspaceAccess access, IIdentityS
             return [];
         }
 
-        // Members cannot accept a client invitation to their own workspace, so offering them would only lead to a dead end.
-        // They are excluded in the query (not afterwards), so the limit still yields up to MaxResults useful rows.
+        // Members cannot accept an invitation to their own workspace. Excluded in the query so the limit still yields useful rows.
         var memberIds = membership.Workspace.Members.Select(m => m.UserId).ToList();
         var accounts = await identity.SearchByEmailStartAsync(
             Client.NormalizeEmail(prefix), IClientSuggestionService.MaxResults, memberIds, cancellationToken);

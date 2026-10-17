@@ -32,7 +32,6 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
   }
   // The add-client form redirects here with this flag when the client was saved but the email could not go out.
   const inviteFailed = (await searchParams).invite === "failed";
-  // A client of another workspace looks the same as one that does not exist (the API answers 404 for both).
   const client = await getClient(workspace.id, clientId);
   if (!client) {
     notFound();
@@ -81,7 +80,6 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
             <h2 id="projects-title" className="font-heading text-xl font-semibold">
               Projects
             </h2>
-            {/* An archived client cannot get a new project (the API answers 409). */}
             {client.archivedAtUtc ? null : (
               <Link
                 href={`/w/${workspace.id}/projects/new?clientId=${client.id}`}
@@ -125,7 +123,6 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
   );
 }
 
-/** What the portal status means for this client, and what it changes for the workspace. */
 function portalDescription(client: Client): string {
   const expires = client.portal.expiresAtUtc ? formatDateTimeUtc(client.portal.expiresAtUtc) : null;
 

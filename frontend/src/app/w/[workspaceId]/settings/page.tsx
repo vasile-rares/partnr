@@ -20,7 +20,6 @@ export default async function WorkspaceSettingsPage({ params }: PageProps<"/w/[w
       <main className="mx-auto w-full max-w-3xl px-6 py-10">
         <h1 className="mb-8 font-heading text-3xl font-semibold">Workspace settings</h1>
 
-        {/* The API enforces this too; hiding the form only spares a member an error they cannot fix. */}
         {workspace.role === "Owner" ? (
           <RenameWorkspaceForm workspaceId={workspace.id} name={workspace.name} />
         ) : (

@@ -23,7 +23,6 @@ internal sealed class ProjectService(
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
 
-        // [Required] guarantees a value; the lookup is scoped to the workspace, so another workspace's client is not found.
         var clientId = request.ClientId!.Value;
         var client = await clients.GetByIdAsync(workspaceId, clientId, cancellationToken)
             ?? throw new NotFoundException($"The client with id '{clientId}' was not found.");
@@ -172,7 +171,6 @@ internal sealed class ProjectService(
     private static Guid RequireStage(Project project, Guid stageId) =>
         project.HasStage(stageId) ? stageId : throw new NotFoundException($"The stage with id '{stageId}' was not found.");
 
-    // An archived project is read-only, so it cannot change behind the owner's back; restoring it makes it editable again.
     private static void EnsureNotArchived(Project project)
     {
         if (project.IsArchived)

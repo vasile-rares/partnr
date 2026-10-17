@@ -6,11 +6,7 @@ using ClientPortal.Domain.Exceptions;
 
 namespace ClientPortal.Domain.Entities;
 
-/// <summary>
-/// An email invitation that lets a client sign in to the portal. It is bound to the address it was sent to and holds only
-/// the hash of its token, so a leaked database does not leak working links. A client has at most one open invitation:
-/// sending again cancels the previous one. The clock is always passed in, so expiry is easy to test.
-/// </summary>
+/// <summary>Bound to the address it was sent to. Only the hash of the token is stored, so a leaked database leaks no working links.</summary>
 public sealed class ClientInvitation : Entity
 {
     public static readonly TimeSpan Validity = TimeSpan.FromDays(7);
@@ -40,10 +36,10 @@ public sealed class ClientInvitation : Entity
 
     public Guid ClientId { get; private set; }
 
-    /// <summary>The address the invitation was sent to (normalized). Only an account with this email can accept it.</summary>
+    /// <summary>Normalized. Only an account with this email can accept it.</summary>
     public string Email { get; private set; } = string.Empty;
 
-    /// <summary>SHA-256 of the token in the link, in hex. The token itself is never stored.</summary>
+    /// <summary>SHA-256 of the token, in hex. The token itself is never stored.</summary>
     public string TokenHash { get; private set; } = string.Empty;
 
     public Guid InvitedByUserId { get; private set; }
@@ -56,7 +52,6 @@ public sealed class ClientInvitation : Entity
 
     public DateTime? CancelledAtUtc { get; private set; }
 
-    /// <summary>Neither accepted nor cancelled. It may still have expired; see <see cref="IsPending"/>.</summary>
     public bool IsOpen => AcceptedAtUtc is null && CancelledAtUtc is null;
 
     public static ClientInvitation Create(
@@ -90,13 +85,10 @@ public sealed class ClientInvitation : Entity
         return new ClientInvitation(workspaceId, clientId, Client.NormalizeEmail(email), tokenHash, invitedByUserId, nowUtc);
     }
 
-    /// <summary>A longer token cannot be one of ours; rejecting it early keeps absurd input out of the hashing and the database.</summary>
+    /// <summary>A longer token cannot be one of ours: reject it early.</summary>
     public const int TokenMaxLength = 100;
 
-    /// <summary>
-    /// A new secret for an invitation link: 256 random bits, URL-safe, so it cannot be guessed. Returned with its hash:
-    /// the token goes in the email, only the hash is stored.
-    /// </summary>
+    /// <summary>256 random bits, URL-safe. The token goes in the email, only its hash is stored.</summary>
     public static (string Token, string Hash) NewToken()
     {
         var token = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
@@ -104,10 +96,7 @@ public sealed class ClientInvitation : Entity
         return (token, HashToken(token));
     }
 
-    /// <summary>
-    /// How a token is stored: SHA-256 in hex. The invitation keeps only this, never the token, so one place defines
-    /// the hash that the link has to match.
-    /// </summary>
+    /// <summary>SHA-256 in hex: the one definition of what a link has to match.</summary>
     public static string HashToken(string token) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
@@ -138,7 +127,7 @@ public sealed class ClientInvitation : Entity
         AcceptedAtUtc = nowUtc;
     }
 
-    /// <summary>Withdraws an open invitation, expired or not. Cancelling twice keeps the first date; an accepted one cannot be cancelled.</summary>
+    /// <summary>Cancelling twice keeps the first date; an accepted one cannot be cancelled.</summary>
     public void Cancel(DateTime nowUtc)
     {
         if (AcceptedAtUtc is not null)

@@ -88,7 +88,6 @@ public sealed class ProjectsTests(ApiFactory factory)
         var active = await http.GetFromJsonAsync<ProjectResponse[]>(url);
         var acmeAll = await http.GetFromJsonAsync<ProjectResponse[]>($"{url}?clientId={acme.Id}&includeArchived=true");
 
-        // Soonest due date first.
         Assert.Equal([menu.Id, website.Id], active!.Select(p => p.Id));
         Assert.Equal(["Old site", "Website"], acmeAll!.Select(p => p.Name).Order());
     }
@@ -221,7 +220,6 @@ public sealed class ProjectsTests(ApiFactory factory)
         return (http, user!.Id);
     }
 
-    // There is no endpoint for adding members yet, so tests add one straight to the database.
     private async Task AddMember(Guid workspaceId, Guid userId)
     {
         using var scope = factory.Services.CreateScope();

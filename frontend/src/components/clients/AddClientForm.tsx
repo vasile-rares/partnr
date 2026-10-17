@@ -28,20 +28,16 @@ type Lookup = { query: string; items: ClientSuggestion[]; ok: boolean };
 type FormState = {
   message?: string;
   fieldErrors?: Record<string, string>;
-  /** The API rejected the email as already used (409), so the message belongs under that field. */
   emailTaken?: boolean;
 };
 
 type AddClientFormProps = {
   workspaceId: string;
-  /** The emails of every client of the workspace (archived ones included), to warn about a duplicate before sending. */
+  /** The emails of every client of the workspace, archived included, to warn about a duplicate. */
   existingEmails: string[];
 };
 
-/**
- * Adds a client from just an email and invites them right away. While the email is typed, accounts that already exist
- * are offered (the person still has to accept the invitation: choosing one links nothing).
- */
+/** Adds a client from an email and invites them. Existing accounts are offered while typing; choosing one links nothing. */
 export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProps) {
   const router = useRouter();
   const hintId = useId();
@@ -83,7 +79,6 @@ export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProp
       ? (lookup?.items ?? []).filter((s) => s.email.toLowerCase().startsWith(lowered))
       : [];
 
-  // What to tell about the address, only once it looks complete and the answer for exactly this text has arrived.
   const complete = LOOKS_LIKE_AN_EMAIL.test(query);
   const alreadyClient = complete && existingEmails.some((e) => e.toLowerCase() === lowered);
   const answer = complete && lookup?.ok && lookup.query === query ? lookup : null;
@@ -133,7 +128,6 @@ export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProp
           value={email}
           onValueChange={(value, details) => {
             setEmail(value);
-            // Choosing a suggestion also fills in the name, unless one was already typed.
             if (details.reason === "item-press") {
               const chosen = suggestions.find((s) => s.email === value);
               setName((current) => (current === "" && chosen ? chosen.fullName : current));
@@ -166,7 +160,6 @@ export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProp
         </Autocomplete>
 
         {emailError ? <FieldError>{emailError}</FieldError> : null}
-        {/* Announced politely while typing; the status words carry the meaning, not just the colour. */}
         <FieldDescription id={`${hintId}-hint`} aria-live="polite" className={alreadyClient ? "text-destructive" : undefined}>
           {alreadyClient
             ? "Already a client in this workspace."

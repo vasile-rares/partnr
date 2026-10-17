@@ -159,7 +159,6 @@ public sealed class ClientsTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, archive.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, restore.StatusCode);
 
-        // The refused calls changed nothing.
         var stillActive = await owner.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{acme.Id}");
         var stillArchived = await owner.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{old.Id}");
         Assert.Null(stillActive!.ArchivedAtUtc);
@@ -188,7 +187,6 @@ public sealed class ClientsTests(ApiFactory factory)
         return (http, user!.Id);
     }
 
-    // There is no endpoint for adding members yet (that comes with invitations), so tests add one straight to the database.
     private async Task AddMember(Guid workspaceId, Guid userId)
     {
         using var scope = factory.Services.CreateScope();

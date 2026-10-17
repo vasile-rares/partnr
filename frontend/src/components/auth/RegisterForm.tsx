@@ -11,7 +11,6 @@ import { postAuth } from "@/lib/auth/client";
 type FormState = {
   message?: string;
   fieldErrors?: Record<string, string>;
-  /** Kept so a failed attempt does not wipe what was typed; the password is deliberately not kept. */
   fullName?: string;
   email?: string;
 };

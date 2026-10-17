@@ -2,12 +2,7 @@ using ClientPortal.Domain.Exceptions;
 
 namespace ClientPortal.Domain.Entities;
 
-/// <summary>
-/// A contact card kept by the workspace. It is archived instead of deleted, so the projects and history that will
-/// point to it are never lost. Once the client accepts an invitation the card is linked to their account, and from then
-/// on their name, email, phone and company are read from that account (see <c>ClientResponseBuilder</c>); only the
-/// notes stay the workspace's own.
-/// </summary>
+/// <summary>A contact card kept by the workspace. Archived instead of deleted, so projects and history keep their client.</summary>
 public sealed class Client : Entity
 {
     private Client()
@@ -22,7 +17,7 @@ public sealed class Client : Entity
 
     public Guid WorkspaceId { get; private set; }
 
-    /// <summary>Optional: a card can start with just an email. Until the client has an account, the UI shows the email instead.</summary>
+    /// <summary>Optional: a card can start with just an email.</summary>
     public string? Name { get; private set; }
 
     public string Email { get; private set; } = string.Empty;
@@ -35,7 +30,6 @@ public sealed class Client : Entity
 
     public DateTime CreatedAtUtc { get; private set; }
 
-    /// <summary>The client's own account, once they accepted an invitation.</summary>
     public Guid? UserId { get; private set; }
 
     public DateTime? LinkedAtUtc { get; private set; }
@@ -79,7 +73,7 @@ public sealed class Client : Entity
         Notes = Optional(notes);
     }
 
-    /// <summary>Changes only the notes, the one part of a client the workspace keeps even when the rest is locked.</summary>
+    /// <summary>The one part the workspace keeps even when the rest is locked.</summary>
     public void UpdateNotes(string? notes) => Notes = Optional(notes);
 
     /// <summary>Connects the card to the client's account. A card can be linked once and only while it is not archived.</summary>
@@ -104,7 +98,7 @@ public sealed class Client : Entity
         LinkedAtUtc = nowUtc;
     }
 
-    /// <summary>Hides the client from the default list. Archiving twice keeps the first date.</summary>
+    /// <summary>Archiving twice keeps the first date.</summary>
     public void Archive() => ArchivedAtUtc ??= DateTime.UtcNow;
 
     public void Restore() => ArchivedAtUtc = null;

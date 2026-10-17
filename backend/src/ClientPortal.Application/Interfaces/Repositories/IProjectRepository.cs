@@ -7,20 +7,14 @@ public interface IProjectRepository
 {
     Task<Project?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 
-    /// <summary>The workspace's projects, soonest due first (no due date last); archived ones only when asked for.</summary>
-    /// <param name="clientId">Only the projects of this client, when set.</param>
+    /// <summary>Soonest due first, no due date last.</summary>
     Task<IReadOnlyList<Project>> ListAsync(Guid workspaceId, bool includeArchived, Guid? clientId, CancellationToken cancellationToken);
 
-    /// <summary>
-    /// The projects this account can see as a client, with their stages, soonest due first (no due date last). A project is
-    /// shared when its client card is linked to the account and not archived, and the project is not archived and has left
-    /// Planning (a draft). Not scoped to a workspace: the client sees every workspace they work with.
-    /// </summary>
+    /// <summary>Projects shared with this account as a client, soonest due first. Not scoped to a workspace.</summary>
     Task<IReadOnlyList<Project>> ListSharedWithClientAsync(Guid userId, CancellationToken cancellationToken);
 
-    /// <summary>One project from <see cref="ListSharedWithClientAsync"/>, or null when it is not shared with this account.</summary>
+    /// <summary>Null when the project is not shared with this account.</summary>
     Task<Project?> GetSharedWithClientAsync(Guid userId, Guid id, CancellationToken cancellationToken);
 
-    /// <summary>Tracks the project; it is persisted by <see cref="IUnitOfWork.SaveChangesAsync"/>.</summary>
     void Add(Project project);
 }

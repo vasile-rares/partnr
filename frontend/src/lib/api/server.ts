@@ -9,10 +9,7 @@ export async function hasSessionCookie(): Promise<boolean> {
   return (await cookies()).has(SESSION_COOKIE);
 }
 
-/**
- * Calls the API from the server on behalf of the visitor: the session cookie is forwarded, nothing is cached.
- * Server Components use this instead of the /api rewrite, which only exists for the browser.
- */
+/** Calls the API from the server with the visitor's session cookie forwarded; nothing is cached. */
 export async function serverFetch(path: string): Promise<Response> {
   const session = (await cookies()).get(SESSION_COOKIE);
 

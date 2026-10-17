@@ -6,8 +6,8 @@ export const PASSWORD = "correct horse battery";
 // Every test gets its own account, so tests are independent and can run in parallel against the same database.
 export const newUser = () => ({ email: `e2e-${randomUUID()}@example.com`, fullName: "Ana Pop", password: PASSWORD });
 
-// Creates an account through the API without touching the browser session. The `request` fixture has its own cookie
-// storage (unlike `page.request`), so the page stays signed out.
+// Creates an account without touching the browser session: the `request` fixture has its own cookie storage
+// (unlike `page.request`), so the page stays signed out.
 export async function createAccount(request: APIRequestContext) {
   const user = newUser();
   const response = await request.post("/api/auth/register", { data: user });

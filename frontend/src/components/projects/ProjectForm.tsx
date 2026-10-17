@@ -13,7 +13,6 @@ import { projectStatuses, type Project, type ProjectStatus } from "@/lib/project
 type Values = { clientId: string; name: string; description: string; startDate: string; dueDate: string; status: ProjectStatus };
 
 type FormState = {
-  /** Kept so a failed attempt does not wipe what was typed. */
   values: Values;
   saved?: boolean;
   message?: string;
@@ -45,7 +44,6 @@ const valuesOf = (project: Project): Values => ({
 export function ProjectForm({ workspaceId, project, clients, clientId }: ProjectFormProps) {
   const router = useRouter();
   const editing = project !== undefined;
-  // An archived project is read-only until it is restored; the API refuses changes too.
   const readOnly = editing && project.archivedAtUtc !== null;
 
   const [state, submit, pending] = useActionState(
@@ -84,7 +82,6 @@ export function ProjectForm({ workspaceId, project, clients, clientId }: Project
         status: values.status,
       });
       if (result.ok) {
-        // Refresh so the title and everything else showing the project pick up the change.
         router.refresh();
         return { values: valuesOf(result.data), saved: true };
       }

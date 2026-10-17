@@ -12,12 +12,10 @@ import type { Client } from "@/lib/clients/types";
 type Values = { name: string; email: string; company: string; phone: string; notes: string };
 
 type FormState = {
-  /** Kept so a failed attempt does not wipe what was typed. */
   values: Values;
   saved?: boolean;
   message?: string;
   fieldErrors?: Record<string, string>;
-  /** The API rejected the email as already used (409), so the message belongs under that field. */
   emailTaken?: boolean;
 };
 
@@ -47,7 +45,6 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
       const result = await sendJson<Client>("PUT", `/api/workspaces/${workspaceId}/clients/${client.id}`, values);
 
       if (result.ok) {
-        // Refresh so the title and everything else showing the client pick up the change.
         router.refresh();
         return { values: valuesOf(result.data), saved: true };
       }
@@ -59,8 +56,8 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
   const errors = state.fieldErrors ?? {};
   const emailError = errors.email ?? (state.emailTaken ? state.message : undefined);
   const hasFieldError = Object.keys(errors).length > 0 || state.emailTaken;
-  // Locked while an invitation waits or the client has an account: the inputs stay in the form (read-only, so screen
-  // readers still read them and their values are sent back unchanged), only the notes can change.
+  // Locked while an invitation waits or the client has an account: the inputs stay read-only in the form (screen readers
+  // still read them, their values go back unchanged), only the notes can change.
   const locked = client.detailsLocked;
 
   return (

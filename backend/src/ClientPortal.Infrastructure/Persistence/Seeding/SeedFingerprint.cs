@@ -4,10 +4,7 @@ using System.Text;
 
 namespace ClientPortal.Infrastructure.Persistence.Seeding;
 
-/// <summary>
-/// Tells whether the test data changed: a hash of the source of the seed itself, embedded in the assembly at build time
-/// (see the csproj). Editing the seed changes it, so nobody has to remember to bump a version.
-/// </summary>
+/// <summary>A hash of the seed's own source, embedded at build time, so editing the seed is detected without bumping a version.</summary>
 internal static class SeedFingerprint
 {
     private const string ResourcePrefix = "SeedSource/";

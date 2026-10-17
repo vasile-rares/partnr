@@ -11,7 +11,6 @@ import { isUuid } from "@/lib/uuid";
 
 type ProjectFilter = { includeArchived?: boolean; clientId?: string };
 
-/** The workspace's projects, soonest due first; archived ones only when asked for. */
 export async function getProjects(workspaceId: string, { includeArchived = false, clientId }: ProjectFilter = {}): Promise<Project[]> {
   const query = new URLSearchParams();
   if (includeArchived) {
@@ -34,7 +33,6 @@ export async function getProjects(workspaceId: string, { includeArchived = false
   return (await response.json()) as Project[];
 }
 
-/** The project, or null when it does not exist in this workspace. */
 export const getProject = cache(async (workspaceId: string, projectId: string): Promise<Project | null> => {
   if (!isUuid(projectId)) {
     return null;

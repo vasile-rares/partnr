@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { sendJson } from "@/lib/api/client";
 
 type FormState = {
-  /** Kept so a failed attempt does not wipe what was typed; the password is deliberately not kept. */
   fullName?: string;
   phone?: string;
   company?: string;
@@ -16,10 +15,7 @@ type FormState = {
   fieldErrors?: Record<string, string>;
 };
 
-/**
- * Creates the account behind an invitation. The email is the invited one and is only shown, never sent: the API takes
- * it from the invitation, so it can't be changed here. Nothing is filled in from what the freelancer wrote about the client.
- */
+/** The invited email is only shown, never sent: the API takes it from the invitation. */
 export function InvitationRegisterForm({ token, email }: { token: string; email: string }) {
   const router = useRouter();
 

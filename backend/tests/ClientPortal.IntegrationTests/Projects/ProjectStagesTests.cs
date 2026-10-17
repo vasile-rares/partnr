@@ -91,7 +91,6 @@ public sealed class ProjectStagesTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.OK, up.StatusCode);
         Assert.Equal(["A", "C", "B"], fetched!.Stages.Select(s => s.Name));
 
-        // At the top there is nothing to swap with: it is not an error, and nothing changes.
         var first = fetched.Stages[0];
         var tooFar = await http.PostAsJsonAsync($"/api/workspaces/{workspaceId}/projects/{project.Id}/stages/{first.Id}/move", new { direction = "up" });
         var unchanged = (await tooFar.Content.ReadFromJsonAsync<ProjectResponse>())!;
@@ -231,7 +230,6 @@ public sealed class ProjectStagesTests(ApiFactory factory)
         return (http, user!.Id);
     }
 
-    // There is no endpoint for adding members yet, so tests add one straight to the database.
     private async Task AddMember(Guid workspaceId, Guid userId)
     {
         using var scope = factory.Services.CreateScope();

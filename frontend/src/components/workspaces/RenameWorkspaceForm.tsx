@@ -24,7 +24,6 @@ export function RenameWorkspaceForm({ workspaceId, name }: { workspaceId: string
       const result = await sendJson<Workspace>("PATCH", `/api/workspaces/${workspaceId}`, { name: newName });
 
       if (result.ok) {
-        // Refresh so the header and every other place showing the name pick up the change.
         router.refresh();
         return { name: result.data.name, saved: true };
       }

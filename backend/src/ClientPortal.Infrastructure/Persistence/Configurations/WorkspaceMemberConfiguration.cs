@@ -11,10 +11,8 @@ internal sealed class WorkspaceMemberConfiguration : IEntityTypeConfiguration<Wo
     {
         builder.ToTable("workspace_members");
 
-        // A user is a member of a workspace at most once.
         builder.HasKey(m => new { m.WorkspaceId, m.UserId });
 
-        // Stored as text so the database stays readable and reordering the enum cannot silently change roles.
         builder.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
 
         // The key starts with WorkspaceId; "my workspaces" looks members up by user, so it needs its own index.

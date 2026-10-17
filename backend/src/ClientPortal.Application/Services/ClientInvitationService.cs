@@ -38,8 +38,7 @@ internal sealed class ClientInvitationService(
 
         var now = time.GetUtcNow().UtcDateTime;
 
-        // Only the newest link may work. The old one is cancelled in its own save: the unique index allows one open
-        // invitation per client, and the database would see the insert before the update if both went in together.
+        // Cancelled in its own save: the unique index allows one open invitation per client.
         var previous = await invitations.GetOpenForClientAsync(client.Id, cancellationToken);
         if (previous is not null)
         {
@@ -52,8 +51,7 @@ internal sealed class ClientInvitationService(
         invitations.Add(invitation);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Saved first: if sending fails the freelancer sees an error and can send again (which replaces this invitation),
-        // whereas the other way round a link could be delivered that no invitation backs.
+        // Saved before sending: if sending fails the freelancer can resend, but a delivered link must have an invitation behind it.
         var inviter = await identity.FindByIdAsync(membership.UserId, cancellationToken);
         await email.SendAsync(
             BuildEmail(client, invitation, membership.Workspace.Name, inviter?.FullName, links.InvitationUrl(token)),

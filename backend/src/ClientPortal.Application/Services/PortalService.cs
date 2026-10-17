@@ -40,7 +40,6 @@ internal sealed class PortalService(IWorkspaceRepository workspaces, IProjectRep
     {
         var userId = access.RequireUserId();
 
-        // The same answer for a project that does not exist, one that is a draft or archived, and one that is someone else's.
         var project = await projects.GetSharedWithClientAsync(userId, id, cancellationToken);
         var names = await WorkspacesAsync(userId, cancellationToken);
         if (project is null || !names.TryGetValue(project.WorkspaceId, out var workspace))

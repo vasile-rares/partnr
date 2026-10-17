@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace ClientPortal.Api.Middleware;
 
-/// <summary>Maps expected exceptions to ProblemDetails; anything else falls through to the default 500 handler.</summary>
 internal sealed class ApiExceptionHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(

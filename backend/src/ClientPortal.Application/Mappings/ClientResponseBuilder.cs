@@ -6,10 +6,7 @@ using ClientPortal.Domain.Entities;
 
 namespace ClientPortal.Application.Mappings;
 
-/// <summary>
-/// Turns clients into what the workspace sees. This is where the ownership rule lives: a client who has an account shows
-/// the account's name, email, phone and company (no copy that could drift), and the portal status comes from the invitation.
-/// </summary>
+/// <summary>A client with an account shows the account's name, email, phone and company, never a copy.</summary>
 internal sealed class ClientResponseBuilder(IIdentityService identity, IClientInvitationRepository invitations, TimeProvider time)
 {
     public async Task<ClientResponse> BuildAsync(Client client, CancellationToken cancellationToken) =>
@@ -45,7 +42,7 @@ internal sealed class ClientResponseBuilder(IIdentityService identity, IClientIn
                         (invitation.IsPending(now) ? ClientPortalStatus.Invited : ClientPortalStatus.Expired).ToString(),
                         invitation.ExpiresAtUtc);
 
-            // An account that is gone (it should not happen) falls back to the card, so the client does not vanish from the list.
+            // An account that is gone falls back to the card, so the client does not vanish from the list.
             return new ClientResponse(
                 client.Id,
                 account?.FullName ?? client.Name,

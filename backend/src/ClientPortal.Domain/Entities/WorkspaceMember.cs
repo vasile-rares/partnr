@@ -2,7 +2,7 @@ using ClientPortal.Domain.Enums;
 
 namespace ClientPortal.Domain.Entities;
 
-/// <summary>A user's membership in a workspace. Part of the <see cref="Workspace"/> aggregate: only changed through it.</summary>
+/// <summary>Only changed through <see cref="Workspace"/>.</summary>
 public sealed class WorkspaceMember
 {
     private WorkspaceMember()

@@ -9,8 +9,7 @@ import { getPortalProjects, getPortalWorkspaces } from "@/lib/portal/server";
 
 export const metadata: Metadata = { title: "Your portal" };
 
-// What a client sees: for each freelancer or agency they work with, the projects shared with them. Files and approvals
-// come in the next steps.
+// For each freelancer or agency the client works with, the projects shared with them.
 export default async function PortalPage() {
   await requireUser();
   const [workspaces, projects] = await Promise.all([getPortalWorkspaces(), getPortalProjects()]);
@@ -32,7 +31,6 @@ export default async function PortalPage() {
             </p>
             <div className="mt-8 flex flex-col gap-10">
               {workspaces.map((workspace) => {
-                // The API sends the projects soonest due first; filtering keeps that order.
                 const shared = projects.filter((project) => project.workspace.id === workspace.id);
 
                 return (

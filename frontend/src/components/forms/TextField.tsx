@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 
 type TextFieldProps = Omit<ComponentProps<"input">, "id" | "className"> & {
   label: string;
-  /** Always-visible guidance, e.g. a password rule. */
   hint?: string;
   error?: string;
 };

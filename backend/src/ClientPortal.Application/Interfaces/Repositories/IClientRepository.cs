@@ -7,22 +7,18 @@ public interface IClientRepository
 {
     Task<Client?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 
-    /// <summary>The workspace's clients ordered by name; archived ones only when asked for.</summary>
     Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, bool includeArchived, CancellationToken cancellationToken);
 
-    /// <summary>The workspace's clients with these ids, archived ones included (ids of other workspaces are ignored).</summary>
+    /// <summary>Archived ones included; ids of other workspaces are ignored.</summary>
     Task<IReadOnlyList<Client>> ListByIdsAsync(Guid workspaceId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
 
-    /// <summary>Whether another client of the workspace (archived ones included) already uses the email.</summary>
-    /// <param name="exceptClientId">The client being edited, which may keep its own email.</param>
+    /// <summary>Whether another client of the workspace (archived included) uses the email.</summary>
     Task<bool> EmailExistsAsync(Guid workspaceId, string email, Guid? exceptClientId, CancellationToken cancellationToken);
 
     /// <summary>Which of these (normalized) emails already belong to a client of the workspace, archived ones included.</summary>
     Task<IReadOnlySet<string>> ExistingEmailsAsync(Guid workspaceId, IReadOnlyCollection<string> emails, CancellationToken cancellationToken);
 
-    /// <summary>Whether this account is already linked to a client of the workspace.</summary>
     Task<bool> IsLinkedAsync(Guid workspaceId, Guid userId, CancellationToken cancellationToken);
 
-    /// <summary>Tracks the client; it is persisted by <see cref="Common.IUnitOfWork.SaveChangesAsync"/>.</summary>
     void Add(Client client);
 }

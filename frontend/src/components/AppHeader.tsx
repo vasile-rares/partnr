@@ -4,7 +4,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 
 type AppHeaderProps = {
-  /** The workspace being viewed, if any: its name is shown and its settings are linked. */
   workspace?: { id: string; name: string };
 };
 

@@ -6,7 +6,6 @@ import { serverFetch } from "@/lib/api/server";
 import { isUuid } from "@/lib/uuid";
 import type { Workspace } from "@/lib/workspaces/types";
 
-/** The workspaces the signed-in user is a member of, oldest first. */
 export const getMyWorkspaces = cache(async (): Promise<Workspace[]> => {
   const response = await serverFetch("/api/workspaces");
 

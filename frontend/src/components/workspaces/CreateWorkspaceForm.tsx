@@ -9,7 +9,6 @@ import { sendJson } from "@/lib/api/client";
 import type { Workspace } from "@/lib/workspaces/types";
 
 type FormState = {
-  /** Kept so a failed attempt does not wipe what was typed. */
   name?: string;
   message?: string;
   fieldError?: string;

@@ -22,8 +22,6 @@ public sealed class EmailOptions
 
     public string? SmtpPassword { get; init; }
 
-    /// <summary>
-    /// Require TLS (STARTTLS or implicit, depending on the port). Off only for a local catcher such as Mailpit.
-    /// </summary>
+    /// <summary>Require TLS. Off only for a local catcher such as Mailpit.</summary>
     public bool UseTls { get; init; } = true;
 }

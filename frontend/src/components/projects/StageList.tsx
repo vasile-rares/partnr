@@ -24,10 +24,7 @@ import { sendJson } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import { stageStatuses, type Project, type Stage } from "@/lib/projects/types";
 
-/**
- * The project's stages, in order, with everything needed to change them. Each change is one request that answers with the
- * whole project, so the page just refreshes. An archived project shows the same list, but read-only.
- */
+/** Each change is one request that answers with the whole project, so the page just refreshes. Read-only when archived. */
 export function StageList({ workspaceId, project }: { workspaceId: string; project: Project }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -37,7 +34,6 @@ export function StageList({ workspaceId, project }: { workspaceId: string; proje
   const readOnly = project.archivedAtUtc !== null;
   const base = `/api/workspaces/${workspaceId}/projects/${project.id}/stages`;
 
-  // Runs a request, then refreshes the page; `onDone` runs only when it worked (e.g. to close the edit form).
   function run(method: "POST" | "PUT" | "DELETE", path: string, body: unknown, onDone?: () => void) {
     startTransition(async () => {
       setMessage(undefined);
@@ -198,7 +194,7 @@ function StageEditForm({
   );
 }
 
-// Removing a stage cannot be undone, so it asks first. (Archiving the whole project is the reversible way to hide work.)
+// Removing a stage cannot be undone, so it asks first.
 function DeleteStageButton({ stage, disabled, onConfirm }: { stage: Stage; disabled: boolean; onConfirm: () => void }) {
   return (
     <AlertDialog>

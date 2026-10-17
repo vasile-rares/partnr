@@ -23,7 +23,6 @@ test("the profile is edited from the account page and survives a reload", async 
   await expect(page.getByLabel("Phone")).toHaveValue("+40 721 000 000");
   await expect(page.getByLabel("Company")).toHaveValue("Acme SRL");
 
-  // Clearing an optional detail removes it.
   await page.getByLabel("Company").fill("");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();

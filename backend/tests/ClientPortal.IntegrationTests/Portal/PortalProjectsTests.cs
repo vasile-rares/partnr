@@ -22,7 +22,6 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.AddStage(project, "Design");
         await studio.AddStage(project, "Launch");
 
-        // A draft is not shared yet: not in the list, and its page does not exist for the client.
         Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!);
         Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{project.Id}")).StatusCode);
 
@@ -171,14 +170,12 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         return new StudioSession(factory, http, (await workspace.Content.ReadFromJsonAsync<WorkspaceResponse>())!.Id);
     }
 
-    /// <summary>The freelancer's side, with the calls the tests need to set a project up.</summary>
     private sealed class StudioSession(ApiFactory factory, HttpClient http, Guid workspaceId)
     {
         public HttpClient Http { get; } = http;
 
         public Guid WorkspaceId { get; } = workspaceId;
 
-        /// <summary>Adds a client, invites them, and lets them accept, the way a real client does.</summary>
         public async Task<ClientSession> AddClient(string name, string? notes = null)
         {
             var email = NewEmail();

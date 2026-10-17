@@ -6,7 +6,6 @@ import { serverFetch } from "@/lib/api/server";
 import type { PortalProject, PortalProjectSummary, PortalWorkspace } from "@/lib/portal/types";
 import { isUuid } from "@/lib/uuid";
 
-/** The workspaces the signed-in user is a client of (not a member: those are in `getMyWorkspaces`), oldest first. */
 export const getPortalWorkspaces = cache(async (): Promise<PortalWorkspace[]> => {
   const response = await serverFetch("/api/portal/workspaces");
 
@@ -20,7 +19,6 @@ export const getPortalWorkspaces = cache(async (): Promise<PortalWorkspace[]> =>
   return (await response.json()) as PortalWorkspace[];
 });
 
-/** The projects shared with the signed-in client, across all their workspaces, soonest due first. */
 export const getPortalProjects = cache(async (): Promise<PortalProjectSummary[]> => {
   const response = await serverFetch("/api/portal/projects");
 

@@ -19,6 +19,7 @@ The product vision, feature list and MVP scope are in [.claude/docs/product-plan
 
 - **After every change, suggest a short commit message** in case the user wants to commit right then. Format: `type: summary` (e.g. `feat: add client registration endpoint`), single line, imperative mood. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
 - **Never run `git commit` / `git push` on your own.** Only on explicit request; just propose the message.
+- **Comments are sparse and short.** Write one only for a non-obvious *why* (a security reason, a workaround, an invariant the types cannot show), one line when possible. No comment that restates the code or a name, no `<exception>` / `<param>` boilerplate on interfaces, no narration of steps. A better name beats a comment.
 - Do not run destructive commands (reset --hard, deleting folders, `docker compose down -v`) without confirmation.
 - Verify before saying it's done: `dotnet build` with zero warnings and a green `dotnet test` for the backend; `npm run lint` for the frontend.
 - If something could not be tested (e.g. Docker/DB unavailable), say so explicitly.

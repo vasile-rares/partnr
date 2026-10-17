@@ -12,8 +12,7 @@ import { formatDateTimeUtc } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Invitation" };
 
-// Public on purpose (see proxy.ts): the person opening the link may not have an account yet. The token in the URL is
-// what proves they got the email; accepting still needs the invited address (checked by the API).
+// Public on purpose (see proxy.ts): the visitor may have no account yet. The token proves they got the email.
 export default async function InvitePage({ params }: PageProps<"/invite/[token]">) {
   const { token } = await params;
   const invitation = await getInvitation(token);

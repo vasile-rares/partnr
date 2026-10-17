@@ -32,9 +32,8 @@ internal static class IdentityServiceCollectionExtensions
 
         services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
 
-        // Identity re-checks the account behind a cookie only every 30 minutes by default. Until then a cookie whose account is
-        // gone (deleted, or the development database was reseeded) still counts as signed in and reaches the controllers, which
-        // then fail in odd places. Checking on every request makes such a cookie plain anonymous: a clean 401, and the cookie is cleared.
+        // Identity re-checks the account behind a cookie only every 30 minutes by default. Checking on every request makes a cookie
+        // whose account is gone plain anonymous: a clean 401, and the cookie is cleared.
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
 
         services.AddOptions<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme)

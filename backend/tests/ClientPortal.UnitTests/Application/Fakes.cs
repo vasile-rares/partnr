@@ -8,7 +8,6 @@ using ClientPortal.Domain.Enums;
 
 namespace ClientPortal.UnitTests.Application;
 
-// Hand-written fakes shared by the service tests (services are tested without a database, see backend/CLAUDE.md).
 
 internal sealed class FakeUnitOfWork : IUnitOfWork
 {
@@ -36,7 +35,6 @@ internal sealed class FakeWorkspaceRepository : IWorkspaceRepository
     public Task<IReadOnlyList<Workspace>> ListForUserAsync(Guid userId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<Workspace>>(Items.Where(w => w.RoleOf(userId) is not null).ToList());
 
-    /// <summary>Workspaces where an account is a client (user id to workspace ids), as the real query derives from linked clients.</summary>
     public Dictionary<Guid, List<Guid>> ClientOf { get; } = [];
 
     public Task<IReadOnlyList<Workspace>> ListForClientAsync(Guid userId, CancellationToken cancellationToken) =>
@@ -89,10 +87,8 @@ internal sealed class FakeProjectRepository : IProjectRepository
             .Where(p => p.WorkspaceId == workspaceId && (includeArchived || !p.IsArchived) && (clientId is null || p.ClientId == clientId))
             .ToList());
 
-    /// <summary>The clients the "shared with a client" rule looks at (a project is shared through its client's linked account).</summary>
     public FakeClientRepository Clients { get; init; } = new();
 
-    // The same rule as the real query: linked, not archived, project not archived and out of Planning.
     private IEnumerable<Project> SharedWith(Guid userId) =>
         Items.Where(p => !p.IsArchived
             && p.Status != ProjectStatus.Planning
@@ -139,7 +135,6 @@ internal sealed class FakeAppLinks : IAppLinks
     public string InvitationUrl(string token) => $"https://app.test/invite/{token}";
 }
 
-/// <summary>A clock that only moves when a test says so, to test expiry.</summary>
 internal sealed class FakeTimeProvider : TimeProvider
 {
     public DateTimeOffset Now { get; set; } = new(2026, 10, 14, 9, 0, 0, TimeSpan.Zero);

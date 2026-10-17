@@ -30,7 +30,6 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         Assert.Equal(9, active!.Length);
         Assert.Equal(11, all!.Length);
 
-        // The client who accepted shows the account's details; the other one waits for an invitation that works.
         var elena = Assert.Single(all, c => c.Portal.Status == "Active");
         Assert.Equal("Elena Client", elena.Name);
         Assert.Equal("Elena Design", elena.Company);
@@ -38,7 +37,6 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         Assert.Equal("Invited", pat.Portal.Status);
         Assert.True(pat.DetailsLocked);
 
-        // Elena's projects: one under way and one still a draft, both named after her account.
         var projects = await owner.GetFromJsonAsync<ProjectResponse[]>($"/api/workspaces/{studio.Id}/projects?clientId={elena.Id}");
         Assert.Equal(["Active", "Planning"], projects!.Select(p => p.Status).Order());
         Assert.All(projects!, p => Assert.Equal("Elena Client", p.Client.DisplayName));

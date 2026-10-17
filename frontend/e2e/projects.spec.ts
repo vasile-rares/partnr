@@ -19,7 +19,6 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  // From the client's page, the client is already chosen.
   await page.goto(`/w/${workspace.id}/clients/${client.id}`);
   await expect(page.getByText("No projects for this client yet.")).toBeVisible();
   await page.getByRole("link", { name: "New project" }).click();
@@ -30,7 +29,6 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await page.getByLabel("Due date").fill("2026-12-15");
   await page.getByRole("button", { name: "Create project" }).click();
 
-  // A new project is a draft the client does not see yet.
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
   await expect(page.getByText("Not visible in their portal yet")).toBeVisible();
 
@@ -39,14 +37,12 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await expect(page.getByText("Not visible in their portal yet")).toBeHidden();
 
-  // The list shows it with its client, status and due date.
   await page.getByRole("banner").getByRole("link", { name: "Projects" }).click();
   const row = page.getByRole("row", { name: /Website/ });
   await expect(row).toContainText("Acme SRL");
   await expect(row).toContainText("Active");
   await expect(row).toContainText("15 Dec 2026");
 
-  // Archived, it leaves the list and becomes read-only.
   await row.getByRole("link", { name: "Website" }).click();
   await page.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
@@ -87,14 +83,12 @@ test("stages are added, reordered, finished and deleted, and the progress follow
   await stages.getByRole("button", { name: "Move Launch up" }).click();
   await expect(order).toHaveText(["Design", "Launch", "Development"]);
 
-  // Finishing a stage moves the progress.
   await stages.getByRole("button", { name: "Edit Design" }).click();
   await stages.getByLabel("Status").selectOption("Done");
   await stages.getByRole("button", { name: "Save stage" }).click();
   await expect(stages.getByText("1 of 3 done")).toBeVisible();
   await expect(stages.getByRole("listitem").filter({ hasText: "Design" })).toContainText("Done");
 
-  // Deleting asks first; keeping the stage changes nothing.
   await stages.getByRole("button", { name: "Delete Launch" }).click();
   await page.getByRole("button", { name: "Keep stage" }).click();
   await expect(order).toHaveText(["Design", "Launch", "Development"]);
@@ -103,11 +97,9 @@ test("stages are added, reordered, finished and deleted, and the progress follow
   await expect(order).toHaveText(["Design", "Development"]);
   await expect(stages.getByText("1 of 2 done")).toBeVisible();
 
-  // The list of projects shows the same progress.
   await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByRole("row", { name: /Website/ })).toContainText("1 of 2 done");
 
-  // Once the project is archived the stages can still be read, but not changed.
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   await page.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();

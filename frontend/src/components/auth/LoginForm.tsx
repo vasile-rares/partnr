@@ -10,7 +10,6 @@ import { postAuth } from "@/lib/auth/client";
 
 type FormState = {
   message?: string;
-  /** Kept so a failed attempt does not wipe the email; the password is deliberately not kept. */
   email?: string;
 };
 

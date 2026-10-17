@@ -5,7 +5,6 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 type SelectFieldProps = Omit<ComponentProps<"select">, "id" | "className" | "size" | "children"> & {
   label: string;
   options: { value: string; label: string }[];
-  /** Always-visible guidance. */
   hint?: string;
   error?: string;
 };

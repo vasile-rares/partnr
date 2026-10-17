@@ -5,10 +5,7 @@ using NetArchTest.Rules;
 
 namespace ClientPortal.ArchitectureTests;
 
-/// <summary>
-/// Enforces the dependency rules from backend/CLAUDE.md, so a wrong reference fails the build pipeline
-/// instead of waiting for a code review to notice it.
-/// </summary>
+/// <summary>The dependency rules from backend/CLAUDE.md.</summary>
 public class LayerDependencyTests
 {
     private static readonly Assembly Domain = typeof(Entity).Assembly;

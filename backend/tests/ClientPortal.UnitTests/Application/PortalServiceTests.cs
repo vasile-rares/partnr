@@ -130,7 +130,6 @@ public class PortalServiceTests
     public async Task GetProject_Anonymous_ThrowsUnauthorized() =>
         await Assert.ThrowsAsync<UnauthorizedException>(() => _service.GetProjectAsync(Guid.NewGuid(), CancellationToken.None));
 
-    // Signs in as the client and returns their workspace and their linked, active card.
     private (Workspace Studio, Client Client) AsClientOfAStudio()
     {
         var studio = Workspace.Create("Studio Pop", Guid.NewGuid());

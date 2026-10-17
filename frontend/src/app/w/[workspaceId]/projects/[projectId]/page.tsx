@@ -25,7 +25,6 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
   if (!workspace) {
     notFound();
   }
-  // A project of another workspace looks the same as one that does not exist (the API answers 404 for both).
   const project = await getProject(workspace.id, projectId);
   if (!project) {
     notFound();
@@ -67,7 +66,6 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           <h2 id="archive-title" className="font-heading text-xl font-semibold">
             {archived ? "Restore project" : "Archive project"}
           </h2>
-          {/* The API enforces this too; hiding the button only spares a member an error they cannot fix. */}
           {workspace.role === "Owner" ? (
             <>
               <p className="mb-4 mt-2 text-sm text-muted-foreground">

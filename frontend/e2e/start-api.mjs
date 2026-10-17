@@ -1,10 +1,10 @@
-// Starts the .NET API for the Playwright tests (it is the first `webServer` in playwright.config.ts).
+// Starts the .NET API for the Playwright tests (the first `webServer` in playwright.config.ts).
 //
-// Playwright starts its web servers before any global setup, so the order "compile -> reset the test database -> run the
-// API" lives here, in one process. The API runs on its own database (`client_portal_e2e`), recreated on every run, and is
-// compiled into e2e/.artifacts so it never collides with a dev API that has the normal bin/ folder locked.
+// Playwright starts its web servers before any global setup, so "compile -> reset the test database -> run the API"
+// lives here. The API gets its own database (`client_portal_e2e`), recreated on every run, and is compiled into
+// e2e/.artifacts so it never collides with a dev API that has bin/ locked.
 //
-// This script DROPS a database, so it has three guards before anything destructive happens (see the numbered comments).
+// This script DROPS a database, so it has three guards before anything destructive happens (the numbered comments).
 
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -20,7 +20,6 @@ const apiDll = path.join(artifactsPath, "bin", "ClientPortal.Api", "debug", "Cli
 
 const TEST_DATABASE = "client_portal_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
-// Emails go to Mailpit (from docker-compose.yml), the same catcher as in development; tests find their own messages by recipient.
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
 
 /** The dev connection string: user secrets first (that is where a local Postgres password lives), then appsettings. */

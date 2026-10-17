@@ -26,8 +26,7 @@ public sealed class ReseedTests(ApiFactory factory)
         await factory.Services.ReseedDevelopmentDataIfChangedAsync();
         Assert.Equal(HttpStatusCode.OK, await LoginStatus(email));
 
-        // ...and is gone once the seed has changed (simulated by a fingerprint from an older seed): the database is recreated
-        // from scratch, so the demo accounts are back and the fingerprint is current again.
+        // ...and is gone once the seed has changed (simulated by an older fingerprint): the database is rebuilt.
         await SetComment("seed:0000000000000000");
         await factory.Services.ReseedDevelopmentDataIfChangedAsync();
         Assert.Equal(HttpStatusCode.Unauthorized, await LoginStatus(email));

@@ -16,7 +16,6 @@ internal sealed class ProjectStageConfiguration : IEntityTypeConfiguration<Proje
         builder.Property(s => s.Name).HasMaxLength(ProjectStage.NameMaxLength).IsRequired();
         builder.Property(s => s.Description).HasMaxLength(ProjectStage.DescriptionMaxLength);
 
-        // Stored as text so the database stays readable and reordering the enum cannot silently change statuses.
         builder.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
 
         // Deliberately not unique on (ProjectId, Position): swapping two stages changes both positions in one save, and the

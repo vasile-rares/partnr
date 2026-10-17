@@ -10,10 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ClientPortal.IntegrationTests.Email;
 
-/// <summary>
-/// The other tests replace the email sender with a fake; this one checks the real SMTP sender against a throwaway Mailpit
-/// container (the same catcher used in development), read back through Mailpit's HTTP API.
-/// </summary>
+/// <summary>Checks the real SMTP sender against a throwaway Mailpit container.</summary>
 public sealed class SmtpEmailSenderTests : IAsyncLifetime
 {
     private const int SmtpPort = 1025;
@@ -46,7 +43,6 @@ public sealed class SmtpEmailSenderTests : IAsyncLifetime
         Assert.Equal("no-reply@client-portal.test", message.From.Address);
     }
 
-    // Built from AddInfrastructure, so the test also covers the options binding and validation.
     private IEmailSender BuildSender()
     {
         var configuration = new ConfigurationBuilder()

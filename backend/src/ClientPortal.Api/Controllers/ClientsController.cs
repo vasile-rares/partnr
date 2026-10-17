@@ -20,11 +20,10 @@ public sealed class ClientsController(
     }
 
     [HttpGet]
-    // includeArchived is false when the query string leaves it out.
     public async Task<IActionResult> List(Guid workspaceId, [FromQuery] bool includeArchived, CancellationToken cancellationToken) =>
         Ok(await service.ListAsync(workspaceId, includeArchived, cancellationToken));
 
-    // Typing in the add-client form calls this on every pause, so it has its own, stricter rate limit (see Program.cs).
+    // Called on every pause while typing, so it has its own rate limit (see Program.cs).
     [EnableRateLimiting(RateLimitPolicies.Suggestions)]
     [HttpGet("suggestions")]
     public async Task<IActionResult> Suggest(Guid workspaceId, [FromQuery] string? email, CancellationToken cancellationToken) =>
@@ -38,7 +37,7 @@ public sealed class ClientsController(
     public async Task<IActionResult> Update(Guid workspaceId, Guid id, UpdateClientRequest request, CancellationToken cancellationToken) =>
         Ok(await service.UpdateAsync(workspaceId, id, request, cancellationToken));
 
-    // Sending again replaces the previous invitation, so POST is both "invite" and "resend".
+    // POST is both "invite" and "resend": a new invitation replaces the old one.
     [HttpPost("{id:guid}/invitation")]
     public async Task<IActionResult> Invite(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
         Ok(await invitations.InviteAsync(workspaceId, id, cancellationToken));
@@ -47,7 +46,6 @@ public sealed class ClientsController(
     public async Task<IActionResult> CancelInvitation(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
         Ok(await invitations.CancelAsync(workspaceId, id, cancellationToken));
 
-    // Archive / restore are actions, not field edits, so they get their own endpoints instead of a flag in PUT.
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> Archive(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
         Ok(await service.ArchiveAsync(workspaceId, id, cancellationToken));

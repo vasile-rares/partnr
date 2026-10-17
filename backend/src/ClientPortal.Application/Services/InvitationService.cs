@@ -100,7 +100,6 @@ internal sealed class InvitationService(
         return new AcceptedInvitationResponse(workspace.Id, workspace.Name);
     }
 
-    /// <summary>The invitation behind the link; unknown links are NotFound, with no hint as to why.</summary>
     private async Task<ClientInvitation> FindAsync(string token, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(token) || token.Length > ClientInvitation.TokenMaxLength)

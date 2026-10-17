@@ -3,13 +3,10 @@ import "server-only";
 import { cache } from "react";
 import { serverFetch } from "@/lib/api/server";
 
-/** What the invitation page may show to whoever holds the link. */
 export type InvitationPreview = {
   workspaceName: string;
-  /** The address the invitation was sent to; only an account with this email can accept it. */
   email: string;
   status: "Pending" | "Expired" | "Cancelled" | "Accepted";
-  /** Whether an account with that email exists already: sign in instead of signing up. */
   accountExists: boolean;
   expiresAtUtc: string;
 };

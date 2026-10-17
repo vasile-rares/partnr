@@ -16,7 +16,6 @@ test("a client is added from the clients page and shows up in the list", async (
   await page.getByRole("banner").getByRole("link", { name: "Clients" }).click();
   await expect(page.getByText("No active clients")).toBeVisible();
 
-  // Only an email is needed: the client is added and invited in one step, and the list shows the address as the name.
   const email = newClientEmail();
   await page.getByRole("link", { name: "Add client" }).click();
   await page.getByLabel("Email").fill(email.toUpperCase());
@@ -106,7 +105,6 @@ test("typing the email of someone who is already a client warns and blocks addin
   await expect(page.getByText("Already a client in this workspace.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Add and invite" })).toBeDisabled();
 
-  // Another address brings the button back.
   await page.getByLabel("Email").fill(newClientEmail());
   await expect(page.getByRole("button", { name: "Add and invite" })).toBeEnabled();
 });
@@ -122,7 +120,6 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  // Edit: rename, set a company and clear the phone.
   await page.goto(`/w/${workspace.id}/clients`);
   await page.getByRole("link", { name: "Acme SRL" }).click();
   await expect(page.getByLabel("Phone")).toHaveValue("0700");
@@ -134,7 +131,6 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await expect(page.getByRole("status").filter({ hasText: "Changes saved." })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Acme International" })).toBeVisible();
 
-  // Archive: it leaves the default list, but the archived view still shows it.
   await page.getByRole("button", { name: "Archive client" }).click();
   await expect(page.getByText("This client is archived")).toBeVisible();
   await page.getByRole("link", { name: "← Clients" }).click();
@@ -143,7 +139,6 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await expect(page).toHaveURL(`/w/${workspace.id}/clients?archived=1`);
   await expect(page.getByRole("row", { name: /Acme International/ })).toContainText("Archived");
 
-  // Restore: it is back in the default list.
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
   await page.getByRole("button", { name: "Restore client" }).click();
   await expect(page.getByText("This client is archived")).toHaveCount(0);

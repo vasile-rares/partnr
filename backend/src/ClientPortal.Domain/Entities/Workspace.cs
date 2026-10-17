@@ -3,7 +3,6 @@ using ClientPortal.Domain.Exceptions;
 
 namespace ClientPortal.Domain.Entities;
 
-/// <summary>The space of a freelancer or agency: its clients and projects belong to it.</summary>
 public sealed class Workspace : Entity
 {
     public const int NameMaxLength = 100;
@@ -26,7 +25,6 @@ public sealed class Workspace : Entity
 
     public IReadOnlyCollection<WorkspaceMember> Members => _members.AsReadOnly();
 
-    /// <summary>Creates the workspace with its creator as the only member, in the Owner role.</summary>
     public static Workspace Create(string name, Guid ownerUserId)
     {
         if (ownerUserId == Guid.Empty)
@@ -53,7 +51,6 @@ public sealed class Workspace : Entity
         _members.Add(new WorkspaceMember(Id, userId, role, DateTime.UtcNow));
     }
 
-    /// <summary>The user's role here, or null when the user is not a member.</summary>
     public WorkspaceRole? RoleOf(Guid userId) => _members.FirstOrDefault(m => m.UserId == userId)?.Role;
 
     private static string ValidName(string name)

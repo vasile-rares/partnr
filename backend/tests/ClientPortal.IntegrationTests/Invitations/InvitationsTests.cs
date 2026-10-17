@@ -67,13 +67,11 @@ public sealed partial class InvitationsTests(ApiFactory factory)
         var accepted = await response.Content.ReadFromJsonAsync<AcceptedInvitationResponse>();
         Assert.Equal(workspaceId, accepted!.WorkspaceId);
 
-        // Signed in with the invited email, and the details from the sign-up form.
         var me = await newClient.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");
         Assert.Equal(client.Email, me!.Email);
         Assert.Equal("Elena Ionescu", me.FullName);
         Assert.Equal("Elena Design", me.Company);
 
-        // The workspace sees the account's details, not the card's, and can no longer change them.
         var seen = await studio.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{client.Id}");
         Assert.Equal("Active", seen!.Portal.Status);
         Assert.Equal("Elena Ionescu", seen.Name);
@@ -366,7 +364,6 @@ public sealed partial class InvitationsTests(ApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<ClientResponse>())!;
     }
 
-    /// <summary>Sends the invitation and returns the token from the link in the email.</summary>
     private async Task<string> Invite(HttpClient studio, Guid workspaceId, ClientResponse client)
     {
         var before = factory.Emails.SentTo(client.Email).Count;
@@ -379,7 +376,6 @@ public sealed partial class InvitationsTests(ApiFactory factory)
         return InviteLink().Match(sent[^1].TextBody).Groups[1].Value;
     }
 
-    // There is no endpoint for adding members yet (that comes with member invitations), so tests add one straight to the database.
     private async Task AddMember(Guid workspaceId, Guid userId)
     {
         using var scope = factory.Services.CreateScope();

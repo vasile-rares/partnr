@@ -5,7 +5,6 @@ export type ApiFailure = {
   ok: false;
   /** HTTP status, or 0 when the server could not be reached. */
   status: number;
-  /** A message written for people, safe to show as is. */
   message: string;
   /** Messages per input, keyed by lower-case field name (e.g. "email", "name"). */
   fieldErrors: Record<string, string>;
@@ -43,7 +42,6 @@ export async function sendJson<T = unknown>(
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-  // Only a caller that passes a signal can see "aborted"; sendJson never does.
   return "aborted" in result ? failure(0, messages.network) : result;
 }
 
@@ -74,7 +72,6 @@ async function request<T>(path: string, init: RequestInit): Promise<ApiResult<T>
     case 404:
       return failure(404, messages.notFound);
     case 409:
-      // Conflicts carry a message the API wrote for people ("already exists...").
       return failure(409, problem?.detail ?? messages.server);
     default:
       return failure(response.status, messages.server);
@@ -94,7 +91,6 @@ function badRequest(problem: ProblemDetails | null): ApiFailure {
     return failure(400, messages.invalidInput, fieldErrors);
   }
 
-  // A business rule rejected by the API (e.g. the password policy): its message is already written for people.
   return failure(400, problem?.detail ?? messages.invalidInput);
 }
 

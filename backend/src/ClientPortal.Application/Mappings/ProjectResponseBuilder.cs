@@ -4,10 +4,7 @@ using ClientPortal.Domain.Entities;
 
 namespace ClientPortal.Application.Mappings;
 
-/// <summary>
-/// Turns projects into what the workspace sees. The client's name goes through <see cref="ClientResponseBuilder"/>, so a client
-/// with an account shows the account's name here too, never the card's old one.
-/// </summary>
+/// <summary>Names the client through <see cref="ClientResponseBuilder"/>, so the account's name wins.</summary>
 internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientResponseBuilder clientResponses)
 {
     public async Task<ProjectResponse> BuildAsync(Project project, CancellationToken cancellationToken) =>

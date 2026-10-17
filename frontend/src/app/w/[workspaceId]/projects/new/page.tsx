@@ -17,7 +17,7 @@ export default async function NewProjectPage({ params, searchParams }: PageProps
   if (!workspace) {
     notFound();
   }
-  // Only active clients: an archived one cannot get a new project (the API answers 409).
+  // Only active clients: an archived one cannot get a new project.
   const clients = (await getClients(workspace.id)).map((client) => ({ id: client.id, displayName: displayName(client) }));
   // Coming from a client's page preselects that client; an id that is not in the list simply selects nothing.
   const requested = (await searchParams).clientId;

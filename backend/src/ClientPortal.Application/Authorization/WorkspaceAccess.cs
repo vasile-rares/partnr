@@ -8,15 +8,11 @@ namespace ClientPortal.Application.Authorization;
 
 internal sealed record WorkspaceMembership(Workspace Workspace, Guid UserId, WorkspaceRole Role);
 
-/// <summary>
-/// The one place that decides who may touch a workspace. Every service that reads or changes data inside a workspace
-/// must go through here first, so the access rule cannot be forgotten or implemented twice.
-/// </summary>
+/// <summary>The one place that decides who may touch a workspace.</summary>
 internal sealed class WorkspaceAccess(IWorkspaceRepository workspaces, ICurrentUser currentUser)
 {
     public Guid RequireUserId() => currentUser.UserId ?? throw new UnauthorizedException("Not signed in.");
 
-    /// <exception cref="NotFoundException">The workspace does not exist or the user is not a member (deliberately the same answer).</exception>
     public async Task<WorkspaceMembership> RequireMemberAsync(Guid workspaceId, CancellationToken cancellationToken)
     {
         var userId = RequireUserId();
@@ -32,8 +28,6 @@ internal sealed class WorkspaceAccess(IWorkspaceRepository workspaces, ICurrentU
         return new WorkspaceMembership(workspace, userId, role.Value);
     }
 
-    /// <exception cref="NotFoundException">As <see cref="RequireMemberAsync"/>.</exception>
-    /// <exception cref="ForbiddenException">The user is a member but not the owner.</exception>
     public async Task<WorkspaceMembership> RequireOwnerAsync(Guid workspaceId, CancellationToken cancellationToken)
     {
         var membership = await RequireMemberAsync(workspaceId, cancellationToken);

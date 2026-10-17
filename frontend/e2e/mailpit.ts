@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 
-// Mailpit (docker-compose.yml) catches every email the API sends. The same instance serves all tests and the dev API,
-// so a test only ever looks at the messages sent to its own, unique address.
+// Mailpit (docker-compose.yml) catches every email, from the tests and the dev API alike, so a test only looks at
+// the messages sent to its own, unique address.
 const MAILPIT = process.env.MAILPIT_URL ?? "http://localhost:8025";
 
 type MailpitMessage = { ID: string; Subject: string; Created: string };

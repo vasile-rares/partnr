@@ -3,7 +3,6 @@ using ClientPortal.Application.Interfaces.Services;
 
 namespace ClientPortal.Infrastructure;
 
-/// <summary>The "App" configuration section. Validated at startup, like the email settings.</summary>
 public sealed class AppOptions
 {
     public const string SectionName = "App";

@@ -330,7 +330,6 @@ public class ClientServiceTests
         Assert.Equal("Acme", client.Name);
         Assert.Equal("old note", client.Notes);
 
-        // The form sends the unchanged details back together with the new notes.
         var response = await _service.UpdateAsync(
             _workspace.Id,
             client.Id,

@@ -10,12 +10,11 @@ using Testcontainers.PostgreSql;
 
 namespace ClientPortal.IntegrationTests;
 
-/// <summary>Runs the real API against a throwaway Postgres container (needs Docker). One instance is shared by all tests.</summary>
+/// <summary>Runs the real API against a throwaway Postgres container (needs Docker).</summary>
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17").Build();
 
-    /// <summary>Every email the API sent during the tests; nothing goes over SMTP.</summary>
     public FakeEmailSender Emails { get; } = new();
 
     public async Task InitializeAsync()

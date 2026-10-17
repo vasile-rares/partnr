@@ -9,7 +9,6 @@ import type { Client } from "@/lib/clients/types";
 
 type State = { message?: string };
 
-/** Archives the client, or restores it when it is already archived. */
 export function ArchiveClientButton({ workspaceId, client }: { workspaceId: string; client: Client }) {
   const router = useRouter();
   const archived = client.archivedAtUtc !== null;

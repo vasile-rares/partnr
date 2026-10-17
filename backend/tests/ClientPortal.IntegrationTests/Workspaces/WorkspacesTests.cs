@@ -72,7 +72,6 @@ public sealed class WorkspacesTests(ApiFactory factory)
             HttpStatusCode.NotFound,
             (await stranger.PatchAsJsonAsync($"/api/workspaces/{workspace.Id}", new { name = "Hijacked" })).StatusCode);
 
-        // And the owner's data is untouched.
         var unchanged = await owner.GetFromJsonAsync<WorkspaceResponse>($"/api/workspaces/{workspace.Id}");
         Assert.Equal("Studio", unchanged!.Name);
     }
@@ -166,7 +165,6 @@ public sealed class WorkspacesTests(ApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<WorkspaceResponse>())!;
     }
 
-    // There is no endpoint for adding members yet (that comes with invitations), so tests add one straight to the database.
     private async Task AddMember(Guid workspaceId, Guid userId)
     {
         using var scope = factory.Services.CreateScope();

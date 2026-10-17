@@ -3,7 +3,7 @@ using ClientPortal.Domain.Exceptions;
 
 namespace ClientPortal.Domain.Entities;
 
-/// <summary>One step of a project, such as Design or Launch. Part of the <see cref="Project"/> aggregate: only changed through it.</summary>
+/// <summary>Only changed through <see cref="Project"/>.</summary>
 public sealed class ProjectStage : Entity
 {
     public const int NameMaxLength = 200;

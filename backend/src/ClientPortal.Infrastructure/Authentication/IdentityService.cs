@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClientPortal.Infrastructure.Authentication;
 
-/// <summary>Adapter from <see cref="IIdentityService"/> to ASP.NET Core Identity; no business rules live here.</summary>
 internal sealed class IdentityService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager) : IIdentityService
