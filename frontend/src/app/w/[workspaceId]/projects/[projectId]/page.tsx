@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { DeliverableList } from "@/components/deliverables/DeliverableList";
 import { ArchiveProjectButton } from "@/components/projects/ArchiveProjectButton";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { StageList } from "@/components/projects/StageList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { requireUser } from "@/lib/auth/session";
+import { getDeliverables } from "@/lib/deliverables/server";
 import { getProject } from "@/lib/projects/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
@@ -59,6 +61,13 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
         ) : null}
 
         <StageList workspaceId={workspace.id} project={project} />
+
+        <DeliverableList
+          workspaceId={workspace.id}
+          project={project}
+          deliverables={await getDeliverables(workspace.id, project.id)}
+          isOwner={workspace.role === "Owner"}
+        />
 
         <ProjectForm workspaceId={workspace.id} project={project} />
 

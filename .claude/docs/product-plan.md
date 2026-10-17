@@ -329,7 +329,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [ ] Portal pentru clienți (început: lista proiectelor și pagina unui proiect, cu etape și progres; urmează ce cere clientul să facă: livrabile, feedback, aprobări)
 - [ ] Timeline
 - [ ] Livrabile, în trei pași:
-  - [ ] Pas 1: livrabile ca link pentru freelancer (backend făcut; urmează interfața: secțiunea „Deliverables” pe pagina proiectului)
+  - [x] Pas 1: livrabile ca link pentru freelancer (API și secțiunea „Deliverables” pe pagina proiectului)
   - [ ] Pas 2: livrabilele în portalul clientului
   - [ ] Pas 3: upload de fișiere (decizie de stocare)
 - [ ] Feedback
@@ -445,6 +445,7 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Arhivare ca la clienți și proiecte:** doar Owner-ul arhivează și restaurează (403 pentru membri). `Archive()` pune și statusul înapoi pe `Draft`, deci un livrabil restaurat nu reapare niciodată la client fără o nouă partajare; restaurarea nu are caz special. Un livrabil arhivat e doar de citit (409), iar un **proiect arhivat își blochează livrabilele** (409), dar ele se pot citi.
 - **Orice membru** adaugă, editează, partajează și șterge un draft.
 - **API:** `/api/workspaces/{id}/projects/{projectId}/deliverables` (`?includeArchived=true`, cele mai noi primele), cu `POST`, `GET {id}`, `PUT {id}`, `DELETE {id}` (204) și `POST {id}/share|unshare|archive|restore`. Ruta conține proiectul, iar repository-ul caută după `(workspaceId, projectId, id)`: un livrabil al altui proiect sau workspace e 404.
+- **Interfața freelancerului:** secțiunea „Deliverables” pe pagina proiectului, între etape și formularul proiectului (`DeliverableList`, `src/components/deliverables/`). Listă cu cele mai noi primele; cele arhivate stau separat sub „Archived”, ca Owner-ul să le poată restaura. Butoanele Share / Unshare, Edit și Delete (doar pentru Draft, cu confirmare) sunt pentru orice membru, Archive / Restore doar pentru Owner (membrii nu le văd, în loc să primească 403). Formularul de adăugare și cel de editare au etichete diferite („Deliverable title” / „Title”), fiindcă sunt pe ecran în același timp. Linkul se deschide într-un tab nou, cu `rel="noopener noreferrer"`. Un link care nu e `https` ajunge la API, iar mesajul lui apare în formular (fără validare dublată în browser).
 - **Date demo:** „Elena Design website” are „Homepage mockups” (Shared, la etapa Design) și „Staging site” (Draft, la Development).
 
 ### Generale
