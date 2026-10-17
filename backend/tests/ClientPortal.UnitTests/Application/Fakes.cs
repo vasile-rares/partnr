@@ -116,6 +116,12 @@ internal sealed class FakeDeliverableRepository : IDeliverableRepository
             .OrderByDescending(d => d.CreatedAtUtc)
             .ToList());
 
+    public Task<IReadOnlyList<Deliverable>> ListSharedAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Deliverable>>(Items
+            .Where(d => d.ProjectId == projectId && d.Status == DeliverableStatus.Shared && !d.IsArchived)
+            .OrderByDescending(d => d.CreatedAtUtc)
+            .ToList());
+
     public void Add(Deliverable deliverable) => Items.Add(deliverable);
 
     public void Remove(Deliverable deliverable) => Items.Remove(deliverable);

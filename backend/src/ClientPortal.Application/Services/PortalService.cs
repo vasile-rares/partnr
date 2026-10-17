@@ -8,7 +8,11 @@ using ClientPortal.Domain.Entities;
 
 namespace ClientPortal.Application.Services;
 
-internal sealed class PortalService(IWorkspaceRepository workspaces, IProjectRepository projects, WorkspaceAccess access) : IPortalService
+internal sealed class PortalService(
+    IWorkspaceRepository workspaces,
+    IProjectRepository projects,
+    IDeliverableRepository deliverables,
+    WorkspaceAccess access) : IPortalService
 {
     public async Task<IReadOnlyList<PortalWorkspaceResponse>> ListWorkspacesAsync(CancellationToken cancellationToken)
     {
@@ -47,6 +51,10 @@ internal sealed class PortalService(IWorkspaceRepository workspaces, IProjectRep
             throw new NotFoundException($"The project with id '{id}' was not found.");
         }
 
+        var stages = project.Stages;
+        var stageNames = stages.ToDictionary(s => s.Id, s => s.Name);
+        var shared = await deliverables.ListSharedAsync(project.Id, cancellationToken);
+
         return new PortalProjectResponse(
             project.Id,
             workspace,
@@ -56,7 +64,15 @@ internal sealed class PortalService(IWorkspaceRepository workspaces, IProjectRep
             project.DueDate,
             project.Status.ToString(),
             Progress(project),
-            project.Stages.Select(s => new StageResponse(s.Id, s.Name, s.Description, s.DueDate, s.Status.ToString())).ToList());
+            stages.Select(s => new StageResponse(s.Id, s.Name, s.Description, s.DueDate, s.Status.ToString())).ToList(),
+            shared
+                .Select(d => new PortalDeliverableResponse(
+                    d.Id,
+                    d.Title,
+                    d.Description,
+                    d.Url,
+                    d.StageId is { } stageId ? stageNames.GetValueOrDefault(stageId) : null))
+                .ToList());
     }
 
     private async Task<Dictionary<Guid, PortalWorkspaceResponse>> WorkspacesAsync(Guid userId, CancellationToken cancellationToken) =>

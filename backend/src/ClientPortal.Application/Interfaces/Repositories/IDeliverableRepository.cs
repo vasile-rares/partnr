@@ -10,6 +10,12 @@ public interface IDeliverableRepository
     /// <summary>Newest first.</summary>
     Task<IReadOnlyList<Deliverable>> ListAsync(Guid workspaceId, Guid projectId, bool includeArchived, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// What a client may see of one project: shared and not archived, newest first. The caller must already have
+    /// found the project through <see cref="IProjectRepository.GetSharedWithClientAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<Deliverable>> ListSharedAsync(Guid projectId, CancellationToken cancellationToken);
+
     void Add(Deliverable deliverable);
 
     void Remove(Deliverable deliverable);

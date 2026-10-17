@@ -1,3 +1,4 @@
+import { ExternalLinkIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -65,6 +66,38 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/p
             </dl>
           </CardContent>
         </Card>
+
+        {project.deliverables.length > 0 ? (
+          <section aria-labelledby="deliverables-title" className="mt-10">
+            <h2 id="deliverables-title" className="mb-4 font-heading text-xl font-semibold">
+              Deliverables
+            </h2>
+            <ul className="flex flex-col divide-y rounded-lg border">
+              {project.deliverables.map((deliverable) => (
+                <li key={deliverable.id} className="p-4">
+                  <p className="font-medium">
+                    <a
+                      href={deliverable.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 hover:underline"
+                    >
+                      {deliverable.title}
+                      <ExternalLinkIcon aria-hidden className="size-4 text-muted-foreground" />
+                      <span className="sr-only">(opens in a new tab)</span>
+                    </a>
+                  </p>
+                  {deliverable.description ? (
+                    <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{deliverable.description}</p>
+                  ) : null}
+                  {deliverable.stageName ? (
+                    <p className="mt-2 text-sm text-muted-foreground">Stage: {deliverable.stageName}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {project.stages.length > 0 ? (
           <section aria-labelledby="stages-title" className="mt-10">

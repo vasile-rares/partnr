@@ -12,13 +12,14 @@ public class PortalServiceTests
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeClientRepository _clients = new();
     private readonly FakeProjectRepository _projects;
+    private readonly FakeDeliverableRepository _deliverables = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly PortalService _service;
 
     public PortalServiceTests()
     {
         _projects = new FakeProjectRepository { Clients = _clients };
-        _service = new PortalService(_workspaces, _projects, new WorkspaceAccess(_workspaces, _currentUser));
+        _service = new PortalService(_workspaces, _projects, _deliverables, new WorkspaceAccess(_workspaces, _currentUser));
     }
 
     [Fact]
@@ -109,6 +110,38 @@ public class PortalServiceTests
     }
 
     [Fact]
+    public async Task GetProject_ShowsOnlySharedDeliverables_WithTheirStageName_NewestFirst()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var design = project.AddStage("Design", null, null);
+        var older = AddDeliverable(project, "Older", design.Id, shared: true);
+        Thread.Sleep(2); // CreatedAtUtc decides the order
+        var newer = AddDeliverable(project, "Newer", stageId: null, shared: true);
+        AddDeliverable(project, "Still a draft", null, shared: false);
+        AddDeliverable(project, "Archived", null, shared: true).Archive();
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        Assert.Equal([newer.Id, older.Id], response.Deliverables.Select(d => d.Id));
+        Assert.Null(response.Deliverables[0].StageName);
+        Assert.Equal("Design", response.Deliverables[1].StageName);
+    }
+
+    [Fact]
+    public async Task GetProject_NeverShowsTheDeliverablesOfAnotherProject()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var mine = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var other = AddProject(studio, client, "Other", ProjectStatus.Active);
+        AddDeliverable(other, "Theirs", null, shared: true);
+
+        var response = await _service.GetProjectAsync(mine.Id, CancellationToken.None);
+
+        Assert.Empty(response.Deliverables);
+    }
+
+    [Fact]
     public async Task GetProject_ThatIsADraft_Archived_OrSomeoneElses_LooksLikeItDoesNotExist()
     {
         var (studio, client) = AsClientOfAStudio();
@@ -141,6 +174,19 @@ public class PortalServiceTests
         _currentUser.UserId = _me;
 
         return (studio, client);
+    }
+
+    private Deliverable AddDeliverable(Project project, string title, Guid? stageId, bool shared)
+    {
+        var deliverable = Deliverable.Create(project.WorkspaceId, project.Id, stageId, title, null, "https://example.com/file");
+        if (shared)
+        {
+            deliverable.Share();
+        }
+
+        _deliverables.Items.Add(deliverable);
+
+        return deliverable;
     }
 
     private Project AddProject(Workspace studio, Client client, string name, ProjectStatus status, string? description = null)

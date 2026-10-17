@@ -22,4 +22,8 @@ public sealed record PortalProjectResponse(
     DateOnly? DueDate,
     string Status,
     ProjectProgressResponse Progress,
-    IReadOnlyList<StageResponse> Stages);
+    IReadOnlyList<StageResponse> Stages,
+    IReadOnlyList<PortalDeliverableResponse> Deliverables);
+
+/// <summary>Only what was shared: no status (always Shared), no archive date, no ids of the workspace's side.</summary>
+public sealed record PortalDeliverableResponse(Guid Id, string Title, string? Description, string Url, string? StageName);

@@ -15,8 +15,19 @@ export type PortalProjectSummary = {
   progress: Progress;
 };
 
+/** Only shared ones reach the portal, so there is no status here. Newest first. */
+export type PortalDeliverable = {
+  id: string;
+  title: string;
+  description: string | null;
+  /** Always an https address (the API refuses anything else). */
+  url: string;
+  stageName: string | null;
+};
+
 export type PortalProject = PortalProjectSummary & {
   description: string | null;
   startDate: string | null;
   stages: Stage[];
+  deliverables: PortalDeliverable[];
 };

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using ClientPortal.Application.DTOs.Clients;
+using ClientPortal.Application.DTOs.Deliverables;
 using ClientPortal.Application.DTOs.Portal;
 using ClientPortal.Application.DTOs.Projects;
 using ClientPortal.Application.DTOs.Workspaces;
@@ -154,6 +155,78 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         Assert.Equal(["Done", "ToDo"], detail.Stages.Select(s => s.Status));
     }
 
+    [Fact]
+    public async Task Client_SeesADeliverableOnlyWhileItIsSharedAndNotArchived()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var project = await studio.AddProject(elena, "Website");
+        await studio.SetStatus(project, "Active");
+        var design = (await studio.AddStage(project, "Design")).Stages[0];
+        var mockup = await studio.AddDeliverable(project, "Homepage mockup", design.Id);
+        var url = $"/api/portal/projects/{project.Id}";
+
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Deliverables);
+
+        await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/share", null);
+        var shared = Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Deliverables);
+        Assert.Equal((mockup.Id, "Homepage mockup", "Design"), (shared.Id, shared.Title, shared.StageName));
+        Assert.Equal("https://example.com/file", shared.Url);
+
+        await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/unshare", null);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Deliverables);
+
+        await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/share", null);
+        await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/archive", null);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Deliverables);
+
+        await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/restore", null);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Deliverables); // back as a draft
+    }
+
+    [Fact]
+    public async Task SharedDeliverable_FollowsTheProject_AndNeverReachesAnotherClient()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var bram = await studio.AddClient("Bram");
+        var hers = await studio.AddProject(elena, "Elena's site");
+        var his = await studio.AddProject(bram, "Bram's site");
+        await studio.SetStatus(hers, "Planning");
+        await studio.SetStatus(his, "Active");
+        var shared = await studio.AddDeliverable(hers, "Elena's mockup", null, share: true);
+
+        // Shared, but the project is still a draft: there is nothing to see, and no way in through the project.
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+
+        await studio.SetStatus(hers, "Active");
+        Assert.Equal("Elena's mockup", Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{hers.Id}"))!.Deliverables).Title);
+
+        var bramView = await bram.Http.GetStringAsync($"/api/portal/projects/{his.Id}");
+        Assert.DoesNotContain(shared.Id.ToString(), bramView);
+        Assert.DoesNotContain("Elena's mockup", bramView);
+        Assert.Equal(HttpStatusCode.NotFound, (await bram.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task PortalDeliverable_ShowsNothingTheWorkspaceKeepsToItself()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var project = await studio.AddProject(elena, "Website");
+        await studio.SetStatus(project, "Active");
+        var design = (await studio.AddStage(project, "Design")).Stages[0];
+        await studio.AddDeliverable(project, "Mockup", design.Id, share: true);
+
+        var body = await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}");
+
+        Assert.Contains("Mockup", body);
+        foreach (var hidden in new[] { "workspaceId", "projectId", "stageId", "archivedAtUtc", "createdAtUtc" })
+        {
+            Assert.DoesNotContain($"\"{hidden}\"", body, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 
     [GeneratedRegex("/invite/([A-Za-z0-9_-]+)")]
@@ -210,6 +283,21 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             return (await response.Content.ReadFromJsonAsync<ProjectResponse>())!;
+        }
+
+        public string DeliverablesUrl(ProjectResponse project) => $"/api/workspaces/{WorkspaceId}/projects/{project.Id}/deliverables";
+
+        public async Task<DeliverableResponse> AddDeliverable(ProjectResponse project, string title, Guid? stageId, bool share = false)
+        {
+            var response = await Http.PostAsJsonAsync(DeliverablesUrl(project), new { stageId, title, url = "https://example.com/file" });
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            var deliverable = (await response.Content.ReadFromJsonAsync<DeliverableResponse>())!;
+            if (share)
+            {
+                Assert.Equal(HttpStatusCode.OK, (await Http.PostAsync($"{DeliverablesUrl(project)}/{deliverable.Id}/share", null)).StatusCode);
+            }
+
+            return deliverable;
         }
 
         public async Task SetStatus(ProjectResponse project, string status)

@@ -326,11 +326,11 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 1: proiecte pentru freelancer (API, listă, pagina proiectului, secțiune pe pagina clientului, arhivare)
   - [x] Pas 2: etape (ordonate, cu status) și progres
   - [x] Pas 3: proiectele și etapele în portalul clientului
-- [ ] Portal pentru clienți (început: lista proiectelor și pagina unui proiect, cu etape și progres; urmează ce cere clientul să facă: livrabile, feedback, aprobări)
+- [ ] Portal pentru clienți (început: lista proiectelor și pagina unui proiect, cu etape, progres și livrabile partajate; urmează ce cere clientul să facă: feedback, aprobări)
 - [ ] Timeline
 - [ ] Livrabile, în trei pași:
   - [x] Pas 1: livrabile ca link pentru freelancer (API și secțiunea „Deliverables” pe pagina proiectului)
-  - [ ] Pas 2: livrabilele în portalul clientului
+  - [x] Pas 2: livrabilele în portalul clientului
   - [ ] Pas 3: upload de fișiere (decizie de stocare)
 - [ ] Feedback
 - [ ] Aprobări
@@ -446,6 +446,7 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
 - **Orice membru** adaugă, editează, partajează și șterge un draft.
 - **API:** `/api/workspaces/{id}/projects/{projectId}/deliverables` (`?includeArchived=true`, cele mai noi primele), cu `POST`, `GET {id}`, `PUT {id}`, `DELETE {id}` (204) și `POST {id}/share|unshare|archive|restore`. Ruta conține proiectul, iar repository-ul caută după `(workspaceId, projectId, id)`: un livrabil al altui proiect sau workspace e 404.
 - **Interfața freelancerului:** secțiunea „Deliverables” pe pagina proiectului, între etape și formularul proiectului (`DeliverableList`, `src/components/deliverables/`). Listă cu cele mai noi primele; cele arhivate stau separat sub „Archived”, ca Owner-ul să le poată restaura. Butoanele Share / Unshare, Edit și Delete (doar pentru Draft, cu confirmare) sunt pentru orice membru, Archive / Restore doar pentru Owner (membrii nu le văd, în loc să primească 403). Formularul de adăugare și cel de editare au etichete diferite („Deliverable title” / „Title”), fiindcă sunt pe ecran în același timp. Linkul se deschide într-un tab nou, cu `rel="noopener noreferrer"`. Un link care nu e `https` ajunge la API, iar mesajul lui apare în formular (fără validare dublată în browser).
+- **În portal:** livrabilele vin **în răspunsul proiectului** (`GET /api/portal/projects/{id}` are lista `deliverables`), nu pe un endpoint separat: pagina are nevoie de ele oricum, iar feedback-ul și aprobările își vor face endpoint-urile lor, pe un livrabil anume. Regula „clientul poate vedea livrabilul” = proiectul e vizibil (aceeași definiție din `ProjectRepository`) **și** livrabilul e `Shared` și nearhivat (`IDeliverableRepository.ListSharedAsync`, apelat doar după ce proiectul a fost găsit ca partajat). Un proiect în Planning sau arhivat rămâne 404, deci livrabilele lui nu se văd nici dacă sunt Shared. DTO propriu, `PortalDeliverableResponse` (`id`, `title`, `description`, `url`, `stageName`): fără status, ids de workspace/proiect/etapă sau date de creare/arhivare. Pagina `/portal/projects/{id}` are secțiunea „Deliverables” între „Where things stand” și „Stages” (ascunsă când nu e nimic partajat), cu linkul într-un tab nou și o etichetă pentru cititoarele de ecran („opens in a new tab”).
 - **Date demo:** „Elena Design website” are „Homepage mockups” (Shared, la etapa Design) și „Staging site” (Draft, la Development).
 
 ### Generale

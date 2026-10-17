@@ -170,6 +170,20 @@ test("a client sees the projects shared with them, and what is done and what com
   await setStatus(website, "Active");
   const draft = await createProject("Brand refresh");
 
+  const addDeliverable = async (title: string, share: boolean) => {
+    const created = await request.post(`/api/workspaces/${workspace.id}/projects/${website.id}/deliverables`, {
+      data: { title, description: `About ${title}.`, url: `https://files.example/${encodeURIComponent(title)}` },
+    });
+    expect(created.status()).toBe(201);
+    const deliverable = await created.json();
+    if (share) {
+      expect((await request.post(`/api/workspaces/${workspace.id}/projects/${website.id}/deliverables/${deliverable.id}/share`)).ok()).toBe(true);
+    }
+    return deliverable;
+  };
+  const mockup = await addDeliverable("Homepage mockup", true);
+  await addDeliverable("Private notes", false);
+
   await page.goto(`/invite/${token}`);
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
@@ -196,6 +210,19 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(stages.nth(1)).toContainText("In progress");
   await expect(stages.nth(2)).toContainText("To do");
   await expect(page.getByText("Pays late.")).toHaveCount(0);
+
+  // Only what was shared shows up, and it opens the freelancer's link in a new tab.
+  const deliverables = page.getByRole("region", { name: "Deliverables" });
+  await expect(deliverables.getByRole("listitem")).toHaveCount(1);
+  const link = deliverables.getByRole("link", { name: /Homepage mockup/ });
+  await expect(link).toHaveAttribute("href", "https://files.example/Homepage%20mockup");
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(deliverables.getByText("About Homepage mockup.")).toBeVisible();
+  await expect(page.getByText("Private notes")).toHaveCount(0);
+
+  await request.post(`/api/workspaces/${workspace.id}/projects/${website.id}/deliverables/${mockup.id}/unshare`);
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Deliverables" })).toHaveCount(0);
 
   // The draft has no page for the client until the freelancer moves it out of Planning.
   await page.goto(`/portal/projects/${draft.id}`);

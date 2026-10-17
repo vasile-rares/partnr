@@ -1,5 +1,6 @@
 using ClientPortal.Application.Interfaces.Repositories;
 using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClientPortal.Infrastructure.Persistence.Repositories;
@@ -19,6 +20,14 @@ internal sealed class DeliverableRepository(ApplicationDbContext dbContext) : ID
         await dbContext.Deliverables
             .AsNoTracking()
             .Where(d => d.WorkspaceId == workspaceId && d.ProjectId == projectId && (includeArchived || d.ArchivedAtUtc == null))
+            .OrderByDescending(d => d.CreatedAtUtc)
+            .ThenByDescending(d => d.Id)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Deliverable>> ListSharedAsync(Guid projectId, CancellationToken cancellationToken) =>
+        await dbContext.Deliverables
+            .AsNoTracking()
+            .Where(d => d.ProjectId == projectId && d.Status == DeliverableStatus.Shared && d.ArchivedAtUtc == null)
             .OrderByDescending(d => d.CreatedAtUtc)
             .ThenByDescending(d => d.Id)
             .ToListAsync(cancellationToken);
