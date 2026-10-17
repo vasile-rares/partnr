@@ -129,6 +129,56 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                     b.ToTable("client_invitations", (string)null);
                 });
 
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Deliverable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("StageId");
+
+                    b.HasIndex("WorkspaceId", "ProjectId");
+
+                    b.ToTable("deliverables", (string)null);
+                });
+
             modelBuilder.Entity("ClientPortal.Domain.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -420,6 +470,26 @@ namespace ClientPortal.Infrastructure.Persistence.Migrations
                         .HasForeignKey("InvitedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("ClientPortal.Domain.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ClientPortal.Domain.Entities.Deliverable", b =>
+                {
+                    b.HasOne("ClientPortal.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClientPortal.Domain.Entities.ProjectStage", null)
+                        .WithMany()
+                        .HasForeignKey("StageId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("ClientPortal.Domain.Entities.Workspace", null)
                         .WithMany()

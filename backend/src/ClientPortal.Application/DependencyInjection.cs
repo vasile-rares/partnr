@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IInvitationService, InvitationService>();
         services.AddScoped<ProjectResponseBuilder>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IDeliverableService, DeliverableService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<WorkspaceAccess>();

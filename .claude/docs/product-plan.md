@@ -328,7 +328,10 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 3: proiectele și etapele în portalul clientului
 - [ ] Portal pentru clienți (început: lista proiectelor și pagina unui proiect, cu etape și progres; urmează ce cere clientul să facă: livrabile, feedback, aprobări)
 - [ ] Timeline
-- [ ] Livrabile
+- [ ] Livrabile, în trei pași:
+  - [ ] Pas 1: livrabile ca link pentru freelancer (backend făcut; urmează interfața: secțiunea „Deliverables” pe pagina proiectului)
+  - [ ] Pas 2: livrabilele în portalul clientului
+  - [ ] Pas 3: upload de fișiere (decizie de stocare)
 - [ ] Feedback
 - [ ] Aprobări
 - [ ] Notificări
@@ -431,6 +434,18 @@ Aici se notează deciziile de arhitectură / model de date luate pe parcurs (cu 
   - **Fără workspace în rută**, ca restul `/api/portal`: clientul vede proiectele din toate workspace-urile cu care lucrează, grupate pe freelancer în `/portal`; pagina unui proiect e `/portal/projects/{id}`.
   - **„Unde suntem / ce urmează”** se scrie în `lib/portal/summary.ts`, din statusul proiectului și din etape: statusul câștigă (un proiect Completed sau On hold spune asta), altfel „Working on …” (etapele In progress) și „Up next” (prima etapă To do). Pagina e doar de citit; nu are încă nimic de făcut pentru client (aprobările vin mai târziu).
 - **Frontend:** pagina „Projects” în header (cu `?archived=1`, ca la clienți), plus secțiunea „Projects” pe pagina clientului, cu „New project” care preselectează clientul (`?clientId=`). Clientul se alege dintr-un select nativ (`native-select` din shadcn), fiindcă merge direct cu `FormData` și cu validarea nativă.
+
+### Livrabile
+
+- **Agregat propriu** (`Deliverable`), nu parte din `Project` ca etapele: feedback-ul și aprobările vor atârna de el. Se leagă obligatoriu de **proiect** și opțional de o **etapă**. Ștergerea unei etape îi golește legătura (`ON DELETE SET NULL`), nu șterge livrabilul. Etapa trebuie să aparțină aceluiași proiect (altfel 404, ca la etapele din rută); asta o verifică serviciul, nu baza.
+- **Conținut la Pasul 1:** titlu (obligatoriu), descriere, **un singur link `https`**. Schema se verifică în entitate (`Uri` absolut, doar `https`), ca `javascript:` sau `data:` să nu ajungă niciodată într-un link pe care îl deschide clientul. Mai multe linkuri = mai multe livrabile. Upload de fișiere vine la Pasul 3. **Fără versiuni** în MVP: la modificări se editează linkul sau se creează alt livrabil.
+- **Status `Draft` / `Shared`**, ales manual, ca la „Planning = ciornă” de la proiecte: clientul vede doar ce a partajat freelancerul, iar notificarea „livrabil nou” nu pleacă prea devreme. Starea de aprobare (în așteptare / aprobat / modificări cerute) vine la Aprobări, ca stare separată, nu amestecată aici.
+- **Un livrabil `Shared` se poate edita oricând** (clientul vede imediat versiunea nouă). De reconsiderat la Aprobări: ce se întâmplă cu editarea unui livrabil deja aprobat.
+- **Ștergere:** doar un `Draft` nenarhivat se șterge definitiv (409 altfel). Un `Shared` se întoarce în `Draft` sau se arhivează. Nu e o garanție de istoric (Shared → Draft → ștergere merge), de reconsiderat când vor exista feedback și aprobări legate de livrabil.
+- **Arhivare ca la clienți și proiecte:** doar Owner-ul arhivează și restaurează (403 pentru membri). `Archive()` pune și statusul înapoi pe `Draft`, deci un livrabil restaurat nu reapare niciodată la client fără o nouă partajare; restaurarea nu are caz special. Un livrabil arhivat e doar de citit (409), iar un **proiect arhivat își blochează livrabilele** (409), dar ele se pot citi.
+- **Orice membru** adaugă, editează, partajează și șterge un draft.
+- **API:** `/api/workspaces/{id}/projects/{projectId}/deliverables` (`?includeArchived=true`, cele mai noi primele), cu `POST`, `GET {id}`, `PUT {id}`, `DELETE {id}` (204) și `POST {id}/share|unshare|archive|restore`. Ruta conține proiectul, iar repository-ul caută după `(workspaceId, projectId, id)`: un livrabil al altui proiect sau workspace e 404.
+- **Date demo:** „Elena Design website” are „Homepage mockups” (Shared, la etapa Design) și „Staging site” (Draft, la Development).
 
 ### Generale
 

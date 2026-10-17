@@ -16,6 +16,7 @@ internal sealed class DevelopmentDataSeeder(
     IClientRepository clients,
     IClientInvitationRepository invitations,
     IProjectRepository projects,
+    IDeliverableRepository deliverables,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -128,6 +129,12 @@ internal sealed class DevelopmentDataSeeder(
         website.UpdateStage(design.Id, design.Name, design.Description, design.DueDate, StageStatus.Done);
         website.UpdateStage(development.Id, development.Name, development.Description, development.DueDate, StageStatus.InProgress);
         projects.Add(website);
+
+        var mockups = Deliverable.Create(studio.Id, website.Id, design.Id, "Homepage mockups", "Desktop and mobile layouts.", "https://www.figma.com/file/elena-homepage");
+        mockups.Share();
+        deliverables.Add(mockups);
+        deliverables.Add(Deliverable.Create(studio.Id, website.Id, development.Id, "Staging site", "Not ready to show yet.", "https://staging.elena-design.example"));
+
         projects.Add(Project.Create(studio.Id, linked.Id, "Brand refresh", "Logo and colours, after the website."));
 
         var pending = Client.Register(studio.Id, "Pat Pending", "pat@pending.example", "Pending Co");
