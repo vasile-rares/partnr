@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ClientPortal.Application.DTOs.Auth;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Deliverables;
+using ClientPortal.Application.DTOs.ProjectUpdates;
 using ClientPortal.Application.DTOs.Invitations;
 using ClientPortal.Application.DTOs.Projects;
 using ClientPortal.Application.DTOs.Workspaces;
@@ -45,6 +46,8 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var website = Assert.Single(projects!, p => p.Status == "Active");
         var deliverables = await owner.GetFromJsonAsync<DeliverableResponse[]>($"/api/workspaces/{studio.Id}/projects/{website.Id}/deliverables");
         Assert.Equal(["Draft", "Shared"], deliverables!.Select(d => d.Status).Order());
+        var updates = await owner.GetFromJsonAsync<ProjectUpdateResponse[]>($"/api/workspaces/{studio.Id}/projects/{website.Id}/updates");
+        Assert.Equal(["Draft", "Shared"], updates!.Select(u => u.Status).Order());
 
         var preview = await factory.CreateClient()
             .GetFromJsonAsync<InvitationPreviewResponse>($"/api/invitations/{DevelopmentSeed.PendingInvitationToken}");

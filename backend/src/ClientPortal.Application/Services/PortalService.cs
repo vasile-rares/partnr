@@ -12,6 +12,7 @@ internal sealed class PortalService(
     IWorkspaceRepository workspaces,
     IProjectRepository projects,
     IDeliverableRepository deliverables,
+    IProjectUpdateRepository projectUpdates,
     WorkspaceAccess access) : IPortalService
 {
     public async Task<IReadOnlyList<PortalWorkspaceResponse>> ListWorkspacesAsync(CancellationToken cancellationToken)
@@ -54,6 +55,7 @@ internal sealed class PortalService(
         var stages = project.Stages;
         var stageNames = stages.ToDictionary(s => s.Id, s => s.Name);
         var shared = await deliverables.ListSharedAsync(project.Id, cancellationToken);
+        var sharedUpdates = await projectUpdates.ListSharedAsync(project.Id, cancellationToken);
 
         return new PortalProjectResponse(
             project.Id,
@@ -72,7 +74,9 @@ internal sealed class PortalService(
                     d.Description,
                     d.Url,
                     d.StageId is { } stageId ? stageNames.GetValueOrDefault(stageId) : null))
-                .ToList());
+                .ToList(),
+            // Share() always sets the date, so a shared update has one.
+            sharedUpdates.Select(u => new PortalProjectUpdateResponse(u.Id, u.Title, u.Body, u.SharedAtUtc!.Value)).ToList());
     }
 
     private async Task<Dictionary<Guid, PortalWorkspaceResponse>> WorkspacesAsync(Guid userId, CancellationToken cancellationToken) =>

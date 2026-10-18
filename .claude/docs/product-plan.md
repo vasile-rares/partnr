@@ -379,9 +379,9 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Livrabile ca link, în doi pași:
   - [x] Pas 1: livrabile ca link pentru freelancer (API și secțiunea „Deliverables” pe pagina proiectului)
   - [x] Pas 2: livrabilele în portalul clientului
-- [ ] Timeline (actualizări scrise de freelancer, cu Draft / Shared), în doi pași:
-  - [ ] Pas 1: actualizări pentru freelancer (API și secțiunea „Updates” pe pagina proiectului)
-  - [ ] Pas 2: actualizările partajate în portalul clientului
+- [x] Timeline (actualizări scrise de freelancer, cu Draft / Shared), în doi pași:
+  - [x] Pas 1: actualizări pentru freelancer (API și secțiunea „Updates” pe pagina proiectului)
+  - [x] Pas 2: actualizările partajate în portalul clientului
 - [ ] Feedback și aprobări, într-un singur pas, pe livrabil: clientul aprobă sau cere modificări, cu un mesaj. Aici se încheie și portalul pentru clienți (acum e doar de citit: proiecte, etape, progres, livrabile partajate)
 - [ ] Notificări (întâi email, apoi în aplicație)
 - [ ] Livrabile, pasul 3: upload de fișiere (decizie de stocare), ultimul din MVP

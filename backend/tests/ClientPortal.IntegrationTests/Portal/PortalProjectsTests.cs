@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Deliverables;
 using ClientPortal.Application.DTOs.Portal;
+using ClientPortal.Application.DTOs.ProjectUpdates;
 using ClientPortal.Application.DTOs.Projects;
 using ClientPortal.Application.DTOs.Workspaces;
 
@@ -227,6 +229,89 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         }
     }
 
+    [Fact]
+    public async Task Client_SeesAnUpdateOnlyWhileItIsSharedAndNotArchived()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var project = await studio.AddProject(elena, "Website");
+        await studio.SetStatus(project, "Active");
+        var update = await studio.AddUpdate(project, "Design approved", "Starting the build.");
+        var url = $"/api/portal/projects/{project.Id}";
+
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Updates);
+
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{update.Id}/share", null);
+        var shared = Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Updates);
+        Assert.Equal((update.Id, "Design approved", "Starting the build."), (shared.Id, shared.Title, shared.Body));
+
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{update.Id}/unshare", null);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Updates);
+
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{update.Id}/share", null);
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{update.Id}/archive", null);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Updates);
+
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{update.Id}/restore", null);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Updates); // back as a draft
+    }
+
+    [Fact]
+    public async Task Updates_AreOrderedByWhenTheyWereShared_NotWhenTheyWereWritten()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var project = await studio.AddProject(elena, "Website");
+        await studio.SetStatus(project, "Active");
+        var writtenFirst = await studio.AddUpdate(project, "Written first", null);
+        var writtenSecond = await studio.AddUpdate(project, "Written second", null);
+
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{writtenSecond.Id}/share", null);
+        await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{writtenFirst.Id}/share", null);
+
+        var updates = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!.Updates;
+        Assert.Equal(["Written first", "Written second"], updates.Select(u => u.Title));
+    }
+
+    [Fact]
+    public async Task SharedUpdate_FollowsTheProject_AndNeverReachesAnotherClient()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var bram = await studio.AddClient("Bram");
+        var hers = await studio.AddProject(elena, "Elena's site");
+        var his = await studio.AddProject(bram, "Bram's site");
+        await studio.SetStatus(hers, "Planning");
+        await studio.SetStatus(his, "Active");
+        var shared = await studio.AddUpdate(hers, "Elena's news", null, share: true);
+
+        // Shared, but the project is still a draft: there is nothing to see, and no way in through the project.
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+
+        await studio.SetStatus(hers, "Active");
+        Assert.Equal("Elena's news", Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{hers.Id}"))!.Updates).Title);
+
+        var bramView = await bram.Http.GetStringAsync($"/api/portal/projects/{his.Id}");
+        Assert.DoesNotContain(shared.Id.ToString(), bramView);
+        Assert.DoesNotContain("Elena's news", bramView);
+        Assert.Equal(HttpStatusCode.NotFound, (await bram.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task PortalUpdate_ShowsNothingTheWorkspaceKeepsToItself()
+    {
+        var studio = await Studio();
+        var elena = await studio.AddClient("Elena");
+        var project = await studio.AddProject(elena, "Website");
+        await studio.SetStatus(project, "Active");
+        await studio.AddUpdate(project, "Design approved", "Starting the build.", share: true);
+
+        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}"));
+
+        var update = body.RootElement.GetProperty("updates")[0];
+        Assert.Equal(["body", "id", "sharedAtUtc", "title"], update.EnumerateObject().Select(p => p.Name).Order());
+    }
+
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 
     [GeneratedRegex("/invite/([A-Za-z0-9_-]+)")]
@@ -298,6 +383,21 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
             }
 
             return deliverable;
+        }
+
+        public string UpdatesUrl(ProjectResponse project) => $"/api/workspaces/{WorkspaceId}/projects/{project.Id}/updates";
+
+        public async Task<ProjectUpdateResponse> AddUpdate(ProjectResponse project, string title, string? body, bool share = false)
+        {
+            var response = await Http.PostAsJsonAsync(UpdatesUrl(project), new { title, body });
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            var update = (await response.Content.ReadFromJsonAsync<ProjectUpdateResponse>())!;
+            if (share)
+            {
+                Assert.Equal(HttpStatusCode.OK, (await Http.PostAsync($"{UpdatesUrl(project)}/{update.Id}/share", null)).StatusCode);
+            }
+
+            return update;
         }
 
         public async Task SetStatus(ProjectResponse project, string status)

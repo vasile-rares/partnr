@@ -7,6 +7,7 @@ import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { StageStatusBadge } from "@/components/projects/StageStatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PortalUpdateList } from "@/components/updates/PortalUpdateList";
 import { requireUser } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
 import { getPortalProject } from "@/lib/portal/server";
@@ -66,6 +67,8 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/p
             </dl>
           </CardContent>
         </Card>
+
+        <PortalUpdateList updates={project.updates} workspaceName={project.workspace.name} />
 
         {project.deliverables.length > 0 ? (
           <section aria-labelledby="deliverables-title" className="mt-10">

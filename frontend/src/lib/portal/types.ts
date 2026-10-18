@@ -25,9 +25,20 @@ export type PortalDeliverable = {
   stageName: string | null;
 };
 
+/** Only shared ones reach the portal. Most recently shared first; no author on purpose. */
+export type PortalProjectUpdate = {
+  id: string;
+  title: string;
+  /** Plain text with line breaks. */
+  body: string | null;
+  /** The date the client sees. */
+  sharedAtUtc: string;
+};
+
 export type PortalProject = PortalProjectSummary & {
   description: string | null;
   startDate: string | null;
   stages: Stage[];
   deliverables: PortalDeliverable[];
+  updates: PortalProjectUpdate[];
 };

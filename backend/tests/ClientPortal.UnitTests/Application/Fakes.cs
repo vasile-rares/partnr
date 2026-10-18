@@ -140,6 +140,12 @@ internal sealed class FakeProjectUpdateRepository : IProjectUpdateRepository
             .OrderByDescending(u => u.CreatedAtUtc)
             .ToList());
 
+    public Task<IReadOnlyList<ProjectUpdate>> ListSharedAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ProjectUpdate>>(Items
+            .Where(u => u.ProjectId == projectId && u.Status == ProjectUpdateStatus.Shared && !u.IsArchived)
+            .OrderByDescending(u => u.SharedAtUtc)
+            .ToList());
+
     public void Add(ProjectUpdate update) => Items.Add(update);
 
     public void Remove(ProjectUpdate update) => Items.Remove(update);

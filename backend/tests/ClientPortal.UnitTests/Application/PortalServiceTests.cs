@@ -13,13 +13,14 @@ public class PortalServiceTests
     private readonly FakeClientRepository _clients = new();
     private readonly FakeProjectRepository _projects;
     private readonly FakeDeliverableRepository _deliverables = new();
+    private readonly FakeProjectUpdateRepository _updates = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly PortalService _service;
 
     public PortalServiceTests()
     {
         _projects = new FakeProjectRepository { Clients = _clients };
-        _service = new PortalService(_workspaces, _projects, _deliverables, new WorkspaceAccess(_workspaces, _currentUser));
+        _service = new PortalService(_workspaces, _projects, _deliverables, _updates, new WorkspaceAccess(_workspaces, _currentUser));
     }
 
     [Fact]
@@ -142,6 +143,39 @@ public class PortalServiceTests
     }
 
     [Fact]
+    public async Task GetProject_ShowsOnlySharedUpdates_MostRecentlySharedFirst()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var first = AddUpdate(project, "First", shared: true);
+        Thread.Sleep(2); // SharedAtUtc decides the order
+        var second = AddUpdate(project, "Second", shared: true);
+        AddUpdate(project, "Still a draft", shared: false);
+        AddUpdate(project, "Archived", shared: true).Archive();
+        var withdrawn = AddUpdate(project, "Withdrawn", shared: true);
+        withdrawn.Unshare();
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        Assert.Equal([second.Id, first.Id], response.Updates.Select(u => u.Id));
+        Assert.Equal(("Second", "Some details"), (response.Updates[0].Title, response.Updates[0].Body));
+        Assert.Equal(second.SharedAtUtc, response.Updates[0].SharedAtUtc);
+    }
+
+    [Fact]
+    public async Task GetProject_NeverShowsTheUpdatesOfAnotherProject()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var mine = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var other = AddProject(studio, client, "Other", ProjectStatus.Active);
+        AddUpdate(other, "Theirs", shared: true);
+
+        var response = await _service.GetProjectAsync(mine.Id, CancellationToken.None);
+
+        Assert.Empty(response.Updates);
+    }
+
+    [Fact]
     public async Task GetProject_ThatIsADraft_Archived_OrSomeoneElses_LooksLikeItDoesNotExist()
     {
         var (studio, client) = AsClientOfAStudio();
@@ -187,6 +221,19 @@ public class PortalServiceTests
         _deliverables.Items.Add(deliverable);
 
         return deliverable;
+    }
+
+    private ProjectUpdate AddUpdate(Project project, string title, bool shared)
+    {
+        var update = ProjectUpdate.Create(project.WorkspaceId, project.Id, title, "Some details");
+        if (shared)
+        {
+            update.Share();
+        }
+
+        _updates.Items.Add(update);
+
+        return update;
     }
 
     private Project AddProject(Workspace studio, Client client, string name, ProjectStatus status, string? description = null)

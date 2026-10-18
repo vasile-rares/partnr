@@ -8,9 +8,11 @@ import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { StageList } from "@/components/projects/StageList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UpdateList } from "@/components/updates/UpdateList";
 import { requireUser } from "@/lib/auth/session";
 import { getDeliverables } from "@/lib/deliverables/server";
 import { getProject } from "@/lib/projects/server";
+import { getProjectUpdates } from "@/lib/updates/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
 export async function generateMetadata({ params }: PageProps<"/w/[workspaceId]/projects/[projectId]">): Promise<Metadata> {
@@ -66,6 +68,13 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           workspaceId={workspace.id}
           project={project}
           deliverables={await getDeliverables(workspace.id, project.id)}
+          isOwner={workspace.role === "Owner"}
+        />
+
+        <UpdateList
+          workspaceId={workspace.id}
+          project={project}
+          updates={await getProjectUpdates(workspace.id, project.id)}
           isOwner={workspace.role === "Owner"}
         />
 

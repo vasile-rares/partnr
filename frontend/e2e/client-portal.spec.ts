@@ -131,6 +131,60 @@ test("the portal asks you to sign in, and is empty for someone who is nobody's c
   await expect(page.getByText("You are not connected to anyone yet.")).toBeVisible();
 });
 
+test("a client reads the updates the freelancer shared, newest first, with the earlier ones tucked away", async ({ page, request }) => {
+  await createAccount(request);
+  const clientEmail = newClientEmail();
+  const { workspace, client, token } = await inviteClient(request, "Studio Pop", clientEmail);
+  const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
+  const website = await created.json();
+  const projectUrl = `/api/workspaces/${workspace.id}/projects/${website.id}`;
+  expect(
+    (
+      await request.put(projectUrl, {
+        data: { name: "Website", description: null, startDate: null, dueDate: null, status: "Active" },
+      })
+    ).ok(),
+  ).toBe(true);
+
+  await page.goto(`/invite/${token}`);
+  await page.getByLabel("Full name").fill("Elena Popescu");
+  await page.getByLabel("Password").fill("correct horse battery");
+  await page.getByRole("button", { name: "Create account and accept" }).click();
+  await expect(page).toHaveURL("/portal");
+
+  await page.goto(`/portal/projects/${website.id}`);
+  const updates = page.getByRole("region", { name: "Updates" });
+  await expect(updates.getByText("No updates yet. Studio Pop will post news here as the project moves.")).toBeVisible();
+
+  const addUpdate = async (title: string, body: string, share: boolean) => {
+    const response = await request.post(`${projectUrl}/updates`, { data: { title, body } });
+    expect(response.status()).toBe(201);
+    const update = await response.json();
+    if (share) {
+      expect((await request.post(`${projectUrl}/updates/${update.id}/share`)).ok()).toBe(true);
+    }
+    return update;
+  };
+  for (let n = 1; n <= 7; n++) {
+    await addUpdate(`Update ${n}`, n === 7 ? "Layouts are signed off.\nBuild starts Monday." : `Details of ${n}.`, true);
+  }
+  await addUpdate("Secret draft", "Not for the client.", false);
+
+  // The five most recent are open, the other two wait behind a native disclosure.
+  await page.reload();
+  await expect(updates.getByRole("listitem")).toHaveCount(5);
+  await expect(updates.getByRole("listitem").first()).toContainText("Update 7");
+  await expect(updates.getByRole("listitem").first()).toContainText("Build starts Monday.");
+  await expect(updates.getByRole("listitem").first().getByRole("time")).toHaveText(/^\d{1,2} \w{3} \d{4}$/);
+  await expect(updates.getByText("Update 3", { exact: true })).toBeVisible();
+  await expect(updates.getByText("Update 2", { exact: true })).toBeHidden();
+  await expect(page.getByText("Secret draft")).toHaveCount(0);
+
+  await updates.getByText("Show earlier updates (2)").click();
+  await expect(updates.getByText("Update 2", { exact: true })).toBeVisible();
+  await expect(updates.getByText("Update 1", { exact: true })).toBeVisible();
+});
+
 test("a client sees the projects shared with them, and what is done and what comes next", async ({ page, request }) => {
   await createAccount(request);
   const clientEmail = newClientEmail();

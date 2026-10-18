@@ -17,6 +17,7 @@ internal sealed class DevelopmentDataSeeder(
     IClientInvitationRepository invitations,
     IProjectRepository projects,
     IDeliverableRepository deliverables,
+    IProjectUpdateRepository projectUpdates,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -134,6 +135,11 @@ internal sealed class DevelopmentDataSeeder(
         mockups.Share();
         deliverables.Add(mockups);
         deliverables.Add(Deliverable.Create(studio.Id, website.Id, development.Id, "Staging site", "Not ready to show yet.", "https://staging.elena-design.example"));
+
+        var designDone = ProjectUpdate.Create(studio.Id, website.Id, "Design approved", "All page layouts are signed off. Development starts this week.");
+        designDone.Share();
+        projectUpdates.Add(designDone);
+        projectUpdates.Add(ProjectUpdate.Create(studio.Id, website.Id, "Staging link coming soon", "Waiting on the hosting setup before I can share a first build."));
 
         projects.Add(Project.Create(studio.Id, linked.Id, "Brand refresh", "Logo and colours, after the website."));
 

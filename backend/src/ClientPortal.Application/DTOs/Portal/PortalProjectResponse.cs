@@ -23,7 +23,11 @@ public sealed record PortalProjectResponse(
     string Status,
     ProjectProgressResponse Progress,
     IReadOnlyList<StageResponse> Stages,
-    IReadOnlyList<PortalDeliverableResponse> Deliverables);
+    IReadOnlyList<PortalDeliverableResponse> Deliverables,
+    IReadOnlyList<PortalProjectUpdateResponse> Updates);
 
 /// <summary>Only what was shared: no status (always Shared), no archive date, no ids of the workspace's side.</summary>
 public sealed record PortalDeliverableResponse(Guid Id, string Title, string? Description, string Url, string? StageName);
+
+/// <summary>Only what was shared, most recently shared first: no status, no author, no creation or archive date, no ids of the workspace's side.</summary>
+public sealed record PortalProjectUpdateResponse(Guid Id, string Title, string? Body, DateTime SharedAtUtc);

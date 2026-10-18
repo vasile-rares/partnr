@@ -182,6 +182,73 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   await expect(deliverables.getByRole("button", { name: "Share Contract" })).toBeHidden();
 });
 
+test("updates are written, shared, edited, archived and deleted", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
+  const project = await created.json();
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  const updates = page.getByRole("region", { name: "Updates" });
+  await expect(updates.getByText("No updates yet.")).toBeVisible();
+
+  await updates.getByLabel("Update title").fill("Design approved");
+  await updates.getByLabel("What's happening now?").fill("Layouts are signed off.\nDevelopment starts Monday.");
+  await updates.getByRole("button", { name: "Add update" }).click();
+  const item = updates.getByRole("listitem").filter({ hasText: "Design approved" });
+  await expect(item).toContainText("Draft");
+  await expect(item).toContainText("Development starts Monday.");
+  await expect(updates.getByLabel("Update title")).toHaveValue("");
+
+  // A shared update cannot be deleted; it goes back to draft first.
+  await item.getByRole("button", { name: "Share Design approved" }).click();
+  await expect(item).toContainText("Shared");
+  await expect(item).toContainText(/Shared \d{1,2} \w{3} \d{4}/);
+  await expect(item.getByRole("button", { name: "Delete Design approved" })).toBeHidden();
+  await item.getByRole("button", { name: "Unshare Design approved" }).click();
+  await expect(item).toContainText("Draft");
+  await expect(item).not.toContainText(/Shared \d/);
+
+  await item.getByRole("button", { name: "Edit Design approved" }).click();
+  await updates.getByLabel("Title", { exact: true }).fill("Build started");
+  await updates.getByLabel("Details", { exact: true }).fill("");
+  await updates.getByRole("button", { name: "Save update" }).click();
+  const renamed = updates.getByRole("listitem").filter({ hasText: "Build started" });
+  await expect(renamed).toBeVisible();
+  await expect(renamed).not.toContainText("Development starts Monday.");
+
+  await renamed.getByRole("button", { name: "Share Build started" }).click();
+  await expect(renamed).toContainText("Shared");
+  await renamed.getByRole("button", { name: "Archive Build started" }).click();
+  await expect(updates.getByRole("heading", { name: "Archived" })).toBeVisible();
+  const archived = updates.getByRole("listitem").filter({ hasText: "Build started" });
+  await expect(archived).toContainText("Archived");
+  await expect(archived.getByRole("button", { name: "Edit Build started" })).toBeHidden();
+  await archived.getByRole("button", { name: "Restore Build started" }).click();
+  await expect(updates.getByRole("heading", { name: "Archived" })).toBeHidden();
+  await expect(renamed).toContainText("Draft"); // back to draft, never shared again by itself
+
+  await renamed.getByRole("button", { name: "Delete Build started" }).click();
+  await page.getByRole("button", { name: "Keep update" }).click();
+  await expect(renamed).toBeVisible();
+  await renamed.getByRole("button", { name: "Delete Build started" }).click();
+  await page.getByRole("button", { name: "Delete update" }).click();
+  await expect(updates.getByText("No updates yet.")).toBeVisible();
+
+  await updates.getByLabel("Update title").fill("Kickoff done");
+  await updates.getByRole("button", { name: "Add update" }).click();
+  await expect(updates.getByRole("listitem").filter({ hasText: "Kickoff done" })).toBeVisible();
+  await page.getByRole("button", { name: "Archive project" }).click();
+  await expect(page.getByText("This project is archived")).toBeVisible();
+  await expect(updates.getByRole("listitem")).toHaveCount(1);
+  await expect(updates.getByRole("button", { name: "Add update" })).toBeHidden();
+  await expect(updates.getByRole("button", { name: "Share Kickoff done" })).toBeHidden();
+});
+
 test("a workspace with no clients is asked to add one before starting a project", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");

@@ -1,5 +1,6 @@
 using ClientPortal.Application.Interfaces.Repositories;
 using ClientPortal.Domain.Entities;
+using ClientPortal.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClientPortal.Infrastructure.Persistence.Repositories;
@@ -20,6 +21,14 @@ internal sealed class ProjectUpdateRepository(ApplicationDbContext dbContext) : 
             .AsNoTracking()
             .Where(u => u.WorkspaceId == workspaceId && u.ProjectId == projectId && (includeArchived || u.ArchivedAtUtc == null))
             .OrderByDescending(u => u.CreatedAtUtc)
+            .ThenByDescending(u => u.Id)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ProjectUpdate>> ListSharedAsync(Guid projectId, CancellationToken cancellationToken) =>
+        await dbContext.ProjectUpdates
+            .AsNoTracking()
+            .Where(u => u.ProjectId == projectId && u.Status == ProjectUpdateStatus.Shared && u.ArchivedAtUtc == null)
+            .OrderByDescending(u => u.SharedAtUtc)
             .ThenByDescending(u => u.Id)
             .ToListAsync(cancellationToken);
 
