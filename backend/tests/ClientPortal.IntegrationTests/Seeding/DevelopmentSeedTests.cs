@@ -46,6 +46,9 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var website = Assert.Single(projects!, p => p.Status == "Active");
         var deliverables = await owner.GetFromJsonAsync<DeliverableResponse[]>($"/api/workspaces/{studio.Id}/projects/{website.Id}/deliverables");
         Assert.Equal(["Draft", "Shared"], deliverables!.Select(d => d.Status).Order());
+        var mockups = Assert.Single(deliverables!, d => d.Status == "Shared");
+        Assert.Equal("Pending", mockups.ApprovalStatus);
+        Assert.Equal(["Pending", "ChangesRequested"], mockups.Approvals.Select(a => a.Status));
         var updates = await owner.GetFromJsonAsync<ProjectUpdateResponse[]>($"/api/workspaces/{studio.Id}/projects/{website.Id}/updates");
         Assert.Equal(["Draft", "Shared"], updates!.Select(u => u.Status).Order());
 

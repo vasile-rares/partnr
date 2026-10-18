@@ -182,6 +182,63 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   await expect(deliverables.getByRole("button", { name: "Share Contract" })).toBeHidden();
 });
 
+test("approvals are requested and withdrawn, and an open request freezes the deliverable", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
+  const project = await created.json();
+  const deliverablesUrl = `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables`;
+  const deliverable = await (await request.post(deliverablesUrl, { data: { title: "Mockup", url: "https://figma.example/file" } })).json();
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  const deliverables = page.getByRole("region", { name: "Deliverables" });
+  const item = deliverables.getByRole("listitem").filter({ hasText: "Mockup" });
+
+  // Only a shared deliverable can be put in front of the client.
+  await expect(item.getByRole("button", { name: "Request approval for Mockup" })).toBeHidden();
+  await item.getByRole("button", { name: "Share Mockup" }).click();
+  await expect(item).toContainText("Shared");
+
+  await item.getByRole("button", { name: "Request approval for Mockup" }).click();
+  await deliverables.getByLabel("Note for your client").fill("Check the logo on mobile.");
+  await deliverables.getByRole("button", { name: "Send request" }).click();
+  await expect(item).toContainText("Awaiting approval");
+  await expect(item).toContainText("You asked: “Check the logo on mobile.”");
+  await expect(deliverables.getByLabel("Note for your client")).toBeHidden();
+
+  // An open request freezes the details and cannot be asked twice; the history keeps the round.
+  await expect(item.getByRole("button", { name: "Edit Mockup" })).toBeHidden();
+  await expect(item.getByRole("button", { name: "Request approval for Mockup" })).toBeHidden();
+  await item.getByText("Approval history (1)").click();
+  await expect(item.getByRole("listitem")).toHaveCount(1);
+
+  await item.getByRole("button", { name: "Withdraw approval request for Mockup" }).click();
+  await expect(item.getByRole("button", { name: "Edit Mockup" })).toBeVisible();
+  await expect(item.getByRole("button", { name: "Withdraw approval request for Mockup" })).toBeHidden();
+  await expect(item.getByRole("listitem")).toContainText("Withdrawn");
+
+  // A new round, then unsharing takes it back by itself.
+  await item.getByRole("button", { name: "Request approval for Mockup" }).click();
+  await deliverables.getByRole("button", { name: "Send request" }).click();
+  await expect(item).toContainText("Approval history (2)");
+  await expect(item).toContainText("Awaiting approval");
+  await item.getByRole("button", { name: "Unshare Mockup" }).click();
+  await expect(item).toContainText("Draft");
+  await expect(item).not.toContainText("Awaiting approval");
+
+  // With an approval history it can no longer be deleted: it is archived instead.
+  await expect(item.getByRole("button", { name: "Delete Mockup" })).toBeHidden();
+  await expect(item.getByRole("button", { name: "Archive Mockup" })).toBeVisible();
+
+  const stored = await (await request.get(`${deliverablesUrl}/${deliverable.id}`)).json();
+  expect(stored.approvals.map((round: { status: string }) => round.status)).toEqual(["Withdrawn", "Withdrawn"]);
+  expect(stored.approvalStatus).toBe("None");
+});
+
 test("updates are written, shared, edited, archived and deleted", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");

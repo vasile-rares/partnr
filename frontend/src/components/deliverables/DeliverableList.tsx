@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent, type Ref } from "react";
+import { ApprovalRequestForm } from "@/components/deliverables/ApprovalRequestForm";
+import { ApprovalSummary } from "@/components/deliverables/ApprovalSummary";
 import { DeliverableStatusBadge } from "@/components/deliverables/DeliverableStatusBadge";
 import { FormError } from "@/components/forms/FormMessage";
 import { SelectField } from "@/components/forms/SelectField";
@@ -38,6 +40,7 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
   const [message, setMessage] = useState<string>();
   const addForm = useRef<HTMLFormElement>(null);
   const readOnly = project.archivedAtUtc !== null;
@@ -59,6 +62,8 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
   }
 
   function row(deliverable: Deliverable) {
+    const pendingRound = deliverable.approvals.find((round) => round.status === "Pending");
+
     return (
       <li key={deliverable.id} className="p-3">
         {editing === deliverable.id ? (
@@ -71,16 +76,27 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
             onCancel={() => setEditing(null)}
           />
         ) : (
-          <DeliverableRow
-            deliverable={deliverable}
-            pending={pending}
-            readOnly={readOnly}
-            isOwner={isOwner}
-            onEdit={() => setEditing(deliverable.id)}
-            onAction={(action) =>
-              action === "delete" ? run("DELETE", `/${deliverable.id}`) : run("POST", `/${deliverable.id}/${action}`)
-            }
-          />
+          <>
+            <DeliverableRow
+              deliverable={deliverable}
+              pending={pending}
+              readOnly={readOnly}
+              isOwner={isOwner}
+              onEdit={() => setEditing(deliverable.id)}
+              onRequestApproval={() => setAsking(deliverable.id)}
+              onWithdraw={() => pendingRound && run("POST", `/${deliverable.id}/approvals/${pendingRound.id}/withdraw`)}
+              onAction={(action) =>
+                action === "delete" ? run("DELETE", `/${deliverable.id}`) : run("POST", `/${deliverable.id}/${action}`)
+              }
+            />
+            {asking === deliverable.id ? (
+              <ApprovalRequestForm
+                pending={pending}
+                onSubmit={(note) => run("POST", `/${deliverable.id}/approvals`, { note }, () => setAsking(null))}
+                onCancel={() => setAsking(null)}
+              />
+            ) : null}
+          </>
         )}
       </li>
     );
@@ -135,6 +151,8 @@ function DeliverableRow({
   readOnly,
   isOwner,
   onEdit,
+  onRequestApproval,
+  onWithdraw,
   onAction,
 }: {
   deliverable: Deliverable;
@@ -142,11 +160,16 @@ function DeliverableRow({
   readOnly: boolean;
   isOwner: boolean;
   onEdit: () => void;
+  onRequestApproval: () => void;
+  onWithdraw: () => void;
   onAction: (action: Action) => void;
 }) {
   const archivedAt = deliverable.archivedAtUtc;
   const archived = archivedAt !== null;
   const shared = deliverable.status === "Shared";
+  const waiting = deliverable.approvalStatus === "Pending";
+  // The API refuses both: an open request freezes the details, and a deliverable with approvals is archived, never deleted.
+  const deletable = !shared && deliverable.approvals.length === 0;
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -161,6 +184,7 @@ function DeliverableRow({
           {archivedAt ? <span>Archived {formatDate(archivedAt.slice(0, 10))}</span> : <DeliverableStatusBadge status={deliverable.status} />}
           {deliverable.stageName ? <span>Stage: {deliverable.stageName}</span> : null}
         </div>
+        <ApprovalSummary deliverable={deliverable} />
       </div>
       {readOnly ? null : (
         <div className="flex flex-wrap gap-1">
@@ -181,15 +205,32 @@ function DeliverableRow({
               >
                 {shared ? "Unshare" : "Share"}
               </Button>
-              <Button variant="ghost" size="sm" disabled={pending} aria-label={`Edit ${deliverable.title}`} onClick={onEdit}>
-                Edit
-              </Button>
+              {shared && !waiting ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  aria-label={`Request approval for ${deliverable.title}`}
+                  onClick={onRequestApproval}
+                >
+                  Request approval
+                </Button>
+              ) : null}
+              {waiting ? (
+                <Button variant="ghost" size="sm" disabled={pending} aria-label={`Withdraw approval request for ${deliverable.title}`} onClick={onWithdraw}>
+                  Withdraw request
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" disabled={pending} aria-label={`Edit ${deliverable.title}`} onClick={onEdit}>
+                  Edit
+                </Button>
+              )}
               {isOwner ? (
                 <Button variant="ghost" size="sm" disabled={pending} aria-label={`Archive ${deliverable.title}`} onClick={() => onAction("archive")}>
                   Archive
                 </Button>
               ) : null}
-              {shared ? null : <DeleteButton deliverable={deliverable} disabled={pending} onConfirm={() => onAction("delete")} />}
+              {deletable ? <DeleteButton deliverable={deliverable} disabled={pending} onConfirm={() => onAction("delete")} /> : null}
             </>
           )}
         </div>

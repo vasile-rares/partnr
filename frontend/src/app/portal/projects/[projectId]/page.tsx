@@ -6,6 +6,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { StageStatusBadge } from "@/components/projects/StageStatusBadge";
+import { PortalApprovalPanel } from "@/components/portal/PortalApprovalPanel";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { PortalUpdateList } from "@/components/updates/PortalUpdateList";
 import { requireUser } from "@/lib/auth/session";
@@ -46,6 +48,19 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/p
           {dates.length > 0 ? ` · ${dates.join(" · ")}` : null}
         </p>
         {project.description ? <p className="mt-4 max-w-prose whitespace-pre-line">{project.description}</p> : null}
+
+        {project.awaitingApproval > 0 ? (
+          // role="status": worth announcing politely, but not an error, so not the assertive default of Alert.
+          <Alert role="status" className="mt-6">
+            <AlertTitle>Waiting for you</AlertTitle>
+            <AlertDescription>
+              {project.awaitingApproval === 1
+                ? "1 deliverable needs your approval."
+                : `${project.awaitingApproval} deliverables need your approval.`}{" "}
+              <a href="#deliverables-title">See what to approve</a>.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <Card className="mt-8">
           <CardContent className="flex flex-col gap-4">
@@ -96,6 +111,7 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/p
                   {deliverable.stageName ? (
                     <p className="mt-2 text-sm text-muted-foreground">Stage: {deliverable.stageName}</p>
                   ) : null}
+                  <PortalApprovalPanel projectId={project.id} deliverable={deliverable} workspaceName={project.workspace.name} />
                 </li>
               ))}
             </ul>

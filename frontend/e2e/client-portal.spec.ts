@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { createAccount, newUser, signIn } from "./helpers";
+import { alertWith, createAccount, newUser, signIn } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // The freelancer's side goes through the API (tested elsewhere); these tests are about what the client sees.
@@ -183,6 +183,87 @@ test("a client reads the updates the freelancer shared, newest first, with the e
   await updates.getByText("Show earlier updates (2)").click();
   await expect(updates.getByText("Update 2", { exact: true })).toBeVisible();
   await expect(updates.getByText("Update 1", { exact: true })).toBeVisible();
+});
+
+test("a client approves one deliverable and asks for changes on another, and is asked again after the freelancer replies", async ({
+  page,
+  request,
+}) => {
+  await createAccount(request);
+  const clientEmail = newClientEmail();
+  const { workspace, client, token } = await inviteClient(request, "Studio Pop", clientEmail);
+  const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
+  const website = await created.json();
+  const projectUrl = `/api/workspaces/${workspace.id}/projects/${website.id}`;
+  expect(
+    (await request.put(projectUrl, { data: { name: "Website", description: null, startDate: null, dueDate: null, status: "Active" } })).ok(),
+  ).toBe(true);
+
+  const addShared = async (title: string) => {
+    const deliverable = await (await request.post(`${projectUrl}/deliverables`, { data: { title, url: "https://files.example/file" } })).json();
+    expect((await request.post(`${projectUrl}/deliverables/${deliverable.id}/share`)).ok()).toBe(true);
+    return deliverable;
+  };
+  const ask = async (deliverable: { id: string }, note: string) => {
+    const response = await request.post(`${projectUrl}/deliverables/${deliverable.id}/approvals`, { data: { note } });
+    expect(response.ok()).toBe(true);
+  };
+  const homepage = await addShared("Homepage mockup");
+  const logo = await addShared("Logo");
+  await ask(homepage, "Check the mobile layout.");
+  await ask(logo, "Is this the right blue?");
+
+  await page.goto(`/invite/${token}`);
+  await page.getByLabel("Full name").fill("Elena Popescu");
+  await page.getByLabel("Password").fill("correct horse battery");
+  await page.getByRole("button", { name: "Create account and accept" }).click();
+  await expect(page).toHaveURL("/portal");
+  await expect(page.getByRole("link", { name: /Website/ })).toContainText("2 waiting for you");
+
+  await page.getByRole("link", { name: /Website/ }).click();
+  const banner = page.getByRole("status").filter({ hasText: "Waiting for you" });
+  await expect(banner).toContainText("2 deliverables need your approval.");
+  const deliverables = page.getByRole("region", { name: "Deliverables" });
+  const home = deliverables.getByRole("listitem").filter({ hasText: "Homepage mockup" });
+  const logoItem = deliverables.getByRole("listitem").filter({ hasText: "Logo" });
+  await expect(home).toContainText("Awaiting approval");
+  await expect(home).toContainText("Studio Pop asks: “Check the mobile layout.”");
+
+  // Approving is final, so it asks first; backing out sends nothing.
+  await home.getByLabel("Your message").fill("Looks great.");
+  await home.getByRole("button", { name: "Approve Homepage mockup" }).click();
+  await page.getByRole("button", { name: "Not yet" }).click();
+  await expect(home).toContainText("Awaiting approval");
+  await home.getByRole("button", { name: "Approve Homepage mockup" }).click();
+  await page.getByRole("button", { name: "Yes, approve" }).click();
+  await expect(home).toContainText("You said: “Looks great.”");
+  await expect(home).not.toContainText("Awaiting approval");
+  await expect(home.getByRole("button", { name: "Approve Homepage mockup" })).toBeHidden();
+  await expect(banner).toContainText("1 deliverable needs your approval.");
+
+  // Asking for changes needs a reason.
+  await logoItem.getByRole("button", { name: "Request changes to Logo" }).click();
+  await expect(alertWith(page, "Say what should change.")).toBeVisible();
+  await logoItem.getByLabel("Your message").fill("The blue is too dark.");
+  await logoItem.getByRole("button", { name: "Request changes to Logo" }).click();
+  await expect(logoItem).toContainText("Changes requested");
+  await expect(logoItem).toContainText("You said: “The blue is too dark.”");
+  await expect(banner).toHaveCount(0);
+  await page.goto("/portal");
+  await expect(page.getByRole("link", { name: /Website/ })).not.toContainText("waiting for you");
+
+  // The freelancer sees both answers, replies to the changes, and asks again: the earlier answer stays as history.
+  const seen = await (await request.get(`${projectUrl}/deliverables/${logo.id}`)).json();
+  expect([seen.approvalStatus, seen.approvals[0].message]).toEqual(["ChangesRequested", "The blue is too dark."]);
+  await ask(logo, "Bluer now?");
+  await page.goto(`/portal/projects/${website.id}`);
+  await expect(logoItem).toContainText("Awaiting approval");
+  await expect(logoItem).toContainText("Studio Pop asks: “Bluer now?”");
+  await logoItem.getByText("Earlier answers (1)").click();
+  await expect(logoItem).toContainText("You said: “The blue is too dark.”");
+  await expect(banner).toContainText("1 deliverable needs your approval.");
+  await page.goto("/portal");
+  await expect(page.getByRole("link", { name: /Website/ })).toContainText("1 waiting for you");
 });
 
 test("a client sees the projects shared with them, and what is done and what comes next", async ({ page, request }) => {

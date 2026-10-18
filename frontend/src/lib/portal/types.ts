@@ -13,6 +13,23 @@ export type PortalProjectSummary = {
   status: ProjectStatus;
   dueDate: string | null;
   progress: Progress;
+  /** How many deliverables wait for this client's answer. */
+  awaitingApproval: number;
+};
+
+/** What the client was asked, and what they answered. Rounds the freelancer withdrew never reach the portal. */
+export type PortalApproval = {
+  status: "None" | "Pending" | "Approved" | "ChangesRequested";
+  /** The round waiting for an answer, if any. */
+  pending: { id: string; note: string | null; requestedAtUtc: string } | null;
+  /** Answered rounds, newest first. */
+  history: {
+    decision: "Approved" | "ChangesRequested";
+    note: string | null;
+    message: string | null;
+    requestedAtUtc: string;
+    decidedAtUtc: string;
+  }[];
 };
 
 /** Only shared ones reach the portal, so there is no status here. Newest first. */
@@ -23,6 +40,7 @@ export type PortalDeliverable = {
   /** Always an https address (the API refuses anything else). */
   url: string;
   stageName: string | null;
+  approval: PortalApproval;
 };
 
 /** Only shared ones reach the portal. Most recently shared first; no author on purpose. */

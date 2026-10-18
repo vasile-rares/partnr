@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
 import { getPortalProjects, getPortalWorkspaces } from "@/lib/portal/server";
@@ -57,6 +58,9 @@ export default async function PortalPage() {
                                 </p>
                               </div>
                               <div className="flex items-center gap-4">
+                                {project.awaitingApproval > 0 ? (
+                                  <Badge variant="secondary">{project.awaitingApproval} waiting for you</Badge>
+                                ) : null}
                                 <ProjectProgress progress={project.progress} />
                                 <ProjectStatusBadge status={project.status} />
                               </div>

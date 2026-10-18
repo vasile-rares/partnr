@@ -382,7 +382,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [x] Timeline (actualizări scrise de freelancer, cu Draft / Shared), în doi pași:
   - [x] Pas 1: actualizări pentru freelancer (API și secțiunea „Updates” pe pagina proiectului)
   - [x] Pas 2: actualizările partajate în portalul clientului
-- [ ] Feedback și aprobări, într-un singur pas, pe livrabil: clientul aprobă sau cere modificări, cu un mesaj. Aici se încheie și portalul pentru clienți (acum e doar de citit: proiecte, etape, progres, livrabile partajate)
+- [x] Feedback și aprobări, într-un singur pas, pe livrabil: clientul aprobă sau cere modificări, cu un mesaj. Aici se încheie și portalul pentru clienți: proiecte, etape, progres, actualizări, livrabile și ce are de făcut clientul („N waiting for you")
 - [ ] Notificări (întâi email, apoi în aplicație)
 - [ ] Livrabile, pasul 3: upload de fișiere (decizie de stocare), ultimul din MVP
 

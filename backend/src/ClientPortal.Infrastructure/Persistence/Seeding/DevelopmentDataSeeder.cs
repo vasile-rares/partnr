@@ -18,6 +18,7 @@ internal sealed class DevelopmentDataSeeder(
     IProjectRepository projects,
     IDeliverableRepository deliverables,
     IProjectUpdateRepository projectUpdates,
+    IApprovalRequestRepository approvals,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -134,6 +135,12 @@ internal sealed class DevelopmentDataSeeder(
         var mockups = Deliverable.Create(studio.Id, website.Id, design.Id, "Homepage mockups", "Desktop and mobile layouts.", "https://www.figma.com/file/elena-homepage");
         mockups.Share();
         deliverables.Add(mockups);
+
+        var firstRound = ApprovalRequest.Request(studio.Id, website.Id, mockups.Id, owner.Id, "Please look at the homepage and the booking page.");
+        firstRound.RequestChanges(account.Id, "The logo is too small on mobile.");
+        approvals.Add(firstRound);
+        approvals.Add(ApprovalRequest.Request(studio.Id, website.Id, mockups.Id, owner.Id, "The logo is bigger now. Ready for a final look?"));
+
         deliverables.Add(Deliverable.Create(studio.Id, website.Id, development.Id, "Staging site", "Not ready to show yet.", "https://staging.elena-design.example"));
 
         var designDone = ProjectUpdate.Create(studio.Id, website.Id, "Design approved", "All page layouts are signed off. Development starts this week.");
