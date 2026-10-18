@@ -1,6 +1,7 @@
 using ClientPortal.Application.Authorization;
 using ClientPortal.Application.DTOs.Deliverables;
 using ClientPortal.Application.Exceptions;
+using ClientPortal.Application.Mappings;
 using ClientPortal.Application.Services;
 using ClientPortal.Domain.Entities;
 using ClientPortal.Domain.Enums;
@@ -11,6 +12,7 @@ public class DeliverableServiceTests
 {
     private readonly Guid _me = Guid.NewGuid();
     private readonly FakeDeliverableRepository _deliverables = new();
+    private readonly FakeApprovalRequestRepository _approvals = new();
     private readonly FakeProjectRepository _projects = new();
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser;
@@ -27,7 +29,13 @@ public class DeliverableServiceTests
         _projects.Items.Add(_project);
         _currentUser = new FakeCurrentUser(_me);
 
-        _service = new DeliverableService(_deliverables, _projects, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+        _service = new DeliverableService(
+            _deliverables,
+            _projects,
+            _approvals,
+            new DeliverableResponseBuilder(_approvals),
+            new WorkspaceAccess(_workspaces, _currentUser),
+            _unitOfWork);
     }
 
     [Fact]
@@ -258,6 +266,126 @@ public class DeliverableServiceTests
         Assert.Equal(0, _unitOfWork.SaveCount);
     }
 
+    [Fact]
+    public async Task Response_ShowsNone_UntilARoundExists_ThenTheStatusOfTheLatestRoundThatWasNotWithdrawn()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+
+        var none = await _service.GetByIdAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        var approved = AddRound(deliverable);
+        approved.Approve(Guid.NewGuid(), null);
+        var afterApproval = await _service.GetByIdAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        AddRound(deliverable).Withdraw();
+        var afterWithdrawal = await _service.GetByIdAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        AddRound(deliverable);
+        var pending = await _service.GetByIdAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        Assert.Equal(("None", 0), (none.ApprovalStatus, none.Approvals.Count));
+        Assert.Equal("Approved", afterApproval.ApprovalStatus);
+        Assert.Equal("Approved", afterWithdrawal.ApprovalStatus); // a withdrawn request leaves what stood before it
+        Assert.Equal(("Pending", 3), (pending.ApprovalStatus, pending.Approvals.Count));
+        Assert.Equal(["Pending", "Withdrawn", "Approved"], pending.Approvals.Select(a => a.Status));
+    }
+
+    [Fact]
+    public async Task List_CarriesEachDeliverablesOwnRounds()
+    {
+        var first = AddDeliverable();
+        var second = AddDeliverable();
+        AddRound(first).RequestChanges(Guid.NewGuid(), "Bigger logo.");
+
+        var list = await _service.ListAsync(_workspace.Id, _project.Id, includeArchived: true, CancellationToken.None);
+
+        Assert.Equal("ChangesRequested", list.Single(d => d.Id == first.Id).ApprovalStatus);
+        Assert.Equal("Bigger logo.", list.Single(d => d.Id == first.Id).Approvals[0].Message);
+        Assert.Equal("None", list.Single(d => d.Id == second.Id).ApprovalStatus);
+    }
+
+    [Fact]
+    public async Task Update_WhileARequestIsPending_ThrowsConflict_AndChangesNothing()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+        AddRound(deliverable);
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            _service.UpdateAsync(_workspace.Id, _project.Id, deliverable.Id, Save(null, "Changed"), CancellationToken.None));
+
+        Assert.Equal("Mockup", deliverable.Title);
+        Assert.Equal(0, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Update_AfterTheClientDecided_IsAllowed_AndTheHistoryStays()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+        AddRound(deliverable).Approve(Guid.NewGuid(), null);
+
+        var response = await _service.UpdateAsync(_workspace.Id, _project.Id, deliverable.Id, Save(null, "Final mockup"), CancellationToken.None);
+
+        Assert.Equal("Final mockup", response.Title);
+        Assert.Equal("Approved", response.ApprovalStatus);
+        Assert.Single(response.Approvals);
+    }
+
+    [Fact]
+    public async Task Unshare_WithdrawsThePendingRequest_SoItDoesNotStayOpenForSomethingTheClientCannotSee()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+        var round = AddRound(deliverable);
+
+        var response = await _service.UnshareAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        Assert.Equal(ApprovalStatus.Withdrawn, round.Status);
+        Assert.Equal("Draft", response.Status);
+        Assert.Equal("None", response.ApprovalStatus);
+        Assert.Equal(1, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Archive_WithdrawsThePendingRequest()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+        var round = AddRound(deliverable);
+
+        await _service.ArchiveAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        Assert.Equal(ApprovalStatus.Withdrawn, round.Status);
+    }
+
+    [Fact]
+    public async Task Unshare_LeavesAClosedRoundAlone()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+        var round = AddRound(deliverable);
+        round.Approve(Guid.NewGuid(), null);
+
+        await _service.UnshareAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        Assert.Equal(ApprovalStatus.Approved, round.Status);
+    }
+
+    [Fact]
+    public async Task Delete_ADraftWithAnApprovalHistory_ThrowsConflict_AndKeepsIt()
+    {
+        var deliverable = AddDeliverable();
+        AddRound(deliverable).Withdraw(); // even a withdrawn round is history
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            _service.DeleteAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None));
+
+        Assert.Single(_deliverables.Items);
+        Assert.Equal(0, _unitOfWork.SaveCount);
+    }
+
     private static SaveDeliverableRequest Save(Guid? stageId, string title = "Mockup") =>
         new() { StageId = stageId, Title = title, Url = "https://figma.com/file/abc" };
 
@@ -266,5 +394,12 @@ public class DeliverableServiceTests
         var deliverable = Deliverable.Create(_workspace.Id, _project.Id, null, "Mockup", null, "https://figma.com/file/abc");
         _deliverables.Items.Add(deliverable);
         return deliverable;
+    }
+
+    private ApprovalRequest AddRound(Deliverable deliverable)
+    {
+        var round = ApprovalRequest.Request(_workspace.Id, _project.Id, deliverable.Id, _me, null);
+        _approvals.Items.Add(round);
+        return round;
     }
 }

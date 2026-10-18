@@ -127,6 +127,41 @@ internal sealed class FakeDeliverableRepository : IDeliverableRepository
     public void Remove(Deliverable deliverable) => Items.Remove(deliverable);
 }
 
+internal sealed class FakeApprovalRequestRepository : IApprovalRequestRepository
+{
+    public List<ApprovalRequest> Items { get; } = [];
+
+    public Task<ApprovalRequest?> GetByIdAsync(Guid workspaceId, Guid projectId, Guid deliverableId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(a =>
+            a.WorkspaceId == workspaceId && a.ProjectId == projectId && a.DeliverableId == deliverableId && a.Id == id));
+
+    public Task<ApprovalRequest?> GetPendingAsync(Guid deliverableId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(a => a.DeliverableId == deliverableId && a.IsPending));
+
+    public Task<bool> AnyAsync(Guid deliverableId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.Any(a => a.DeliverableId == deliverableId));
+
+    public Task<IReadOnlyList<ApprovalRequest>> ListForDeliverableAsync(Guid workspaceId, Guid projectId, Guid deliverableId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ApprovalRequest>>(NewestFirst(
+            Items.Where(a => a.WorkspaceId == workspaceId && a.ProjectId == projectId && a.DeliverableId == deliverableId)));
+
+    public Task<IReadOnlyList<ApprovalRequest>> ListForProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ApprovalRequest>>(NewestFirst(Items.Where(a => a.WorkspaceId == workspaceId && a.ProjectId == projectId)));
+
+    // The real query also joins the deliverable (shared and not archived); the services keep that true for every pending round.
+    public Task<IReadOnlyDictionary<Guid, int>> CountPendingForClientAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, int>>(Items
+            .Where(a => a.IsPending && projectIds.Contains(a.ProjectId))
+            .GroupBy(a => a.ProjectId)
+            .ToDictionary(g => g.Key, g => g.Count()));
+
+    public void Add(ApprovalRequest request) => Items.Add(request);
+
+    // Reversed first: rounds added within the same tick keep the later one in front, like the real ordering by id.
+    private static List<ApprovalRequest> NewestFirst(IEnumerable<ApprovalRequest> rounds) =>
+        rounds.Reverse().OrderByDescending(a => a.RequestedAtUtc).ToList();
+}
+
 internal sealed class FakeProjectUpdateRepository : IProjectUpdateRepository
 {
     public List<ProjectUpdate> Items { get; } = [];

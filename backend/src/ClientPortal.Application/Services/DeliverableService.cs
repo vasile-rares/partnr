@@ -12,6 +12,8 @@ namespace ClientPortal.Application.Services;
 internal sealed class DeliverableService(
     IDeliverableRepository deliverables,
     IProjectRepository projects,
+    IApprovalRequestRepository approvals,
+    DeliverableResponseBuilder responses,
     WorkspaceAccess access,
     IUnitOfWork unitOfWork) : IDeliverableService
 {
@@ -30,7 +32,7 @@ internal sealed class DeliverableService(
         deliverables.Add(deliverable);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return deliverable.ToResponse(project);
+        return deliverable.ToResponse(project, []);
     }
 
     public async Task<IReadOnlyList<DeliverableResponse>> ListAsync(
@@ -44,7 +46,7 @@ internal sealed class DeliverableService(
 
         var list = await deliverables.ListAsync(workspaceId, projectId, includeArchived, cancellationToken);
 
-        return list.ToResponses(project);
+        return await responses.BuildAsync(list, project, cancellationToken);
     }
 
     public async Task<DeliverableResponse> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
@@ -53,7 +55,7 @@ internal sealed class DeliverableService(
         var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
 
-        return deliverable.ToResponse(project);
+        return await responses.BuildAsync(deliverable, project, cancellationToken);
     }
 
     public Task<DeliverableResponse> UpdateAsync(
@@ -66,18 +68,34 @@ internal sealed class DeliverableService(
             workspaceId,
             projectId,
             id,
-            (deliverable, project) =>
+            async (deliverable, project) =>
             {
                 RequireStage(project, request.StageId);
+
+                // The client must not approve something other than what they saw, so an open request freezes the details.
+                if (await approvals.GetPendingAsync(deliverable.Id, cancellationToken) is not null)
+                {
+                    throw new ConflictException("This deliverable is waiting for the client's decision. Withdraw the approval request before editing it.");
+                }
+
                 deliverable.UpdateDetails(request.StageId, request.Title, request.Description, request.Url);
             },
             cancellationToken);
 
     public Task<DeliverableResponse> ShareAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken) =>
-        ChangeAsync(workspaceId, projectId, id, (deliverable, _) => deliverable.Share(), cancellationToken);
+        ChangeAsync(workspaceId, projectId, id, (deliverable, _) => { deliverable.Share(); return Task.CompletedTask; }, cancellationToken);
 
     public Task<DeliverableResponse> UnshareAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken) =>
-        ChangeAsync(workspaceId, projectId, id, (deliverable, _) => deliverable.Unshare(), cancellationToken);
+        ChangeAsync(
+            workspaceId,
+            projectId,
+            id,
+            async (deliverable, _) =>
+            {
+                await WithdrawPendingAsync(deliverable, cancellationToken);
+                deliverable.Unshare();
+            },
+            cancellationToken);
 
     public async Task<DeliverableResponse> ArchiveAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
@@ -86,10 +104,11 @@ internal sealed class DeliverableService(
         EnsureProjectNotArchived(project);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
 
+        await WithdrawPendingAsync(deliverable, cancellationToken);
         deliverable.Archive();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return deliverable.ToResponse(project);
+        return await responses.BuildAsync(deliverable, project, cancellationToken);
     }
 
     public async Task<DeliverableResponse> RestoreAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
@@ -102,7 +121,7 @@ internal sealed class DeliverableService(
         deliverable.Restore();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return deliverable.ToResponse(project);
+        return await responses.BuildAsync(deliverable, project, cancellationToken);
     }
 
     public async Task DeleteAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
@@ -118,6 +137,11 @@ internal sealed class DeliverableService(
             throw new ConflictException("Only a draft can be deleted. Move it back to Draft, or archive it.");
         }
 
+        if (await approvals.AnyAsync(deliverable.Id, cancellationToken))
+        {
+            throw new ConflictException("This deliverable has an approval history, so it can't be deleted. Archive it instead.");
+        }
+
         deliverables.Remove(deliverable);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
@@ -127,7 +151,7 @@ internal sealed class DeliverableService(
         Guid workspaceId,
         Guid projectId,
         Guid id,
-        Action<Deliverable, Project> change,
+        Func<Deliverable, Project, Task> change,
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
@@ -136,11 +160,15 @@ internal sealed class DeliverableService(
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
         EnsureNotArchived(deliverable);
 
-        change(deliverable, project);
+        await change(deliverable, project);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return deliverable.ToResponse(project);
+        return await responses.BuildAsync(deliverable, project, cancellationToken);
     }
+
+    // The client stops seeing the deliverable, so a request waiting for them cannot stay open.
+    private async Task WithdrawPendingAsync(Deliverable deliverable, CancellationToken cancellationToken) =>
+        (await approvals.GetPendingAsync(deliverable.Id, cancellationToken))?.Withdraw();
 
     private async Task<Project> RequireProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken) =>
         await projects.GetByIdAsync(workspaceId, projectId, cancellationToken)

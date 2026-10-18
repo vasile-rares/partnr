@@ -4,6 +4,7 @@ using ClientPortal.Application.DTOs.Projects;
 using ClientPortal.Application.Exceptions;
 using ClientPortal.Application.Interfaces.Repositories;
 using ClientPortal.Application.Interfaces.Services;
+using ClientPortal.Application.Mappings;
 using ClientPortal.Domain.Entities;
 
 namespace ClientPortal.Application.Services;
@@ -13,6 +14,7 @@ internal sealed class PortalService(
     IProjectRepository projects,
     IDeliverableRepository deliverables,
     IProjectUpdateRepository projectUpdates,
+    IApprovalRequestRepository approvals,
     WorkspaceAccess access) : IPortalService
 {
     public async Task<IReadOnlyList<PortalWorkspaceResponse>> ListWorkspacesAsync(CancellationToken cancellationToken)
@@ -27,6 +29,7 @@ internal sealed class PortalService(
         var userId = access.RequireUserId();
         var list = await projects.ListSharedWithClientAsync(userId, cancellationToken);
         var names = await WorkspacesAsync(userId, cancellationToken);
+        var waiting = await approvals.CountPendingForClientAsync(list.Select(p => p.Id).ToList(), cancellationToken);
 
         // A project always has its workspace here (the client is linked there); skipping is only a guard against a race.
         return list
@@ -37,7 +40,8 @@ internal sealed class PortalService(
                 p.Name,
                 p.Status.ToString(),
                 p.DueDate,
-                Progress(p)))
+                Progress(p),
+                waiting.GetValueOrDefault(p.Id)))
             .ToList();
     }
 
@@ -56,6 +60,10 @@ internal sealed class PortalService(
         var stageNames = stages.ToDictionary(s => s.Id, s => s.Name);
         var shared = await deliverables.ListSharedAsync(project.Id, cancellationToken);
         var sharedUpdates = await projectUpdates.ListSharedAsync(project.Id, cancellationToken);
+        var rounds = (await approvals.ListForProjectAsync(project.WorkspaceId, project.Id, cancellationToken)).ToLookup(a => a.DeliverableId);
+        var sharedDeliverables = shared
+            .Select(d => d.ToPortalResponse(d.StageId is { } stageId ? stageNames.GetValueOrDefault(stageId) : null, rounds[d.Id]))
+            .ToList();
 
         return new PortalProjectResponse(
             project.Id,
@@ -67,16 +75,10 @@ internal sealed class PortalService(
             project.Status.ToString(),
             Progress(project),
             stages.Select(s => new StageResponse(s.Id, s.Name, s.Description, s.DueDate, s.Status.ToString())).ToList(),
-            shared
-                .Select(d => new PortalDeliverableResponse(
-                    d.Id,
-                    d.Title,
-                    d.Description,
-                    d.Url,
-                    d.StageId is { } stageId ? stageNames.GetValueOrDefault(stageId) : null))
-                .ToList(),
+            sharedDeliverables,
             // Share() always sets the date, so a shared update has one.
-            sharedUpdates.Select(u => new PortalProjectUpdateResponse(u.Id, u.Title, u.Body, u.SharedAtUtc!.Value)).ToList());
+            sharedUpdates.Select(u => new PortalProjectUpdateResponse(u.Id, u.Title, u.Body, u.SharedAtUtc!.Value)).ToList(),
+            sharedDeliverables.Count(d => d.Approval.Pending is not null));
     }
 
     private async Task<Dictionary<Guid, PortalWorkspaceResponse>> WorkspacesAsync(Guid userId, CancellationToken cancellationToken) =>

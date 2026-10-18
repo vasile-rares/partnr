@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IDeliverableRepository, DeliverableRepository>();
         services.AddScoped<IProjectUpdateRepository, ProjectUpdateRepository>();
+        services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();

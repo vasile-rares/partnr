@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ClientPortal.Application.DTOs.Approvals;
 using ClientPortal.Application.DTOs.Clients;
 using ClientPortal.Application.DTOs.Deliverables;
 using ClientPortal.Application.DTOs.Portal;
@@ -398,6 +399,14 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
             }
 
             return update;
+        }
+
+        public async Task<ApprovalResponse> RequestApproval(ProjectResponse project, DeliverableResponse deliverable, string? note)
+        {
+            var response = await Http.PostAsJsonAsync($"{DeliverablesUrl(project)}/{deliverable.Id}/approvals", new { note });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            return (await response.Content.ReadFromJsonAsync<DeliverableResponse>())!.Approvals[0];
         }
 
         public async Task SetStatus(ProjectResponse project, string status)

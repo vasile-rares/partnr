@@ -14,13 +14,14 @@ public class PortalServiceTests
     private readonly FakeProjectRepository _projects;
     private readonly FakeDeliverableRepository _deliverables = new();
     private readonly FakeProjectUpdateRepository _updates = new();
+    private readonly FakeApprovalRequestRepository _approvals = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly PortalService _service;
 
     public PortalServiceTests()
     {
         _projects = new FakeProjectRepository { Clients = _clients };
-        _service = new PortalService(_workspaces, _projects, _deliverables, _updates, new WorkspaceAccess(_workspaces, _currentUser));
+        _service = new PortalService(_workspaces, _projects, _deliverables, _updates, _approvals, new WorkspaceAccess(_workspaces, _currentUser));
     }
 
     [Fact]
@@ -176,6 +177,92 @@ public class PortalServiceTests
     }
 
     [Fact]
+    public async Task GetProject_ShowsTheOpenRound_AndTheDecidedOnesNewestFirst_ButNeverAWithdrawnOne()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var mockup = AddDeliverable(project, "Mockup", null, shared: true);
+        var changes = AddRound(project, mockup, "Check the logo.");
+        changes.RequestChanges(_me, "Bigger logo.");
+        AddRound(project, mockup, "Withdrawn one").Withdraw();
+        var approved = AddRound(project, mockup, "Second try.");
+        approved.Approve(_me, "Looks great.");
+        var open = AddRound(project, mockup, "Final check.");
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        var approval = Assert.Single(response.Deliverables).Approval;
+        Assert.Equal("Pending", approval.Status);
+        Assert.Equal((open.Id, "Final check."), (approval.Pending!.Id, approval.Pending.Note));
+        Assert.Equal(["Approved", "ChangesRequested"], approval.History.Select(h => h.Decision));
+        Assert.Equal(("Second try.", "Looks great."), (approval.History[0].Note, approval.History[0].Message));
+        Assert.Equal(("Check the logo.", "Bigger logo."), (approval.History[1].Note, approval.History[1].Message));
+        Assert.DoesNotContain("Withdrawn one", approval.History.Select(h => h.Note));
+    }
+
+    [Fact]
+    public async Task GetProject_WithoutRounds_ShowsNoApproval()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        AddDeliverable(project, "Mockup", null, shared: true);
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        var approval = Assert.Single(response.Deliverables).Approval;
+        Assert.Equal("None", approval.Status);
+        Assert.Null(approval.Pending);
+        Assert.Empty(approval.History);
+        Assert.Equal(0, response.AwaitingApproval);
+    }
+
+    [Fact]
+    public async Task GetProject_WithAWithdrawnRoundOnly_LooksLikeNothingWasAsked()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var mockup = AddDeliverable(project, "Mockup", null, shared: true);
+        AddRound(project, mockup, "Never mind").Withdraw();
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        Assert.Equal("None", response.Deliverables[0].Approval.Status);
+        Assert.Empty(response.Deliverables[0].Approval.History);
+        Assert.Equal(0, response.AwaitingApproval);
+    }
+
+    [Fact]
+    public async Task GetProject_CountsHowManyDeliverablesWaitForTheClient()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        AddRound(project, AddDeliverable(project, "Waiting one", null, shared: true), null);
+        AddRound(project, AddDeliverable(project, "Waiting two", null, shared: true), null);
+        AddRound(project, AddDeliverable(project, "Answered", null, shared: true), null).Approve(_me, null);
+        AddDeliverable(project, "Nothing asked", null, shared: true);
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        Assert.Equal(2, response.AwaitingApproval);
+    }
+
+    [Fact]
+    public async Task ListProjects_ShowsHowManyThingsWaitForTheClient_PerProject()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var busy = AddProject(studio, client, "Busy", ProjectStatus.Active);
+        var quiet = AddProject(studio, client, "Quiet", ProjectStatus.Active);
+        AddRound(busy, AddDeliverable(busy, "One", null, shared: true), null);
+        AddRound(busy, AddDeliverable(busy, "Two", null, shared: true), null);
+        AddRound(quiet, AddDeliverable(quiet, "Done", null, shared: true), null).Approve(_me, null);
+
+        var list = await _service.ListProjectsAsync(CancellationToken.None);
+
+        Assert.Equal(2, list.Single(p => p.Name == "Busy").AwaitingApproval);
+        Assert.Equal(0, list.Single(p => p.Name == "Quiet").AwaitingApproval);
+    }
+
+    [Fact]
     public async Task GetProject_ThatIsADraft_Archived_OrSomeoneElses_LooksLikeItDoesNotExist()
     {
         var (studio, client) = AsClientOfAStudio();
@@ -221,6 +308,14 @@ public class PortalServiceTests
         _deliverables.Items.Add(deliverable);
 
         return deliverable;
+    }
+
+    private ApprovalRequest AddRound(Project project, Deliverable deliverable, string? note)
+    {
+        var round = ApprovalRequest.Request(project.WorkspaceId, project.Id, deliverable.Id, Guid.NewGuid(), note);
+        _approvals.Items.Add(round);
+
+        return round;
     }
 
     private ProjectUpdate AddUpdate(Project project, string title, bool shared)

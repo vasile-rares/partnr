@@ -388,4 +388,4 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 
 ## Decizii luate
 
-Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Generale). Se citește doar secțiunea relevantă pentru pasul curent.
+Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Feedback și aprobări, Generale). Se citește doar secțiunea relevantă pentru pasul curent.
