@@ -317,6 +317,7 @@ Funcționalități precum propuneri, plăți, automatizări avansate, CRM, AI, w
 
 Inspirate din [taskview-community](https://github.com/Gimanh/taskview-community) (task manager self-hosted; doar ideile, nu codul: licența interzice un produs comercial concurent). Nu fac parte din MVP; se reiau când ajunge rândul lor.
 
+- **Jurnal automat de evenimente pe proiect** (livrabil partajat, status schimbat, etapă mutată...), nemodificabil, separat de actualizările scrise ale Timeline-ului. Discutat și amânat la Timeline: se reia când Aprobările sau Notificările au un motiv concret. Deciziile deja gândite: înregistrare explicită în servicii, în aceeași tranzacție; vizibilitatea pentru client fixată la scriere, după tip; clientul nu vede actorul; evenimentele „partajat" ale unui livrabil retras se ascund.
 - **Șabloane de etape** („Create project from template", „Save these stages as a template"). Mic și util oricând: etapele sunt deja un agregat în `Project`, șablonul doar apelează `AddStage` de mai multe ori.
 - **Tipuri TypeScript generate din OpenAPI**, în locul tipurilor scrise de mână în `frontend/src/lib/` (de ex. cu `openapi-typescript`). Previne desincronizarea dintre DTO-urile din .NET și frontend.
 - **Un singur sistem de evenimente de domeniu** (livrabil partajat, feedback, aprobare, schimbare de status). Se construiește la Timeline; de el se leagă apoi Notificările, webhook-urile și Automatizările, în loc de patru mecanisme separate.
@@ -337,6 +338,29 @@ Funcții pe care vrei să le ai pe viitor, în ordinea în care le-ai enumerat (
 - **CRM.** Rămâne subțire, ca produsul să nu devină un CRM generic (vezi „Poziționarea produsului"): lead-uri cu etape personalizate și sursă, iar la câștigare se transformă în `Client`, cu istoricul păstrat. Fișa `Client` există deja și rămâne punctul de legătură.
 - **Recenzii verificate.** La trecerea proiectului în Completed, clientul primește automat o invitație să lase o recenzie. Recenzia e legată de contul lui din portal (nu poate fi falsificată) și nu se editează sau șterge după publicare. Freelancerul primește o pagină publică cu recenzii și un badge de inserat în site. De decis: cine aprobă afișarea publică și dacă clientul poate retrage recenzia. Depinde de Notificări / email și de statusul Completed (există deja).
 
+### Inspirație de layout (Clienter)
+
+Din capturile de ecran ale [Clienter](https://clienter.co.in/) (demo). **Doar inspirație**, nu de copiat 1:1; rămânem la poziționarea noastră (transparență pentru client, fără banii în centru).
+
+**Partea freelancerului (pagina proiectului)**
+- Pagina proiectului pe **tab-uri** (Overview, Deliverables, Timeline, ...), nu secțiuni una sub alta, când apar Timeline, Feedback și Aprobări. shadcn are `Tabs`.
+- **Overview** cu un card „Progress" (lista de actualizări + formular „Add update": titlu și „ce se întâmplă acum"), un card „Deadline" (zile rămase, bară de progres) și un card „Approvals" (câmp „ce are nevoie de aprobare" + buton „Request approval", apoi un jurnal de tipul „X approved by Ananya · 13 Jul").
+- **Actualizările din Timeline pot fi scrise de mână**, nu doar evenimente automate, fiecare cu `Draft` / `Shared` (insigna „Shared", ochiul de arătat/ascuns).
+- **Vizibilitate controlată pe element**, același tipar ca `Draft` / `Shared` de la livrabile.
+- **Livrabile și fișiere în același tab**: livrabilele (cu insigna Shared) lângă o zonă de upload cu drag & drop. Reper pentru decizia de stocare: limită de 25 MB per fișier.
+
+**Partea clientului (portalul)**
+- **Prima pagină a portalului** cu „Welcome back, X. Here's where things stand today." și cartonașe: proiecte active, **„Awaiting you"** (câte lucruri așteaptă o acțiune de la client; răspunde la „trebuie să fac eu ceva?"), mesaje necitite.
+- Sub ele, **proiectele active** cu bară de progres și un indicator scurt („On track"), apoi un rezumat „Your delivery" (de ex. livrabile primite, „typical reply time").
+- Pagina unui proiect pe tab-uri (Overview, Deliverables, Files & docs), cu titlul, statusul și progresul sus.
+- Navigarea portalului rămâne **mică** (Home, Projects, apoi Messages când există), spre deosebire de cele 8 intrări din meniul lor.
+- **„Powered by <produs>"** în subsolul portalului pe planul gratuit; dispare pe planul plătit (se leagă de white-label).
+
+**De nu luat**
+- Cartonașe și tab-uri cu bani (buget, plătit, rămas, facturi, plăți către echipă) până la pasul Plăți.
+- Pagina freelancerului încărcată (6 tab-uri, meniu cu 13 intrări).
+- „Timeline" ca simplă bară de date: la noi rămân etapele și evenimentele.
+
 ---
 
 ## Progres
@@ -352,16 +376,16 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 1: proiecte pentru freelancer (API, listă, pagina proiectului, secțiune pe pagina clientului, arhivare)
   - [x] Pas 2: etape (ordonate, cu status) și progres
   - [x] Pas 3: proiectele și etapele în portalul clientului
-- [ ] Portal pentru clienți (început: lista proiectelor și pagina unui proiect, cu etape, progres și livrabile partajate; urmează ce cere clientul să facă: feedback, aprobări)
-- [ ] Timeline
-- [ ] Livrabile, în trei pași:
+- [x] Livrabile ca link, în doi pași:
   - [x] Pas 1: livrabile ca link pentru freelancer (API și secțiunea „Deliverables” pe pagina proiectului)
   - [x] Pas 2: livrabilele în portalul clientului
-  - [ ] Pas 3: upload de fișiere (decizie de stocare)
-- [ ] Feedback
-- [ ] Aprobări
-- [ ] Notificări
+- [ ] Timeline (actualizări scrise de freelancer, cu Draft / Shared), în doi pași:
+  - [ ] Pas 1: actualizări pentru freelancer (API și secțiunea „Updates” pe pagina proiectului)
+  - [ ] Pas 2: actualizările partajate în portalul clientului
+- [ ] Feedback și aprobări, într-un singur pas, pe livrabil: clientul aprobă sau cere modificări, cu un mesaj. Aici se încheie și portalul pentru clienți (acum e doar de citit: proiecte, etape, progres, livrabile partajate)
+- [ ] Notificări (întâi email, apoi în aplicație)
+- [ ] Livrabile, pasul 3: upload de fișiere (decizie de stocare), ultimul din MVP
 
 ## Decizii luate
 
-Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Generale). Se citește doar secțiunea relevantă pentru pasul curent.
+Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Generale). Se citește doar secțiunea relevantă pentru pasul curent.

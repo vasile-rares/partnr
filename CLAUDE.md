@@ -63,5 +63,5 @@ Project rules in this file take precedence over any skill. A skill never authori
 
 ## Prerequisites
 
-- Backend: .NET SDK 10, `dotnet-ef`, Docker for Postgres and Mailpit, the local email catcher (details in `backend/CLAUDE.md`). Frontend: Node.js + pnpm (the version is pinned in `frontend/package.json`; install with `corepack enable`, or `npm install -g pnpm` if Corepack is older than 0.33).
+- Backend: .NET SDK 10, `dotnet-ef`, Docker for Postgres and Mailpit, the local email catcher (details in `backend/CLAUDE.md`). Frontend: Node.js + pnpm (the version is pinned in `frontend/package.json`; install with `npm install -g pnpm`; Corepack 0.31 cannot run pnpm 12).
 - Works on Windows, macOS and Linux; use forward slashes and shell-agnostic commands in docs and scripts.

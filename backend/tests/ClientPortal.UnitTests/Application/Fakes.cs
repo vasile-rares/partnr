@@ -127,6 +127,24 @@ internal sealed class FakeDeliverableRepository : IDeliverableRepository
     public void Remove(Deliverable deliverable) => Items.Remove(deliverable);
 }
 
+internal sealed class FakeProjectUpdateRepository : IProjectUpdateRepository
+{
+    public List<ProjectUpdate> Items { get; } = [];
+
+    public Task<ProjectUpdate?> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(u => u.WorkspaceId == workspaceId && u.ProjectId == projectId && u.Id == id));
+
+    public Task<IReadOnlyList<ProjectUpdate>> ListAsync(Guid workspaceId, Guid projectId, bool includeArchived, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ProjectUpdate>>(Items
+            .Where(u => u.WorkspaceId == workspaceId && u.ProjectId == projectId && (includeArchived || !u.IsArchived))
+            .OrderByDescending(u => u.CreatedAtUtc)
+            .ToList());
+
+    public void Add(ProjectUpdate update) => Items.Add(update);
+
+    public void Remove(ProjectUpdate update) => Items.Remove(update);
+}
+
 internal sealed class FakeClientInvitationRepository : IClientInvitationRepository
 {
     public List<ClientInvitation> Items { get; } = [];

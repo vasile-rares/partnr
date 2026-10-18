@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<ProjectResponseBuilder>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IDeliverableService, DeliverableService>();
+        services.AddScoped<IProjectUpdateService, ProjectUpdateService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<WorkspaceAccess>();

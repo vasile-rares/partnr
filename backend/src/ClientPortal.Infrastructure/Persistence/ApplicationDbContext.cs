@@ -24,6 +24,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<Deliverable> Deliverables => Set<Deliverable>();
 
+    public DbSet<ProjectUpdate> ProjectUpdates => Set<ProjectUpdate>();
+
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
