@@ -9,10 +9,10 @@ Code, identifiers, code comments and commit messages are in English. Reply to th
 
 ## Product plan
 
-The product vision, feature list and MVP scope are in [.claude/docs/product-plan.md](.claude/docs/product-plan.md) (written in Romanian). Read it at the start of a new feature or when unsure about scope.
+The product vision, feature list and MVP scope are in [.claude/docs/product-plan.md](.claude/docs/product-plan.md) (written in Romanian). Read it at the start of a new feature or when unsure about scope. The decisions already taken (with their reasons) are in [.claude/docs/decisions.md](.claude/docs/decisions.md), one section per area: read only the section relevant to the current step.
 
 - The user builds this **step by step, to understand it and catch problems along the way**. Work in small steps, explain the why briefly, and do not jump ahead to features outside the current step or build the whole MVP at once.
-- After finishing a step, tick it in the `Progres` section of the plan; record architecture / data-model decisions in `Decizii luate`.
+- After finishing a step, tick it in the `Progres` section of the plan; record architecture / data-model decisions in the matching section of `decisions.md`.
 - Stick to the MVP list; proposals, payments, advanced automations, CRM, AI, white-label and extra integrations come later.
 
 ## Working rules
