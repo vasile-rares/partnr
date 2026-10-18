@@ -30,7 +30,7 @@ export default defineConfig({
     },
     {
       // A production build, like the real thing. BACKEND_URL is needed at build time too: the /api rewrite is baked in then.
-      command: `npm run build && npm run start -- --port ${WEB_PORT}`,
+      command: `pnpm build && pnpm start --port ${WEB_PORT}`,
       url: `http://localhost:${WEB_PORT}/login`,
       env: { BACKEND_URL: `http://localhost:${API_PORT}` },
       reuseExistingServer: false,

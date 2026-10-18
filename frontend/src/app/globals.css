@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Theme tokens of the shadcn "base-nova" preset (neutral). Change the preset with `npx shadcn@latest apply <code>`.
+ * Theme tokens of the shadcn "base-nova" preset (neutral). Change the preset with `pnpm dlx shadcn@latest apply <code>`.
  * The only tokens of our own are the three --status-* ones: a project step is done, in progress or still to come.
  * They appear in the sign-in timeline and, later, in the client portal's project timeline.
  */
