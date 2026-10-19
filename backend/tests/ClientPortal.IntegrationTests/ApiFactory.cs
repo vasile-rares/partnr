@@ -17,6 +17,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeEmailSender Emails { get; } = new();
 
+    public InMemoryFileStorage Files { get; } = new();
+
     public async Task InitializeAsync()
     {
         await postgres.StartAsync();
@@ -42,6 +44,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Postgres", postgres.GetConnectionString());
-        builder.ConfigureServices(services => services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails)));
+        builder.ConfigureServices(services =>
+        {
+            services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
+            services.Replace(ServiceDescriptor.Singleton<IFileStorage>(Files));
+        });
     }
 }

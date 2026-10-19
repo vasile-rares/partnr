@@ -186,6 +186,54 @@ internal sealed class FakeProjectUpdateRepository : IProjectUpdateRepository
     public void Remove(ProjectUpdate update) => Items.Remove(update);
 }
 
+internal sealed class FakeProjectFileRepository : IProjectFileRepository
+{
+    public List<ProjectFile> Items { get; } = [];
+
+    public Task<ProjectFile?> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(f => f.WorkspaceId == workspaceId && f.ProjectId == projectId && f.Id == id));
+
+    public Task<IReadOnlyList<ProjectFile>> ListAsync(Guid workspaceId, Guid projectId, bool includeArchived, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ProjectFile>>(Items
+            .Where(f => f.WorkspaceId == workspaceId && f.ProjectId == projectId && (includeArchived || !f.IsArchived))
+            .OrderByDescending(f => f.CreatedAtUtc)
+            .ToList());
+
+    public Task<IReadOnlyList<ProjectFile>> ListSharedAsync(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ProjectFile>>(Items
+            .Where(f => f.ProjectId == projectId && f.Status == ProjectFileStatus.Shared && !f.IsArchived)
+            .OrderByDescending(f => f.CreatedAtUtc)
+            .ToList());
+
+    public void Add(ProjectFile file) => Items.Add(file);
+
+    public void Remove(ProjectFile file) => Items.Remove(file);
+}
+
+internal sealed class FakeFileStorage : IFileStorage
+{
+    public Dictionary<string, byte[]> Objects { get; } = [];
+
+    public Task SaveAsync(string key, Stream content, string contentType, CancellationToken cancellationToken)
+    {
+        using var copy = new MemoryStream();
+        content.CopyTo(copy);
+        Objects[key] = copy.ToArray();
+        return Task.CompletedTask;
+    }
+
+    public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        Objects.TryGetValue(key, out var bytes)
+            ? Task.FromResult<Stream>(new MemoryStream(bytes))
+            : throw new NotFoundException("The file's content was not found.");
+
+    public Task DeleteAsync(string key, CancellationToken cancellationToken)
+    {
+        Objects.Remove(key);
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class FakeClientInvitationRepository : IClientInvitationRepository
 {
     public List<ClientInvitation> Items { get; } = [];

@@ -19,5 +19,19 @@ services:
       - "1025:1025" # SMTP
       - "8025:8025" # web UI and API
 
+  # S3-compatible object storage for uploaded files (RustFS; MinIO no longer publishes images). S3 API: http://localhost:9000, console: http://localhost:9001
+  rustfs:
+    image: rustfs/rustfs:1.0.3
+    container_name: client-portal-rustfs
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # console
+    volumes:
+      - rustfs-data:/data
+
 volumes:
   postgres-data:
+  rustfs-data:

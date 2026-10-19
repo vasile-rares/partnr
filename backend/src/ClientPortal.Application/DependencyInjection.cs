@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IDeliverableService, DeliverableService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IProjectUpdateService, ProjectUpdateService>();
+        services.AddScoped<IProjectFileService, ProjectFileService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IPortalApprovalService, PortalApprovalService>();
         services.AddScoped<IAuthService, AuthService>();

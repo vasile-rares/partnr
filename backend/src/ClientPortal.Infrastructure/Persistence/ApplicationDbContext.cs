@@ -26,6 +26,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<ProjectUpdate> ProjectUpdates => Set<ProjectUpdate>();
 
+    public DbSet<ProjectFile> ProjectFiles => Set<ProjectFile>();
+
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
 
     public override async Task<int> SaveChangesAsync(
