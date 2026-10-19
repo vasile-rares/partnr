@@ -384,8 +384,11 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 2: actualizările partajate în portalul clientului
 - [x] Feedback și aprobări, într-un singur pas, pe livrabil: clientul aprobă sau cere modificări, cu un mesaj. Aici se încheie și portalul pentru clienți: proiecte, etape, progres, actualizări, livrabile și ce are de făcut clientul („N waiting for you")
 - [ ] Notificări (întâi email, apoi în aplicație)
-- [ ] Livrabile, pasul 3: upload de fișiere (decizie de stocare), ultimul din MVP
+- [x] Fișiere de proiect (upload de fișiere, separate de livrabile), în trei pași:
+  - [x] Pas 1: API și stocare S3-compatibilă (RustFS local), fără aprobări
+  - [x] Pas 2: secțiunea „Files" pentru freelancer, cu urcare, descărcare, Draft / Shared și arhivare
+  - [x] Pas 3: fișierele partajate în portalul clientului, cu seed și teste e2e
 
 ## Decizii luate
 
-Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Feedback și aprobări, Generale). Se citește doar secțiunea relevantă pentru pasul curent.
+Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Feedback și aprobări, Fișiere de proiect, Generale). Se citește doar secțiunea relevantă pentru pasul curent.

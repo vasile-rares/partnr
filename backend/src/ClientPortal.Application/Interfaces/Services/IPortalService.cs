@@ -1,4 +1,5 @@
 using ClientPortal.Application.DTOs.Portal;
+using ClientPortal.Application.DTOs.ProjectFiles;
 
 namespace ClientPortal.Application.Interfaces.Services;
 
@@ -13,4 +14,7 @@ public interface IPortalService
 
     /// <summary>A draft, an archived project, someone else's and an unknown id all answer the same NotFound.</summary>
     Task<PortalProjectResponse> GetProjectAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>The same door as <see cref="GetProjectAsync"/>, and the file must be shared and not archived; anything else is NotFound.</summary>
+    Task<FileDownload> DownloadFileAsync(Guid projectId, Guid fileId, CancellationToken cancellationToken);
 }

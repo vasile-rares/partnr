@@ -24,6 +24,7 @@ const messages = {
   signedOut: "Your session has ended. Sign in again to continue.",
   forbidden: "You don't have permission to do this.",
   notFound: "This no longer exists, or you don't have access to it.",
+  tooLarge: "This file is too large to upload.",
 };
 
 /** Reads the JSON of a GET. A request cancelled through `signal` is reported as `aborted`, which callers simply ignore. */
@@ -41,6 +42,13 @@ export async function sendJson<T = unknown>(
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+  return "aborted" in result ? failure(0, messages.network) : result;
+}
+
+/** Uploads a form (with files). No Content-Type is set: the browser adds the multipart boundary itself. */
+export async function sendForm<T = unknown>(path: string, form: FormData): Promise<ApiResult<T>> {
+  const result = await request<T>(path, { method: "POST", body: form });
 
   return "aborted" in result ? failure(0, messages.network) : result;
 }
@@ -73,6 +81,8 @@ async function request<T>(path: string, init: RequestInit): Promise<ApiResult<T>
       return failure(404, messages.notFound);
     case 409:
       return failure(409, problem?.detail ?? messages.server);
+    case 413:
+      return failure(413, messages.tooLarge);
     default:
       return failure(response.status, messages.server);
   }

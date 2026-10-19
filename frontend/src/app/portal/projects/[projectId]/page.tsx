@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { PortalFileList } from "@/components/files/PortalFileList";
 import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { StageStatusBadge } from "@/components/projects/StageStatusBadge";
@@ -117,6 +118,8 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/p
             </ul>
           </section>
         ) : null}
+
+        <PortalFileList projectId={project.id} files={project.files} />
 
         {project.stages.length > 0 ? (
           <section aria-labelledby="stages-title" className="mt-10">

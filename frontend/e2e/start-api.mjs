@@ -21,6 +21,8 @@ const apiDll = path.join(artifactsPath, "bin", "ClientPortal.Api", "debug", "Cli
 const TEST_DATABASE = "client_portal_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
+const storageUrl = process.env.E2E_STORAGE_URL ?? "http://localhost:9000";
+const storageBucket = process.env.E2E_STORAGE_BUCKET ?? "client-portal-e2e";
 
 /** The dev connection string: user secrets first (that is where a local Postgres password lives), then appsettings. */
 function devConnectionString() {
@@ -74,8 +76,23 @@ try {
   process.exit(1);
 }
 
+// Uploaded files go to the S3-compatible storage (RustFS in docker-compose.yml). Same idea: say so up front.
+try {
+  // Any answer under 500 means it is up: without a signature the S3 endpoint refuses with 403.
+  const response = await fetch(storageUrl);
+  if (response.status >= 500) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+} catch {
+  console.error(`The file storage is not reachable at ${storageUrl}. Start it with "docker compose up -d" in backend/ (the e2e tests upload and download files).`);
+  process.exit(1);
+}
+
 const env = {
   ...process.env,
+  // Its own bucket, created on first use, so the tests never touch the files of the dev one.
+  Storage__ServiceUrl: storageUrl,
+  Storage__Bucket: storageBucket,
   ArtifactsPath: artifactsPath,
   ConnectionStrings__Postgres: connectionString,
   ASPNETCORE_ENVIRONMENT: "Development", // outside Development the auth cookie is Secure-only and would not work over http

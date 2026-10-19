@@ -14,6 +14,8 @@ public class PortalServiceTests
     private readonly FakeProjectRepository _projects;
     private readonly FakeDeliverableRepository _deliverables = new();
     private readonly FakeProjectUpdateRepository _updates = new();
+    private readonly FakeProjectFileRepository _files = new();
+    private readonly FakeFileStorage _storage = new();
     private readonly FakeApprovalRequestRepository _approvals = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly PortalService _service;
@@ -21,7 +23,15 @@ public class PortalServiceTests
     public PortalServiceTests()
     {
         _projects = new FakeProjectRepository { Clients = _clients };
-        _service = new PortalService(_workspaces, _projects, _deliverables, _updates, _approvals, new WorkspaceAccess(_workspaces, _currentUser));
+        _service = new PortalService(
+            _workspaces,
+            _projects,
+            _deliverables,
+            _updates,
+            _files,
+            _approvals,
+            _storage,
+            new WorkspaceAccess(_workspaces, _currentUser));
     }
 
     [Fact]
@@ -177,6 +187,94 @@ public class PortalServiceTests
     }
 
     [Fact]
+    public async Task GetProject_ShowsOnlySharedFiles_NewestFirst_WithoutAnythingInternal()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var first = AddFile(project, "first.pdf", shared: true);
+        Thread.Sleep(2); // CreatedAtUtc decides the order
+        var second = AddFile(project, "second.fig", shared: true);
+        AddFile(project, "draft.pdf", shared: false);
+        AddFile(project, "archived.pdf", shared: true).Archive();
+        AddFile(project, "withdrawn.pdf", shared: true).Unshare();
+
+        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+
+        Assert.Equal([second.Id, first.Id], response.Files.Select(f => f.Id));
+        Assert.Equal((second.Name, second.Description, "second.fig", 4), (response.Files[0].Name, response.Files[0].Description, response.Files[0].FileName, response.Files[0].SizeBytes));
+    }
+
+    [Fact]
+    public async Task GetProject_NeverShowsTheFilesOfAnotherProject()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var mine = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var other = AddProject(studio, client, "Other", ProjectStatus.Active);
+        AddFile(other, "theirs.pdf", shared: true);
+
+        var response = await _service.GetProjectAsync(mine.Id, CancellationToken.None);
+
+        Assert.Empty(response.Files);
+    }
+
+    [Fact]
+    public async Task DownloadFile_OfASharedFile_ReturnsTheBytesWithTheFileNameAndType()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var file = AddFile(project, "mockups.pdf", shared: true);
+
+        var download = await _service.DownloadFileAsync(project.Id, file.Id, CancellationToken.None);
+
+        using var content = download.Content;
+        using var reader = new StreamReader(content);
+        Assert.Equal("data", await reader.ReadToEndAsync());
+        Assert.Equal(("mockups.pdf", "application/pdf", 4), (download.FileName, download.ContentType, download.Length));
+    }
+
+    [Fact]
+    public async Task DownloadFile_ThatIsNotSharedForTheClient_IsNotFound()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+        var draft = AddFile(project, "draft.pdf", shared: false);
+        var archived = AddFile(project, "archived.pdf", shared: true);
+        archived.Archive();
+        var other = AddProject(studio, client, "Other", ProjectStatus.Active);
+        var elsewhere = AddFile(other, "elsewhere.pdf", shared: true);
+
+        foreach (var id in new[] { draft.Id, archived.Id, elsewhere.Id, Guid.NewGuid() })
+        {
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(project.Id, id, CancellationToken.None));
+        }
+    }
+
+    [Fact]
+    public async Task DownloadFile_OfAProjectInPlanningOrArchivedOrSomeoneElses_IsNotFound()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var planning = AddProject(studio, client, "Soon", ProjectStatus.Planning);
+        var planned = AddFile(planning, "planned.pdf", shared: true);
+        var archivedProject = AddProject(studio, client, "Old", ProjectStatus.Active);
+        var old = AddFile(archivedProject, "old.pdf", shared: true);
+        archivedProject.Archive();
+        var strangersStudio = Workspace.Create("Not mine", Guid.NewGuid());
+        _workspaces.Items.Add(strangersStudio);
+        var strangersClient = Client.Register(strangersStudio.Id, "Other", "other@example.com");
+        _clients.Items.Add(strangersClient);
+        var theirs = AddProject(strangersStudio, strangersClient, "Theirs", ProjectStatus.Active);
+        var secret = AddFile(theirs, "secret.pdf", shared: true);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(planning.Id, planned.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(archivedProject.Id, old.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(theirs.Id, secret.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DownloadFile_Anonymous_ThrowsUnauthorized() =>
+        await Assert.ThrowsAsync<UnauthorizedException>(() => _service.DownloadFileAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None));
+
+    [Fact]
     public async Task GetProject_ShowsTheOpenRound_AndTheDecidedOnesNewestFirst_ButNeverAWithdrawnOne()
     {
         var (studio, client) = AsClientOfAStudio();
@@ -329,6 +427,20 @@ public class PortalServiceTests
         _updates.Items.Add(update);
 
         return update;
+    }
+
+    private ProjectFile AddFile(Project project, string fileName, bool shared)
+    {
+        var file = ProjectFile.Create(project.WorkspaceId, project.Id, null, "Some notes", fileName, 4);
+        if (shared)
+        {
+            file.Share();
+        }
+
+        _files.Items.Add(file);
+        _storage.Objects[file.StorageKey] = "data"u8.ToArray();
+
+        return file;
     }
 
     private Project AddProject(Workspace studio, Client client, string name, ProjectStatus status, string? description = null)

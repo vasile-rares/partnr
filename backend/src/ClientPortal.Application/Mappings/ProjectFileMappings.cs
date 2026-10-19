@@ -1,3 +1,4 @@
+using ClientPortal.Application.DTOs.Portal;
 using ClientPortal.Application.DTOs.ProjectFiles;
 using ClientPortal.Domain.Entities;
 
@@ -17,4 +18,7 @@ internal static class ProjectFileMappings
             file.Status.ToString(),
             file.CreatedAtUtc,
             file.ArchivedAtUtc);
+
+    public static PortalProjectFileResponse ToPortalResponse(this ProjectFile file) =>
+        new(file.Id, file.Name, file.Description, file.FileName, file.SizeBytes);
 }

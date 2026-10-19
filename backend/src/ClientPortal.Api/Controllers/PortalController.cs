@@ -1,3 +1,4 @@
+using ClientPortal.Api.Extensions;
 using ClientPortal.Application.DTOs.Approvals;
 using ClientPortal.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,10 @@ public sealed class PortalController(IPortalService service, IPortalApprovalServ
     [HttpGet("projects/{id:guid}")]
     public async Task<IActionResult> GetProject(Guid id, CancellationToken cancellationToken) =>
         Ok(await service.GetProjectAsync(id, cancellationToken));
+
+    [HttpGet("projects/{projectId:guid}/files/{fileId:guid}/download")]
+    public async Task<IActionResult> DownloadProjectFile(Guid projectId, Guid fileId, CancellationToken cancellationToken) =>
+        this.DownloadFile(await service.DownloadFileAsync(projectId, fileId, cancellationToken));
 
     [HttpPost("projects/{projectId:guid}/deliverables/{deliverableId:guid}/approvals/{approvalId:guid}/approve")]
     public async Task<IActionResult> Approve(

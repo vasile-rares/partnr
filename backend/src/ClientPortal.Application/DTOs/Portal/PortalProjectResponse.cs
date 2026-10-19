@@ -26,6 +26,7 @@ public sealed record PortalProjectResponse(
     IReadOnlyList<StageResponse> Stages,
     IReadOnlyList<PortalDeliverableResponse> Deliverables,
     IReadOnlyList<PortalProjectUpdateResponse> Updates,
+    IReadOnlyList<PortalProjectFileResponse> Files,
     int AwaitingApproval);
 
 /// <summary>Only what was shared: no status (always Shared), no archive date, no ids of the workspace's side.</summary>
@@ -57,3 +58,6 @@ public sealed record PortalApprovalDecisionResponse(
 
 /// <summary>Only what was shared, most recently shared first: no status, no author, no creation or archive date, no ids of the workspace's side.</summary>
 public sealed record PortalProjectUpdateResponse(Guid Id, string Title, string? Body, DateTime SharedAtUtc);
+
+/// <summary>Only what was shared, newest first: no status, no content type, no creation or archive date, no ids of the workspace's side.</summary>
+public sealed record PortalProjectFileResponse(Guid Id, string Name, string? Description, string FileName, long SizeBytes);

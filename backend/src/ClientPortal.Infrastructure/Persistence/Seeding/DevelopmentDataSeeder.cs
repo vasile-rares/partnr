@@ -18,6 +18,8 @@ internal sealed class DevelopmentDataSeeder(
     IProjectRepository projects,
     IDeliverableRepository deliverables,
     IProjectUpdateRepository projectUpdates,
+    IProjectFileRepository projectFiles,
+    IFileStorage fileStorage,
     IApprovalRequestRepository approvals,
     IAppLinks links,
     IUnitOfWork unitOfWork,
@@ -148,6 +150,25 @@ internal sealed class DevelopmentDataSeeder(
         projectUpdates.Add(designDone);
         projectUpdates.Add(ProjectUpdate.Create(studio.Id, website.Id, "Staging link coming soon", "Waiting on the hosting setup before I can share a first build."));
 
+        await AddFileAsync(
+            studio.Id,
+            website.Id,
+            "Project brief",
+            "Goals, audience and the pages we agreed on.",
+            "project-brief.txt",
+            "Elena Design website\n\nGoal: a portfolio with a booking page.\nAudience: new clients looking for a brand designer.\nPages: Home, Work, About, Book a call.\n",
+            share: true,
+            cancellationToken);
+        await AddFileAsync(
+            studio.Id,
+            website.Id,
+            "Brand colours",
+            "A first palette. Not ready to share.",
+            "brand-colours.csv",
+            "name,hex\nInk,#1a1a2e\nPaper,#f7f3ee\nAccent,#e4572e\n",
+            share: false,
+            cancellationToken);
+
         projects.Add(Project.Create(studio.Id, linked.Id, "Brand refresh", "Logo and colours, after the website."));
 
         var pending = Client.Register(studio.Id, "Pat Pending", "pat@pending.example", "Pending Co");
@@ -178,6 +199,28 @@ internal sealed class DevelopmentDataSeeder(
             "Also: {Client} is a client of Studio Pop (same password); the pending invitation is {Link}.",
             DevelopmentSeed.ClientEmail,
             links.InvitationUrl(DevelopmentSeed.PendingInvitationToken));
+    }
+
+    // The bytes go to the object storage (docker compose up -d starts it), the row to the database with everything else.
+    private async Task AddFileAsync(
+        Guid workspaceId,
+        Guid projectId,
+        string name,
+        string description,
+        string fileName,
+        string content,
+        bool share,
+        CancellationToken cancellationToken)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var file = ProjectFile.Create(workspaceId, projectId, name, description, fileName, bytes.Length);
+        if (share)
+        {
+            file.Share();
+        }
+
+        await fileStorage.SaveAsync(file.StorageKey, new MemoryStream(bytes), file.ContentType, cancellationToken);
+        projectFiles.Add(file);
     }
 
     private static IEnumerable<Client> StudioClients(Guid workspaceId)

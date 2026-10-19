@@ -4,7 +4,18 @@ const dateTime = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeSty
 /** "14 Oct 2026, 09:00 UTC" */
 export const formatDateTimeUtc = (iso: string): string => `${dateTime.format(new Date(iso))} UTC`;
 
-const calendarDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
+/** "820 B", "340 KB", "4.2 MB" */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  return `${Number((bytes / (1024 * 1024)).toFixed(1))} MB`;
+}
+
+const calendarDate =new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 
 /** "15 Dec 2026", for a calendar date ("YYYY-MM-DD") with no time or zone of its own. */
 export const formatDate = (date: string): string => calendarDate.format(new Date(`${date}T00:00:00Z`));

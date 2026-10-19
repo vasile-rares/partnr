@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { DeliverableList } from "@/components/deliverables/DeliverableList";
+import { FileList } from "@/components/files/FileList";
 import { ArchiveProjectButton } from "@/components/projects/ArchiveProjectButton";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
@@ -11,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UpdateList } from "@/components/updates/UpdateList";
 import { requireUser } from "@/lib/auth/session";
 import { getDeliverables } from "@/lib/deliverables/server";
+import { getProjectFiles } from "@/lib/files/server";
 import { getProject } from "@/lib/projects/server";
 import { getProjectUpdates } from "@/lib/updates/server";
 import { getWorkspace } from "@/lib/workspaces/server";
@@ -75,6 +77,13 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           workspaceId={workspace.id}
           project={project}
           updates={await getProjectUpdates(workspace.id, project.id)}
+          isOwner={workspace.role === "Owner"}
+        />
+
+        <FileList
+          workspaceId={workspace.id}
+          project={project}
+          files={await getProjectFiles(workspace.id, project.id)}
           isOwner={workspace.role === "Owner"}
         />
 
