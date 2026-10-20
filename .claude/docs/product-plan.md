@@ -388,6 +388,16 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 1: API și stocare S3-compatibilă (RustFS local), fără aprobări
   - [x] Pas 2: secțiunea „Files" pentru freelancer, cu urcare, descărcare, Draft / Shared și arhivare
   - [x] Pas 3: fișierele partajate în portalul clientului, cu seed și teste e2e
+- [ ] Refacerea UI (sidebar, taburi, dashboard), planul complet în [ui-redesign.md](ui-redesign.md):
+  - [x] Pas 0: planul salvat
+  - [ ] Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului, dark implicit)
+  - [ ] Pas 2: portalul pe firmă (`/portal/{workspaceId}/...`)
+  - [ ] Pas 3: pagina proiectului (freelancer) pe taburi
+  - [ ] Pas 4: pagina clientului (freelancer) pe taburi
+  - [ ] Pas 5: proiectul în portal (client) pe taburi
+  - [ ] Pas 6: dashboard-ul freelancerului
+  - [ ] Pas 7: Home-ul clientului
+  - [ ] Pas 8 (backend): aprobările în sumarul proiectului
 
 ## Decizii luate
 
