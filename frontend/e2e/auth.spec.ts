@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { alertWith, createAccount, newUser, PASSWORD, signIn } from "./helpers";
+import { accountMenu, alertWith, createAccount, newUser, PASSWORD, signIn } from "./helpers";
 
 const SESSION_COOKIE = ".AspNetCore.Identity.Application";
 
@@ -33,7 +33,8 @@ test("signing out ends the session", async ({ page, request }) => {
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL("/workspaces/new");
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await accountMenu(page, user.email).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/login");
 
   await page.goto("/");

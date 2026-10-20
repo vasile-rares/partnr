@@ -53,7 +53,17 @@ Active projects        ← cel mult 5 linkuri, ca în TaskView
 
 **Conținutul paginii:** o bară subțire cu `SidebarTrigger` (care deschide sidebar-ul ca sheet pe mobil) și un `Breadcrumb` (de ex. Projects › Website). Breadcrumb-ul înlocuiește linkurile „← Projects” / „← Clients”. Conținutul e mai lat decât azi (`max-w-3xl`): cam `max-w-6xl` pe paginile cu două coloane.
 
-## Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului)
+## Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului) — făcut
+
+Abateri față de plan, ca să nu fie o surpriză la pașii următori:
+
+- `/workspaces/new` stă și el în shell (grupul `(shell)`), nu fără: un cont nou fără workspace are nevoie de meniul contului (Sign out, tema).
+- Pagina are un singur component de cadru, `Page` (bara de sus cu breadcrumb și coloana de conținut), în loc de breadcrumb în layout: layout-ul nu știe numele proiectului. Lățimea implicită e `max-w-5xl`, formularele folosesc `narrow` (`max-w-3xl`).
+- În portal, lista „Client of” duce provizoriu la `/portal` pentru toate firmele (`portalHref` în `ContextSwitcher.tsx`); Pasul 2 o înlocuiește cu `/portal/{workspaceId}`.
+- Sidebar-ul portalului are Home, Messages (Soon) și „Your projects”; „Projects” apare la Pasul 2, când există pagina de listă pe firmă.
+- `use-mobile.ts` (generat de shadcn) e rescris cu `useSyncExternalStore`, fiindcă varianta cu `setState` într-un effect pică la `pnpm lint` (`react-hooks/set-state-in-effect`).
+- Sidebar-ul își ține starea (deschis / închis) într-un cookie, citit pe server în `AppShell`.
+- După crearea unui proiect, `ProjectForm` apelează și `router.refresh()`, ca lista din sidebar să se actualizeze.
 
 - Adaug componentele shadcn: `pnpm dlx shadcn@latest add sidebar tabs breadcrumb avatar` (din `frontend/`). `sidebar` aduce și `sheet`, `tooltip`, `skeleton` și hook-ul `use-mobile`. Înainte de a le adăuga citesc regulile din skill-ul `shadcn` despre Base UI (`render`, nu `asChild`).
 - Componente noi în `src/components/shell/`:

@@ -14,7 +14,7 @@ test("a new account creates its first workspace and lands in it", async ({ page,
 
   await expect(page).toHaveURL(WORKSPACE_URL);
   await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
-  await expect(page.getByRole("banner").getByRole("link", { name: "Studio Pop" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Studio Pop" })).toBeVisible();
 });
 
 test("with one workspace, signing in goes straight into it", async ({ page, request }) => {
@@ -71,5 +71,5 @@ test("the owner renames the workspace and the new name shows everywhere", async 
   await page.getByRole("button", { name: "Save name" }).click();
 
   await expect(page.getByRole("status").filter({ hasText: "Name saved." })).toBeVisible();
-  await expect(page.getByRole("banner").getByRole("link", { name: "Studio Pop SRL" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Studio Pop SRL" })).toBeVisible();
 });

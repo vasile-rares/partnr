@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createAccount, signIn } from "./helpers";
+import { accountMenu, createAccount, signIn } from "./helpers";
 
 test("the profile is edited from the account page and survives a reload", async ({ page, request }) => {
   const user = await createAccount(request);
@@ -7,9 +7,10 @@ test("the profile is edited from the account page and survives a reload", async 
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL("/workspaces/new");
 
-  await page.getByRole("banner").getByRole("link", { name: "Account" }).click();
+  await accountMenu(page, user.email).click();
+  await page.getByRole("menuitem", { name: "Account" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Your profile" })).toBeVisible();
-  await expect(page.getByText(user.email)).toBeVisible();
+  await expect(page.getByRole("main").getByText(user.email)).toBeVisible();
   await expect(page.getByLabel("Full name")).toHaveValue(user.fullName);
 
   await page.getByLabel("Full name").fill("Ana Popescu");

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { createAccount, createWorkspace, signIn } from "./helpers";
+import { breadcrumb, createAccount, createWorkspace, mainNav, signIn } from "./helpers";
 import { waitForEmails } from "./mailpit";
 
 // The address is the key to the message in Mailpit, so every test uses its own.
@@ -13,7 +13,7 @@ test("a client is added from the clients page and shows up in the list", async (
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.getByRole("banner").getByRole("link", { name: "Clients" }).click();
+  await mainNav(page).getByRole("link", { name: "Clients" }).click();
   await expect(page.getByText("No active clients")).toBeVisible();
 
   const email = newClientEmail();
@@ -133,7 +133,7 @@ test("a client is edited, archived and restored, and the list follows", async ({
 
   await page.getByRole("button", { name: "Archive client" }).click();
   await expect(page.getByText("This client is archived")).toBeVisible();
-  await page.getByRole("link", { name: "← Clients" }).click();
+  await breadcrumb(page).getByRole("link", { name: "Clients" }).click();
   await expect(page.getByText("No active clients")).toBeVisible();
   await page.getByRole("link", { name: "Show archived clients" }).click();
   await expect(page).toHaveURL(`/w/${workspace.id}/clients?archived=1`);
@@ -142,7 +142,7 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
   await page.getByRole("button", { name: "Restore client" }).click();
   await expect(page.getByText("This client is archived")).toHaveCount(0);
-  await page.getByRole("link", { name: "← Clients" }).click();
+  await breadcrumb(page).getByRole("link", { name: "Clients" }).click();
   await expect(page.getByRole("row", { name: /Acme International/ })).toContainText("Acme Group");
   await expect(page.getByRole("row", { name: /Acme International/ })).not.toContainText("Archived");
 });

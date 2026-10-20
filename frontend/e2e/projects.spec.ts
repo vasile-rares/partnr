@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, createWorkspace, signIn } from "./helpers";
+import { alertWith, createAccount, createWorkspace, mainNav, signIn } from "./helpers";
 
 // Added through the API, without an invitation: a project can be prepared before the client is invited.
 async function addClient(request: APIRequestContext, workspaceId: string, name: string): Promise<{ id: string }> {
@@ -37,7 +37,7 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await expect(page.getByText("Not visible in their portal yet")).toBeHidden();
 
-  await page.getByRole("banner").getByRole("link", { name: "Projects" }).click();
+  await mainNav(page).getByRole("link", { name: "Projects", exact: true }).click();
   const row = page.getByRole("row", { name: /Website/ });
   await expect(row).toContainText("Acme SRL");
   await expect(row).toContainText("Active");

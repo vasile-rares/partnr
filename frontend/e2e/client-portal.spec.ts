@@ -218,9 +218,9 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
   await expect(page).toHaveURL("/portal");
-  await expect(page.getByRole("link", { name: /Website/ })).toContainText("2 waiting for you");
+  await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("2 waiting for you");
 
-  await page.getByRole("link", { name: /Website/ }).click();
+  await page.getByRole("main").getByRole("link", { name: /Website/ }).click();
   const banner = page.getByRole("status").filter({ hasText: "Waiting for you" });
   await expect(banner).toContainText("2 deliverables need your approval.");
   const deliverables = page.getByRole("region", { name: "Deliverables" });
@@ -250,7 +250,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
   await expect(banner).toHaveCount(0);
   await page.goto("/portal");
-  await expect(page.getByRole("link", { name: /Website/ })).not.toContainText("waiting for you");
+  await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).not.toContainText("waiting for you");
 
   // The freelancer sees both answers, replies to the changes, and asks again: the earlier answer stays as history.
   const seen = await (await request.get(`${projectUrl}/deliverables/${logo.id}`)).json();
@@ -263,7 +263,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
   await expect(banner).toContainText("1 deliverable needs your approval.");
   await page.goto("/portal");
-  await expect(page.getByRole("link", { name: /Website/ })).toContainText("1 waiting for you");
+  await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("1 waiting for you");
 });
 
 test("a client sees the projects shared with them, and what is done and what comes next", async ({ page, request }) => {
@@ -325,7 +325,7 @@ test("a client sees the projects shared with them, and what is done and what com
   await page.getByRole("button", { name: "Create account and accept" }).click();
   await expect(page).toHaveURL("/portal");
 
-  const project = page.getByRole("link", { name: /Website/ });
+  const project = page.getByRole("main").getByRole("link", { name: /Website/ });
   await expect(project).toContainText("1 of 3 done");
   await expect(project).toContainText("Active");
   await expect(project).toContainText("Due 15 Dec 2026");
@@ -364,7 +364,7 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await setStatus(draft, "Active");
   await page.goto("/portal");
-  await expect(page.getByRole("link", { name: /Brand refresh/ })).toContainText("No stages yet");
+  await expect(page.getByRole("main").getByRole("link", { name: /Brand refresh/ })).toContainText("No stages yet");
   await page.goto(`/portal/projects/${draft.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Brand refresh" })).toBeVisible();
   await expect(page.getByText("The stages of this project haven't been set up yet.")).toBeVisible();

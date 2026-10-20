@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppHeader } from "@/components/AppHeader";
 import { AddClientForm } from "@/components/clients/AddClientForm";
+import { Page } from "@/components/shell/Page";
 import { requireUser } from "@/lib/auth/session";
 import { getClients } from "@/lib/clients/server";
 import { getWorkspace } from "@/lib/workspaces/server";
@@ -19,20 +18,14 @@ export default async function NewClientPage({ params }: PageProps<"/w/[workspace
   const existingEmails = (await getClients(workspace.id, true)).map((client) => client.email);
 
   return (
-    <>
-      <AppHeader workspace={workspace} />
-      <main className="mx-auto w-full max-w-3xl px-6 py-10">
-        <Link href={`/w/${workspace.id}/clients`} className="text-sm text-muted-foreground hover:underline">
-          ← Clients
-        </Link>
-        <h1 className="mb-3 mt-2 font-heading text-3xl font-semibold">Add a client</h1>
-        <p className="mb-8 max-w-prose text-muted-foreground">
-          Enter their email. They get an invitation to follow their projects, and their name, phone and company come from
-          their own account once they accept.
-        </p>
+    <Page crumbs={[{ label: "Clients", href: `/w/${workspace.id}/clients` }, { label: "Add" }]} narrow>
+      <h1 className="mb-3 font-heading text-3xl font-semibold">Add a client</h1>
+      <p className="mb-8 max-w-prose text-muted-foreground">
+        Enter their email. They get an invitation to follow their projects, and their name, phone and company come from
+        their own account once they accept.
+      </p>
 
-        <AddClientForm workspaceId={workspace.id} existingEmails={existingEmails} />
-      </main>
-    </>
+      <AddClientForm workspaceId={workspace.id} existingEmails={existingEmails} />
+    </Page>
   );
 }

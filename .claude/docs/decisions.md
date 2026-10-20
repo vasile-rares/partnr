@@ -55,7 +55,7 @@
 - **Schimbarea parolei se amână** până la resetarea parolei, la pasul cu email.
 - **`/register` rămâne scurt** (email, parolă, nume); telefonul și compania se completează din profil. Formularul de înregistrare din invitație le va cere.
 - **Telefonul folosește coloana `PhoneNumber` din Identity** (limitată la 50), nu una nouă; compania e o coloană nouă pe `users`.
-- **Profilul e al contului, nu al unui workspace:** pagina e la `/account`, accesibilă și fără workspace, cu link „Account" în header.
+- **Profilul e al contului, nu al unui workspace:** pagina e la `/account`, accesibilă și fără workspace, cu link „Account" în meniul contului din sidebar.
 
 ## Invitații pentru clienți
 
@@ -156,6 +156,19 @@
 - **Interfața clientului:** secțiunea „Files" pe `/portal/projects/{id}`, între livrabile și etape (`PortalFileList`), ascunsă când nu e nimic partajat, cu numele, nota, `fileName · mărime` și un link „Download".
 - **Teste:** `S3FileStorageTests` verifică adaptorul real față de un container RustFS; testele API folosesc `InMemoryFileStorage` (`ApiFactory.Files`). E2E (`files.spec.ts`) cere RustFS pornit și folosește bucket-ul separat `client-portal-e2e` (`E2E_STORAGE_BUCKET`, `E2E_STORAGE_URL`).
 - **Date demo:** „Elena Design website" are „Project brief" (Shared) și „Brand colours" (Draft). Seed-ul scrie și în stocare, deci cere RustFS pornit.
+
+## Interfață
+
+Refacerea UI se face pe pași, planul complet e în [ui-redesign.md](ui-redesign.md).
+
+- **Sidebar în loc de header**, cu un singur switcher care cuprinde ambele roluri ale aceleiași persoane: „Your workspaces” (unde lucrează) și „Client of” (firmele care au invitat-o). Alegerea schimbă meniul: de freelancer sau de client. Freelancerul și clientul văd aceeași structură, dar fiecare doar ce îi folosește (clientul are un meniu mai mic).
+- **Funcțiile viitoare apar în meniu dezactivate, cu „Soon”** (Messages, Meetings, Calendar, Tasks), ca direcția produsului să fie vizibilă fără linkuri moarte. Configurarea meniului stă într-un singur loc (`components/shell/nav.ts`); o funcție nouă devine activă când intrarea ei primește un `href`.
+- **Sidebar-ul e primit de pagini prin layout-uri** (`w/[workspaceId]`, `portal`, grupul `(shell)`), nu pus de fiecare pagină: rămâne montat la navigare. Prețul: un layout nu se re-randează la navigare, deci ce arată sidebar-ul (lista „Active projects”, numele workspace-ului) se reîmprospătează prin `router.refresh()` după o mutație, nu automat. Verificarea de acces rămâne în fiecare pagină (`requireUser()`), layout-ul doar afișează.
+- **`/workspaces/new` stă în shell** (planul spunea fără), fiindcă cine își creează primul workspace are nevoie de meniul contului (Sign out, tema), pe care vechiul header îl oferea.
+- **Antetul paginii e `Page`, nu layout:** breadcrumb-ul depinde de pagină (numele proiectului), pe care un layout nu-l știe. Înlocuiește linkurile „← Projects” / „← Clients”.
+- **Dark implicit** (`defaultTheme="dark"`), cu Light și System în meniul contului. Aspectul rămâne presetul neutru `base-nova`, fără culoare de accent nouă.
+- **În portal, comutarea între firme e provizorie** până la Pasul 2 (URL cu firma): fiecare firmă din „Client of” duce deocamdată la același `/portal`.
+- **Lista de proiecte din sidebar** are cel mult 5 intrări: proiectele `Active` ale workspace-ului, respectiv primele proiecte partajate cu clientul.
 
 ## Generale
 

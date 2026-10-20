@@ -11,9 +11,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function ThemeToggle() {
+/** The Light / Dark / System choices, for any dropdown menu. */
+export function ThemeRadioGroup() {
   const { theme, setTheme } = useTheme();
 
+  return (
+    <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value)}>
+      <DropdownMenuRadioItem value="light">
+        <SunIcon /> Light
+      </DropdownMenuRadioItem>
+      <DropdownMenuRadioItem value="dark">
+        <MoonIcon /> Dark
+      </DropdownMenuRadioItem>
+      <DropdownMenuRadioItem value="system">
+        <MonitorIcon /> System
+      </DropdownMenuRadioItem>
+    </DropdownMenuRadioGroup>
+  );
+}
+
+export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Change theme" />}>
@@ -22,17 +39,7 @@ export function ThemeToggle() {
         <MoonIcon className="hidden dark:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value)}>
-          <DropdownMenuRadioItem value="light">
-            <SunIcon /> Light
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">
-            <MoonIcon /> Dark
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system">
-            <MonitorIcon /> System
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        <ThemeRadioGroup />
       </DropdownMenuContent>
     </DropdownMenu>
   );

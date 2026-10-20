@@ -390,7 +390,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 3: fișierele partajate în portalul clientului, cu seed și teste e2e
 - [ ] Refacerea UI (sidebar, taburi, dashboard), planul complet în [ui-redesign.md](ui-redesign.md):
   - [x] Pas 0: planul salvat
-  - [ ] Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului, dark implicit)
+  - [x] Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului, dark implicit)
   - [ ] Pas 2: portalul pe firmă (`/portal/{workspaceId}/...`)
   - [ ] Pas 3: pagina proiectului (freelancer) pe taburi
   - [ ] Pas 4: pagina clientului (freelancer) pe taburi
@@ -401,4 +401,4 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 
 ## Decizii luate
 
-Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Feedback și aprobări, Fișiere de proiect, Generale). Se citește doar secțiunea relevantă pentru pasul curent.
+Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Feedback și aprobări, Fișiere de proiect, Interfață, Generale). Se citește doar secțiunea relevantă pentru pasul curent.

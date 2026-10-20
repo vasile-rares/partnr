@@ -30,3 +30,12 @@ export async function createWorkspace(request: APIRequestContext, name: string):
   expect(response.status()).toBe(201);
   return response.json();
 }
+
+// The sidebar's main menu: Home, Projects, Clients and the project shortcuts (Settings sits in the footer, outside it).
+export const mainNav = (page: Page) => page.getByRole("navigation", { name: "Main" });
+
+// The breadcrumb in the top bar of every page inside the app shell.
+export const breadcrumb = (page: Page) => page.getByRole("navigation", { name: "breadcrumb" });
+
+// The account menu at the bottom of the sidebar; its button carries the signed-in person's name and email.
+export const accountMenu = (page: Page, email: string) => page.getByRole("button", { name: email });

@@ -15,6 +15,16 @@ export function formatFileSize(bytes: number): string {
   return `${Number((bytes / (1024 * 1024)).toFixed(1))} MB`;
 }
 
+/** "Ana Pop" -> "AP", "Studio" -> "S" (at most two letters). */
+export function initials(name: string): string {
+  const letters = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => Array.from(word)[0]);
+  return (letters.length > 1 ? letters[0] + letters[letters.length - 1] : (letters[0] ?? "?")).toUpperCase();
+}
+
 const calendarDate =new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 
 /** "15 Dec 2026", for a calendar date ("YYYY-MM-DD") with no time or zone of its own. */
