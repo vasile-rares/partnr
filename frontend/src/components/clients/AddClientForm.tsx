@@ -35,10 +35,12 @@ type AddClientFormProps = {
   workspaceId: string;
   /** The emails of every client of the workspace, archived included, to warn about a duplicate. */
   existingEmails: string[];
+  /** Called once the client is added and invited, so a dialog around the form can close. */
+  onDone?: () => void;
 };
 
 /** Adds a client from an email and invites them. Existing accounts are offered while typing; choosing one links nothing. */
-export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProps) {
+export function AddClientForm({ workspaceId, existingEmails, onDone }: AddClientFormProps) {
   const router = useRouter();
   const hintId = useId();
 
@@ -97,11 +99,10 @@ export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProp
       // The card exists now, so a failed invitation is not retried here (that would add the client twice): the client's
       // own page offers "Send invitation" and says what happened.
       const invited = await sendJson<Client>("POST", `/api/workspaces/${workspaceId}/clients/${created.data.id}/invitation`);
-      if (invited.ok) {
-        router.replace(`/w/${workspaceId}/clients`);
-      } else {
-        router.replace(`/w/${workspaceId}/clients/${created.data.id}?invite=failed`);
+      if (!invited.ok) {
+        router.push(`/w/${workspaceId}/clients/${created.data.id}?invite=failed`);
       }
+      onDone?.();
       router.refresh();
 
       return {};
@@ -114,7 +115,7 @@ export function AddClientForm({ workspaceId, existingEmails }: AddClientFormProp
   const hasFieldError = Object.keys(errors).length > 0 || state.emailTaken;
 
   return (
-    <form action={submit} className="flex max-w-lg flex-col gap-6">
+    <form action={submit} className="flex flex-col gap-6">
       <Field data-invalid={emailError ? true : undefined}>
         <FieldLabel htmlFor={`${hintId}-email`}>Email</FieldLabel>
         <Autocomplete

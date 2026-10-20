@@ -71,7 +71,7 @@ export function ProjectForm({ workspaceId, project, clients, clientId }: Project
           clientId: values.clientId,
         });
         if (result.ok) {
-          router.replace(`/w/${workspaceId}/projects/${result.data.id}`);
+          router.push(`/w/${workspaceId}/projects/${result.data.id}`);
           // The sidebar lives in a layout, which a plain navigation does not re-render.
           router.refresh();
           return { values };

@@ -1,7 +1,9 @@
 "use client";
 
+import { ArchiveIcon, ArchiveRestoreIcon, EyeIcon, EyeOffIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent, type Ref } from "react";
+import { IconButton } from "@/components/actions/IconButton";
 import { DeliverableStatusBadge } from "@/components/deliverables/DeliverableStatusBadge";
 import { FormError } from "@/components/forms/FormMessage";
 import { TextAreaField } from "@/components/forms/TextAreaField";
@@ -143,8 +145,8 @@ function UpdateRow({
   const shared = update.status === "Shared";
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
         <p className="font-medium">{update.title}</p>
         {update.body ? <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{update.body}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -153,31 +155,23 @@ function UpdateRow({
         </div>
       </div>
       {readOnly ? null : (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex shrink-0 gap-1">
           {archivedAt ? (
             isOwner ? (
-              <Button variant="ghost" size="sm" disabled={pending} aria-label={`Restore ${update.title}`} onClick={() => onAction("restore")}>
-                Restore
-              </Button>
+              <IconButton icon={ArchiveRestoreIcon} tooltip="Restore" disabled={pending} aria-label={`Restore ${update.title}`} onClick={() => onAction("restore")} />
             ) : null
           ) : (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
+              <IconButton
+                icon={shared ? EyeOffIcon : EyeIcon}
+                tooltip={shared ? "Unshare" : "Share with client"}
                 disabled={pending}
                 aria-label={`${shared ? "Unshare" : "Share"} ${update.title}`}
                 onClick={() => onAction(shared ? "unshare" : "share")}
-              >
-                {shared ? "Unshare" : "Share"}
-              </Button>
-              <Button variant="ghost" size="sm" disabled={pending} aria-label={`Edit ${update.title}`} onClick={onEdit}>
-                Edit
-              </Button>
+              />
+              <IconButton icon={PencilIcon} tooltip="Edit" disabled={pending} aria-label={`Edit ${update.title}`} onClick={onEdit} />
               {isOwner ? (
-                <Button variant="ghost" size="sm" disabled={pending} aria-label={`Archive ${update.title}`} onClick={() => onAction("archive")}>
-                  Archive
-                </Button>
+                <IconButton icon={ArchiveIcon} tooltip="Archive" disabled={pending} aria-label={`Archive ${update.title}`} onClick={() => onAction("archive")} />
               ) : null}
               {shared ? null : <DeleteButton update={update} disabled={pending} onConfirm={() => onAction("delete")} />}
             </>
@@ -234,9 +228,9 @@ function UpdateForm({
 function DeleteButton({ update, disabled, onConfirm }: { update: ProjectUpdate; disabled: boolean; onConfirm: () => void }) {
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button variant="ghost" size="sm" disabled={disabled} aria-label={`Delete ${update.title}`} />}>
-        Delete
-      </AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={<IconButton icon={Trash2Icon} tooltip="Delete" disabled={disabled} aria-label={`Delete ${update.title}`} />}
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this update?</AlertDialogTitle>

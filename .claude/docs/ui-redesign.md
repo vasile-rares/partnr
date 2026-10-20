@@ -108,9 +108,13 @@ Abateri față de planul inițial, după prima variantă văzută în aplicație
 - Taburile cu număr afișează un contor discret (de ex. „Deliverables 3”).
 - **E2E** (`projects.spec.ts`, `files.spec.ts`): clic pe tab înainte de a lucra într-o secțiune.
 
-## Pas 4: pagina clientului (freelancer) pe taburi
+## Pas 4: pagina clientului (freelancer), cu editarea în panel lateral — făcut
 
-`src/app/w/[workspaceId]/clients/[clientId]/page.tsx`: antetul (nume, `PortalStatusBadge`, alerte), apoi taburile **Overview** (secțiunea „Client portal” și proiectele clientului) și **Details** (`ClientForm` și arhivarea). Actualizez `clients.spec.ts` / `invitations.spec.ts`.
+Abateri față de planul inițial (Overview + Details), după ce am ales panelul în loc de tab:
+
+- **Fără taburi:** pagina are antetul (nume, buton „Edit client”, o linie cu email · companie · telefon, alertele), apoi pe ecran lat proiectele clientului în stânga și cardul „Client portal” în dreapta (`ClientPortalCard`: starea invitației, descrierea și acțiunile). Pe ecran îngust cardul apare primul.
+- `ClientForm` și arhivarea / restaurarea sunt într-un `Sheet`, ca la proiect. Insigna de stare a portalului stă în card, lângă titlu, nu în antet.
+- **E2E:** helper nou `openClientEditor` în `e2e/helpers.ts`; `clients.spec.ts` și `invitations.spec.ts` lucrează în panel. Panelul e modal, deci conținutul din spate nu mai e vizibil pentru role-queries cât timp e deschis.
 
 ## Pas 5: proiectul în portal (client) pe taburi
 

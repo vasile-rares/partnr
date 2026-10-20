@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { breadcrumb, createAccount, createWorkspace, mainNav, signIn } from "./helpers";
+import { breadcrumb, createAccount, createWorkspace, mainNav, openAddClient, openClientEditor, signIn } from "./helpers";
 import { waitForEmails } from "./mailpit";
 
 // The address is the key to the message in Mailpit, so every test uses its own.
@@ -17,9 +17,9 @@ test("a client is added from the clients page and shows up in the list", async (
   await expect(page.getByText("No active clients")).toBeVisible();
 
   const email = newClientEmail();
-  await page.getByRole("link", { name: "Add client" }).click();
-  await page.getByLabel("Email").fill(email.toUpperCase());
-  await page.getByRole("button", { name: "Add and invite" }).click();
+  const dialog = await openAddClient(page);
+  await dialog.getByLabel("Email").fill(email.toUpperCase());
+  await dialog.getByRole("button", { name: "Add and invite" }).click();
 
   await expect(page).toHaveURL(`/w/${workspace.id}/clients`);
   const row = page.getByRole("row", { name: new RegExp(email, "i") });
@@ -37,7 +37,8 @@ test("a client can be added with a name too, and the list shows it", async ({ pa
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   const email = newClientEmail();
-  await page.goto(`/w/${workspace.id}/clients/new`);
+  await page.goto(`/w/${workspace.id}/clients`);
+  await openAddClient(page);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Name (optional)").fill("Acme SRL");
   await page.getByRole("button", { name: "Add and invite" }).click();
@@ -63,7 +64,8 @@ test("suggestions offer existing accounts as the email is typed, and choosing on
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/w/${workspace.id}/clients/new`);
+  await page.goto(`/w/${workspace.id}/clients`);
+  await openAddClient(page);
   const start = account.email.slice(0, "e2e-".length + 12);
   await page.getByLabel("Email").fill(start);
 
@@ -83,7 +85,8 @@ test("an email without an account says so", async ({ page, request }) => {
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/w/${workspace.id}/clients/new`);
+  await page.goto(`/w/${workspace.id}/clients`);
+  await openAddClient(page);
   await page.getByLabel("Email").fill(newClientEmail());
 
   await expect(page.getByText("No account with this email yet. They'll get an email to create one.")).toBeVisible();
@@ -99,7 +102,8 @@ test("typing the email of someone who is already a client warns and blocks addin
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/w/${workspace.id}/clients/new`);
+  await page.goto(`/w/${workspace.id}/clients`);
+  await openAddClient(page);
   await page.getByLabel("Email").fill(email.toUpperCase());
 
   await expect(page.getByText("Already a client in this workspace.")).toBeVisible();
@@ -122,17 +126,22 @@ test("a client is edited, archived and restored, and the list follows", async ({
 
   await page.goto(`/w/${workspace.id}/clients`);
   await page.getByRole("link", { name: "Acme SRL" }).click();
-  await expect(page.getByLabel("Phone")).toHaveValue("0700");
-  await page.getByLabel("Name").fill("Acme International");
-  await page.getByLabel("Company").fill("Acme Group");
-  await page.getByLabel("Phone").fill("");
-  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("contact@acme.com · 0700")).toBeVisible();
+  const editor = await openClientEditor(page);
+  await expect(editor.getByLabel("Phone")).toHaveValue("0700");
+  await editor.getByLabel("Name").fill("Acme International");
+  await editor.getByLabel("Company").fill("Acme Group");
+  await editor.getByLabel("Phone").fill("");
+  await editor.getByRole("button", { name: "Save changes" }).click();
 
-  await expect(page.getByRole("status").filter({ hasText: "Changes saved." })).toBeVisible();
+  await expect(editor.getByRole("status")).toHaveText("Changes saved.");
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { level: 1, name: "Acme International" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Archive client" }).click();
+  const archiving = await openClientEditor(page);
+  await archiving.getByRole("button", { name: "Archive client" }).click();
   await expect(page.getByText("This client is archived")).toBeVisible();
+  await page.keyboard.press("Escape");
   await breadcrumb(page).getByRole("link", { name: "Clients" }).click();
   await expect(page.getByText("No active clients")).toBeVisible();
   await page.getByRole("link", { name: "Show archived clients" }).click();
@@ -140,8 +149,10 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await expect(page.getByRole("row", { name: /Acme International/ })).toContainText("Archived");
 
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
-  await page.getByRole("button", { name: "Restore client" }).click();
+  const restoring = await openClientEditor(page);
+  await restoring.getByRole("button", { name: "Restore client" }).click();
   await expect(page.getByText("This client is archived")).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await breadcrumb(page).getByRole("link", { name: "Clients" }).click();
   await expect(page.getByRole("row", { name: /Acme International/ })).toContainText("Acme Group");
   await expect(page.getByRole("row", { name: /Acme International/ })).not.toContainText("Archived");
@@ -159,11 +170,12 @@ test("editing a client to another client's email shows the error under the email
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/clients/${second.id}`);
-  await page.getByLabel("Email").fill("FIRST@acme.com");
-  await page.getByRole("button", { name: "Save changes" }).click();
+  const editor = await openClientEditor(page);
+  await editor.getByLabel("Email").fill("FIRST@acme.com");
+  await editor.getByRole("button", { name: "Save changes" }).click();
 
-  await expect(page.getByText("already exists in this workspace")).toBeVisible();
-  await expect(page.getByLabel("Email")).toHaveValue("FIRST@acme.com");
+  await expect(editor.getByText("already exists in this workspace")).toBeVisible();
+  await expect(editor.getByLabel("Email")).toHaveValue("FIRST@acme.com");
 });
 
 test("a client that does not exist, or belongs to another workspace, looks missing", async ({ page, request }) => {

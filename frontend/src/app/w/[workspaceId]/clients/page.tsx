@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddClientDialog } from "@/components/clients/AddClientDialog";
 import { PortalStatusBadge } from "@/components/clients/PortalStatusBadge";
 import { Page } from "@/components/shell/Page";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
 import { getClients } from "@/lib/clients/server";
@@ -20,16 +20,16 @@ export default async function ClientsPage({ params, searchParams }: PageProps<"/
     notFound();
   }
   const showArchived = (await searchParams).archived === "1";
-  const clients = await getClients(workspace.id, showArchived);
+  // Archived ones too: the email is unique in the workspace, so the form can warn about a duplicate early.
+  const allClients = await getClients(workspace.id, true);
+  const clients = showArchived ? allClients : allClients.filter((client) => client.archivedAtUtc === null);
   const base = `/w/${workspace.id}/clients`;
 
   return (
     <Page crumbs={[{ label: "Clients" }]}>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-3xl font-semibold">Clients</h1>
-        <Link href={`${base}/new`} className={buttonVariants()}>
-          Add client
-        </Link>
+        <AddClientDialog workspaceId={workspace.id} existingEmails={allClients.map((client) => client.email)} />
       </div>
 
       <p className="mb-4 text-sm">

@@ -1,7 +1,9 @@
 "use client";
 
+import { ArchiveIcon, ArchiveRestoreIcon, EyeIcon, EyeOffIcon, PencilIcon, SendIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent, type Ref } from "react";
+import { IconButton } from "@/components/actions/IconButton";
 import { ApprovalRequestForm } from "@/components/deliverables/ApprovalRequestForm";
 import { ApprovalSummary } from "@/components/deliverables/ApprovalSummary";
 import { DeliverableStatusBadge } from "@/components/deliverables/DeliverableStatusBadge";
@@ -172,8 +174,8 @@ function DeliverableRow({
   const deletable = !shared && deliverable.approvals.length === 0;
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
         <p className="font-medium">
           <a href={deliverable.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
             {deliverable.title}
@@ -187,48 +189,42 @@ function DeliverableRow({
         <ApprovalSummary deliverable={deliverable} />
       </div>
       {readOnly ? null : (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex shrink-0 gap-1">
           {archived ? (
             isOwner ? (
-              <Button variant="ghost" size="sm" disabled={pending} aria-label={`Restore ${deliverable.title}`} onClick={() => onAction("restore")}>
-                Restore
-              </Button>
+              <IconButton icon={ArchiveRestoreIcon} tooltip="Restore" disabled={pending} aria-label={`Restore ${deliverable.title}`} onClick={() => onAction("restore")} />
             ) : null
           ) : (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
+              <IconButton
+                icon={shared ? EyeOffIcon : EyeIcon}
+                tooltip={shared ? "Unshare" : "Share with client"}
                 disabled={pending}
                 aria-label={`${shared ? "Unshare" : "Share"} ${deliverable.title}`}
                 onClick={() => onAction(shared ? "unshare" : "share")}
-              >
-                {shared ? "Unshare" : "Share"}
-              </Button>
+              />
               {shared && !waiting ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <IconButton
+                  icon={SendIcon}
+                  tooltip="Request approval"
                   disabled={pending}
                   aria-label={`Request approval for ${deliverable.title}`}
                   onClick={onRequestApproval}
-                >
-                  Request approval
-                </Button>
+                />
               ) : null}
               {waiting ? (
-                <Button variant="ghost" size="sm" disabled={pending} aria-label={`Withdraw approval request for ${deliverable.title}`} onClick={onWithdraw}>
-                  Withdraw request
-                </Button>
+                <IconButton
+                  icon={Undo2Icon}
+                  tooltip="Withdraw request"
+                  disabled={pending}
+                  aria-label={`Withdraw approval request for ${deliverable.title}`}
+                  onClick={onWithdraw}
+                />
               ) : (
-                <Button variant="ghost" size="sm" disabled={pending} aria-label={`Edit ${deliverable.title}`} onClick={onEdit}>
-                  Edit
-                </Button>
+                <IconButton icon={PencilIcon} tooltip="Edit" disabled={pending} aria-label={`Edit ${deliverable.title}`} onClick={onEdit} />
               )}
               {isOwner ? (
-                <Button variant="ghost" size="sm" disabled={pending} aria-label={`Archive ${deliverable.title}`} onClick={() => onAction("archive")}>
-                  Archive
-                </Button>
+                <IconButton icon={ArchiveIcon} tooltip="Archive" disabled={pending} aria-label={`Archive ${deliverable.title}`} onClick={() => onAction("archive")} />
               ) : null}
               {deletable ? <DeleteButton deliverable={deliverable} disabled={pending} onConfirm={() => onAction("delete")} /> : null}
             </>
@@ -305,9 +301,9 @@ function DeliverableForm({
 function DeleteButton({ deliverable, disabled, onConfirm }: { deliverable: Deliverable; disabled: boolean; onConfirm: () => void }) {
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button variant="ghost" size="sm" disabled={disabled} aria-label={`Delete ${deliverable.title}`} />}>
-        Delete
-      </AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={<IconButton icon={Trash2Icon} tooltip="Delete" disabled={disabled} aria-label={`Delete ${deliverable.title}`} />}
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this deliverable?</AlertDialogTitle>

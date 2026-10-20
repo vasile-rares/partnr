@@ -393,7 +393,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului, dark implicit)
   - [x] Pas 2: portalul pe firmă (`/portal/{workspaceId}/...`)
   - [x] Pas 3: pagina proiectului (freelancer) pe taburi
-  - [ ] Pas 4: pagina clientului (freelancer) pe taburi
+  - [x] Pas 4: pagina clientului (freelancer), cu editarea în panel lateral
   - [ ] Pas 5: proiectul în portal (client) pe taburi
   - [ ] Pas 6: dashboard-ul freelancerului
   - [ ] Pas 7: Home-ul clientului

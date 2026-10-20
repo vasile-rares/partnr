@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { createAccount, createWorkspace, signIn } from "./helpers";
+import { createAccount, createWorkspace, openClientEditor, signIn } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 const newClientEmail = () => `client-${randomUUID()}@example.com`;
@@ -20,19 +20,23 @@ test("a client is invited, their details lock, and cancelling unlocks them again
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
   const portal = page.getByRole("region", { name: "Client portal" });
   await expect(portal.getByText("Not invited")).toBeVisible();
-  await expect(page.getByLabel("Name")).toBeEditable();
+  const before = await openClientEditor(page);
+  await expect(before.getByLabel("Name")).toBeEditable();
+  await page.keyboard.press("Escape");
 
   await portal.getByRole("button", { name: "Send invitation" }).click();
   await expect(portal.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
   await expect(portal.getByText("Invited", { exact: true })).toBeVisible();
   await expect(portal.getByText(`An invitation was sent to ${email}`)).toBeVisible();
+  const locked = await openClientEditor(page);
   for (const field of ["Name", "Email", "Company", "Phone"]) {
-    await expect(page.getByLabel(field)).not.toBeEditable();
+    await expect(locked.getByLabel(field)).not.toBeEditable();
   }
-  await expect(page.getByLabel("Name")).toHaveValue("Acme SRL");
-  await page.getByLabel("Notes").fill("New note");
-  await page.getByRole("button", { name: "Save notes" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Changes saved." })).toBeVisible();
+  await expect(locked.getByLabel("Name")).toHaveValue("Acme SRL");
+  await locked.getByLabel("Notes").fill("New note");
+  await locked.getByRole("button", { name: "Save notes" }).click();
+  await expect(locked.getByRole("status")).toHaveText("Changes saved.");
+  await page.keyboard.press("Escape");
 
   const [sent] = await waitForEmails(email);
   expect(sent.subject).toBe("Studio Pop invited you to follow your projects");
@@ -46,11 +50,12 @@ test("a client is invited, their details lock, and cancelling unlocks them again
   await portal.getByRole("button", { name: "Cancel invitation" }).click();
   await expect(portal.getByRole("status")).toHaveText("Invitation cancelled.");
   await expect(portal.getByText("Not invited")).toBeVisible();
-  await expect(page.getByLabel("Name")).toBeEditable();
-  await expect(page.getByLabel("Notes")).toHaveValue("New note");
-  await page.getByLabel("Email").fill(newClientEmail());
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Changes saved." })).toBeVisible();
+  const unlocked = await openClientEditor(page);
+  await expect(unlocked.getByLabel("Name")).toBeEditable();
+  await expect(unlocked.getByLabel("Notes")).toHaveValue("New note");
+  await unlocked.getByLabel("Email").fill(newClientEmail());
+  await unlocked.getByRole("button", { name: "Save changes" }).click();
+  await expect(unlocked.getByRole("status")).toHaveText("Changes saved.");
 });
 
 test("sending the invitation again replaces the first link", async ({ page, request }) => {

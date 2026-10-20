@@ -1,7 +1,9 @@
 "use client";
 
+import { ArrowDownIcon, ArrowUpIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent } from "react";
+import { IconButton } from "@/components/actions/IconButton";
 import { FormError } from "@/components/forms/FormMessage";
 import { SelectField } from "@/components/forms/SelectField";
 import { TextAreaField } from "@/components/forms/TextAreaField";
@@ -87,8 +89,8 @@ export function StageList({ workspaceId, project }: { workspaceId: string; proje
                   onSave={(values) => run("PUT", `/${stage.id}`, values, () => setEditing(null))}
                 />
               ) : (
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium">{stage.name}</p>
                     {stage.description ? <p className="mt-1 text-sm text-muted-foreground">{stage.description}</p> : null}
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -97,34 +99,28 @@ export function StageList({ workspaceId, project }: { workspaceId: string; proje
                     </div>
                   </div>
                   {readOnly ? null : (
-                    <div className="flex flex-wrap gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                    <div className="flex shrink-0 gap-1">
+                      <IconButton
+                        icon={ArrowUpIcon}
+                        tooltip="Move up"
                         disabled={pending || index === 0}
                         aria-label={`Move ${stage.name} up`}
                         onClick={() => run("POST", `/${stage.id}/move`, { direction: "up" })}
-                      >
-                        Up
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      />
+                      <IconButton
+                        icon={ArrowDownIcon}
+                        tooltip="Move down"
                         disabled={pending || index === project.stages.length - 1}
                         aria-label={`Move ${stage.name} down`}
                         onClick={() => run("POST", `/${stage.id}/move`, { direction: "down" })}
-                      >
-                        Down
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      />
+                      <IconButton
+                        icon={PencilIcon}
+                        tooltip="Edit"
                         disabled={pending}
                         aria-label={`Edit ${stage.name}`}
                         onClick={() => setEditing(stage.id)}
-                      >
-                        Edit
-                      </Button>
+                      />
                       <DeleteStageButton stage={stage} disabled={pending} onConfirm={() => run("DELETE", `/${stage.id}`, undefined)} />
                     </div>
                   )}
@@ -198,9 +194,9 @@ function StageEditForm({
 function DeleteStageButton({ stage, disabled, onConfirm }: { stage: Stage; disabled: boolean; onConfirm: () => void }) {
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button variant="ghost" size="sm" disabled={disabled} aria-label={`Delete ${stage.name}`} />}>
-        Delete
-      </AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={<IconButton icon={Trash2Icon} tooltip="Delete" disabled={disabled} aria-label={`Delete ${stage.name}`} />}
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this stage?</AlertDialogTitle>

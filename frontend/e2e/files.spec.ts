@@ -6,6 +6,36 @@ import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 const text = (name: string, content: string) => ({ name, mimeType: "text/plain", buffer: Buffer.from(content) });
 
+test("a file dropped on the upload area is chosen, shown, and uploaded", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await (
+    await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Acme SRL", email: `client-${randomUUID()}@example.com` } })
+  ).json();
+  const project = await (await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } })).json();
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  await openTab(page, "Files");
+  const files = page.getByRole("region", { name: "Files" });
+
+  const zone = files.getByText("Drop a file here, or click to browse");
+  const dataTransfer = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["Dropped in."], "dropped.txt", { type: "text/plain" }));
+    return transfer;
+  });
+  await zone.dispatchEvent("dragover", { dataTransfer });
+  await zone.dispatchEvent("drop", { dataTransfer });
+
+  await expect(files.getByText("dropped.txt", { exact: true })).toBeVisible();
+  await files.getByRole("button", { name: "Upload file" }).click();
+  await expect(files.getByRole("listitem").filter({ hasText: "dropped.txt · 11 B" })).toBeVisible();
+  await expect(files.getByText("Drop a file here, or click to browse")).toBeVisible();
+});
+
 test("files are uploaded, downloaded, shared, edited, archived and deleted", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
@@ -23,14 +53,15 @@ test("files are uploaded, downloaded, shared, edited, archived and deleted", asy
   await expect(files.getByText("No files yet.")).toBeVisible();
 
   await files.getByLabel("File", { exact: true }).setInputFiles(text("brief.txt", "Read me first."));
-  await files.getByLabel("Display name").fill("Project brief");
-  await files.getByLabel("Short note").fill("Goals and pages.");
+  await files.getByLabel("Name (optional)").fill("Project brief");
+  await files.getByLabel("Note (optional)").fill("Goals and pages.");
   await files.getByRole("button", { name: "Upload file" }).click();
   const item = files.getByRole("listitem").filter({ hasText: "Project brief" });
   await expect(item).toContainText("Draft");
   await expect(item).toContainText("Goals and pages.");
   await expect(item).toContainText("brief.txt · 14 B");
-  await expect(files.getByLabel("Display name")).toHaveValue("");
+  // The form closes again once the file is up.
+  await expect(files.getByLabel("Name (optional)")).toBeHidden();
 
   // A file type that is not allowed is refused by the API, and its message reaches the form.
   await files.getByLabel("File", { exact: true }).setInputFiles({ name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") });

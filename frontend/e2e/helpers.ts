@@ -49,3 +49,16 @@ export async function openEditor(page: Page) {
   await page.getByRole("button", { name: "Edit project", exact: true }).click();
   return page.getByRole("dialog", { name: "Edit project" });
 }
+
+// "Add client" and "New project" open a dialog in the middle of the screen; it is modal, so what is behind it is out
+// of reach until it closes.
+export async function openAddClient(page: Page) {
+  await page.getByRole("button", { name: "Add client", exact: true }).click();
+  return page.getByRole("dialog", { name: "Add a client" });
+}
+
+// Same for a client: the panel with the contact form and the archive button.
+export async function openClientEditor(page: Page) {
+  await page.getByRole("button", { name: "Edit client", exact: true }).click();
+  return page.getByRole("dialog", { name: "Edit client" });
+}

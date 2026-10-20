@@ -21,13 +21,13 @@ test("a project is started from a client's page, moved out of Planning, and arch
 
   await page.goto(`/w/${workspace.id}/clients/${client.id}`);
   await expect(page.getByText("No projects for this client yet.")).toBeVisible();
-  await page.getByRole("link", { name: "New project" }).click();
-  await expect(page).toHaveURL(`/w/${workspace.id}/projects/new?clientId=${client.id}`);
-  await expect(page.getByLabel("Client", { exact: true })).toHaveValue(client.id);
+  await page.getByRole("button", { name: "New project" }).click();
+  const dialog = page.getByRole("dialog", { name: "New project" });
+  await expect(dialog.getByLabel("Client", { exact: true })).toHaveValue(client.id);
 
-  await page.getByLabel("Name", { exact: true }).fill("Website");
-  await page.getByLabel("Due date").fill("2026-12-15");
-  await page.getByRole("button", { name: "Create project" }).click();
+  await dialog.getByLabel("Name", { exact: true }).fill("Website");
+  await dialog.getByLabel("Due date").fill("2026-12-15");
+  await dialog.getByRole("button", { name: "Create project" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
   await expect(page.getByText("Not visible in their portal yet")).toBeVisible();
@@ -324,10 +324,13 @@ test("a workspace with no clients is asked to add one before starting a project"
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/w/${workspace.id}/projects/new`);
+  await page.goto(`/w/${workspace.id}/projects`);
+  await page.getByRole("button", { name: "New project" }).click();
 
-  await expect(page.getByText("A project belongs to a client.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Add client" })).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "New project" });
+  await expect(dialog.getByText("A project belongs to a client.")).toBeVisible();
+  await dialog.getByRole("link", { name: "Go to clients" }).click();
+  await expect(page).toHaveURL(`/w/${workspace.id}/clients`);
 });
 
 test("a project page keeps its sections in tabs, the open tab is in the address, and the overview shows deadline and approvals", async ({

@@ -68,7 +68,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           </SheetTrigger>
         </div>
         <p className="mb-8 text-muted-foreground">
-          For{" "}
+          Client:{" "}
           <Link href={`/w/${workspace.id}/clients/${project.client.id}`} className="font-medium text-foreground hover:underline">
             {project.client.displayName}
           </Link>
