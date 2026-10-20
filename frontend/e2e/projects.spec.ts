@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, createWorkspace, mainNav, signIn } from "./helpers";
+import { alertWith, createAccount, createWorkspace, mainNav, openEditor, openTab, signIn } from "./helpers";
 
 // Added through the API, without an invitation: a project can be prepared before the client is invited.
 async function addClient(request: APIRequestContext, workspaceId: string, name: string): Promise<{ id: string }> {
@@ -32,9 +32,11 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
   await expect(page.getByText("Not visible in their portal yet")).toBeVisible();
 
-  await page.getByLabel("Status").selectOption("Active");
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status")).toHaveText("Changes saved.");
+  const editor = await openEditor(page);
+  await editor.getByLabel("Status").selectOption("Active");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  await expect(editor.getByRole("status")).toHaveText("Changes saved.");
+  await page.keyboard.press("Escape");
   await expect(page.getByText("Not visible in their portal yet")).toBeHidden();
 
   await mainNav(page).getByRole("link", { name: "Projects", exact: true }).click();
@@ -44,10 +46,11 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(row).toContainText("15 Dec 2026");
 
   await row.getByRole("link", { name: "Website" }).click();
-  await page.getByRole("button", { name: "Archive project" }).click();
+  const archiving = await openEditor(page);
+  await archiving.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
-  await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeHidden();
+  await expect(archiving.getByLabel("Name", { exact: true })).toBeDisabled();
+  await expect(archiving.getByRole("button", { name: "Save changes" })).toBeHidden();
 
   await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByText("No active projects")).toBeVisible();
@@ -101,8 +104,10 @@ test("stages are added, reordered, finished and deleted, and the progress follow
   await expect(page.getByRole("row", { name: /Website/ })).toContainText("1 of 2 done");
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
-  await page.getByRole("button", { name: "Archive project" }).click();
+  const editor = await openEditor(page);
+  await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(stages.getByRole("listitem")).toHaveCount(2);
   await expect(stages.getByRole("button", { name: "Add stage" })).toBeHidden();
   await expect(stages.getByRole("button", { name: "Edit Design" })).toBeHidden();
@@ -120,6 +125,7 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  await openTab(page, "Deliverables");
   const deliverables = page.getByRole("region", { name: "Deliverables" });
   await expect(deliverables.getByText("No deliverables yet.")).toBeVisible();
 
@@ -175,8 +181,10 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   await deliverables.getByLabel("Deliverable link").fill("https://docs.example/contract");
   await deliverables.getByRole("button", { name: "Add deliverable" }).click();
   await expect(deliverables.getByRole("listitem").filter({ hasText: "Contract" })).toBeVisible();
-  await page.getByRole("button", { name: "Archive project" }).click();
+  const editor = await openEditor(page);
+  await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(deliverables.getByRole("listitem")).toHaveCount(1);
   await expect(deliverables.getByRole("button", { name: "Add deliverable" })).toBeHidden();
   await expect(deliverables.getByRole("button", { name: "Share Contract" })).toBeHidden();
@@ -195,6 +203,7 @@ test("approvals are requested and withdrawn, and an open request freezes the del
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  await openTab(page, "Deliverables");
   const deliverables = page.getByRole("region", { name: "Deliverables" });
   const item = deliverables.getByRole("listitem").filter({ hasText: "Mockup" });
 
@@ -299,8 +308,10 @@ test("updates are written, shared, edited, archived and deleted", async ({ page,
   await updates.getByLabel("Update title").fill("Kickoff done");
   await updates.getByRole("button", { name: "Add update" }).click();
   await expect(updates.getByRole("listitem").filter({ hasText: "Kickoff done" })).toBeVisible();
-  await page.getByRole("button", { name: "Archive project" }).click();
+  const editor = await openEditor(page);
+  await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(updates.getByRole("listitem")).toHaveCount(1);
   await expect(updates.getByRole("button", { name: "Add update" })).toBeHidden();
   await expect(updates.getByRole("button", { name: "Share Kickoff done" })).toBeHidden();
@@ -317,4 +328,65 @@ test("a workspace with no clients is asked to add one before starting a project"
 
   await expect(page.getByText("A project belongs to a client.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Add client" })).toBeVisible();
+});
+
+test("a project page keeps its sections in tabs, the open tab is in the address, and the overview shows deadline and approvals", async ({
+  page,
+  request,
+}) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const dueDate = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const project = await (
+    await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website", dueDate } })
+  ).json();
+  const undated = await (await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Brand" } })).json();
+  const deliverablesUrl = `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables`;
+  const deliverable = await (await request.post(deliverablesUrl, { data: { title: "Mockup", url: "https://figma.example/file" } })).json();
+  expect((await request.post(`${deliverablesUrl}/${deliverable.id}/share`)).ok()).toBe(true);
+  expect((await request.post(`${deliverablesUrl}/${deliverable.id}/approvals`, { data: { note: "Look it over." } })).ok()).toBe(true);
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  // It opens on the overview, with the stages, the time left and what waits on the client.
+  const projectUrl = `/w/${workspace.id}/projects/${project.id}`;
+  await page.goto(projectUrl);
+  await expect(page.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("region", { name: "Stages" })).toBeVisible();
+  await expect(page.getByText(/^(9|10) days left$/)).toBeVisible();
+  await expect(page.getByText("1 waiting for the client")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Updates" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Deliverables & Files 1" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Deliverables" })).toHaveCount(0);
+
+  // A button in the overview opens another tab, and the address says which.
+  await page.getByRole("button", { name: "Open deliverables" }).click();
+  await expect(page).toHaveURL(`${projectUrl}?tab=deliverables`);
+  await expect(page.getByRole("region", { name: "Deliverables" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Files" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Stages" })).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Deliverables & Files" })).toHaveAttribute("aria-selected", "true");
+  await page.goto(`${projectUrl}?tab=nonsense`);
+  await expect(page.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+
+  await openTab(page, "Deliverables & Files");
+  await expect(page).toHaveURL(`${projectUrl}?tab=deliverables`);
+  await openTab(page, "Overview");
+  await expect(page).toHaveURL(projectUrl);
+
+  // The project is edited from the button next to its name, in a panel over the page.
+  const editor = await openEditor(page);
+  await expect(editor.getByLabel("Name", { exact: true })).toHaveValue("Website");
+  await page.keyboard.press("Escape");
+  await expect(editor).toBeHidden();
+
+  // Without dates the card says so and leads to where they are set.
+  await page.goto(`/w/${workspace.id}/projects/${undated.id}`);
+  await expect(page.getByText("No dates yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Set dates" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit project" }).getByLabel("Due date")).toBeVisible();
 });

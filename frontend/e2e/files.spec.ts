@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, createWorkspace, signIn } from "./helpers";
+import { alertWith, createAccount, createWorkspace, openEditor, openTab, signIn } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 const text = (name: string, content: string) => ({ name, mimeType: "text/plain", buffer: Buffer.from(content) });
@@ -18,6 +18,7 @@ test("files are uploaded, downloaded, shared, edited, archived and deleted", asy
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  await openTab(page, "Files");
   const files = page.getByRole("region", { name: "Files" });
   await expect(files.getByText("No files yet.")).toBeVisible();
 
@@ -88,8 +89,10 @@ test("files are uploaded, downloaded, shared, edited, archived and deleted", asy
   await files.getByLabel("File", { exact: true }).setInputFiles(text("notes.txt", "Later."));
   await files.getByRole("button", { name: "Upload file" }).click();
   await expect(files.getByRole("listitem").filter({ hasText: "notes.txt" })).toBeVisible();
-  await page.getByRole("button", { name: "Archive project" }).click();
+  const editor = await openEditor(page);
+  await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(files.getByRole("button", { name: "Upload file" })).toBeHidden();
   await expect(files.getByRole("button", { name: "Share notes.txt" })).toBeHidden();
   await expect(files.getByRole("link", { name: "Download notes.txt" })).toBeVisible();
@@ -126,9 +129,9 @@ test("a client sees and downloads only the files the freelancer shared", async (
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL("/portal");
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
 
-  await page.goto(`/portal/projects/${project.id}`);
+  await page.goto(`/portal/${workspace.id}/projects/${project.id}`);
   const files = page.getByRole("region", { name: "Files" });
   await expect(files.getByRole("listitem")).toHaveCount(1);
   await expect(files.getByRole("listitem")).toContainText("Project brief");

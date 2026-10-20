@@ -39,3 +39,13 @@ export const breadcrumb = (page: Page) => page.getByRole("navigation", { name: "
 
 // The account menu at the bottom of the sidebar; its button carries the signed-in person's name and email.
 export const accountMenu = (page: Page, email: string) => page.getByRole("button", { name: email });
+
+// A project page keeps its sections in tabs; only the open one is on the page.
+export const openTab = (page: Page, name: string) => page.getByRole("tab", { name }).click();
+
+// The panel that edits a project (and archives it) opens from the button next to the project's name. It is modal:
+// close it (Escape) before using anything behind it.
+export async function openEditor(page: Page) {
+  await page.getByRole("button", { name: "Edit project", exact: true }).click();
+  return page.getByRole("dialog", { name: "Edit project" });
+}

@@ -51,11 +51,14 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
   ];
 }
 
-export function portalNav(): NavGroup[] {
+export function portalNav(workspaceId: string): NavGroup[] {
+  const base = `/portal/${workspaceId}`;
+
   return [
     {
       items: [
-        { label: "Home", icon: HouseIcon, href: "/portal", exact: true },
+        { label: "Home", icon: HouseIcon, href: base, exact: true },
+        { label: "Projects", icon: FolderKanbanIcon, href: `${base}/projects` },
         { label: "Messages", icon: MessageSquareIcon },
       ],
     },

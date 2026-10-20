@@ -31,9 +31,18 @@ type AppSidebarProps = {
 export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarProps) {
   const pathname = usePathname();
   const groups: NavGroup[] =
-    context.kind === "workspace" ? workspaceNav(context.workspace.id) : context.kind === "portal" ? portalNav() : [];
+    context.kind === "workspace"
+      ? workspaceNav(context.workspace.id)
+      : context.kind === "portal"
+        ? portalNav(context.workspace.id)
+        : [];
   const projects = context.kind === "none" ? [] : context.projects;
-  const projectsBase = context.kind === "workspace" ? `/w/${context.workspace.id}/projects` : "/portal/projects";
+  const projectsBase =
+    context.kind === "workspace"
+      ? `/w/${context.workspace.id}/projects`
+      : context.kind === "portal"
+        ? `/portal/${context.workspace.id}/projects`
+        : "";
 
   return (
     <Sidebar>

@@ -78,7 +78,9 @@ Abateri față de plan, ca să nu fie o surpriză la pașii următori:
 - Șterg `AppHeader.tsx`. Butonul `ThemeToggle` rămâne doar pe paginile de autentificare.
 - **E2E:** selectorii `getByRole("banner")` trec pe `getByRole("navigation", { name: ... })` / sidebar (`account`, `workspaces`, `projects`, `clients`), iar „← Clients” devine linkul din breadcrumb. `theme.spec.ts` se adaptează la dark implicit.
 
-## Pas 2: portalul pe firmă (URL-uri noi)
+## Pas 2: portalul pe firmă (URL-uri noi) — făcut
+
+Home-ul și lista de proiecte arată deocamdată același lucru (`PortalProjectList`); Home primește conținut propriu la Pasul 7. Layout-ul `portal/[workspaceId]/layout.tsx` încarcă firma și proiectele ei pentru sidebar; fiecare pagină verifică firma și ea (`getPortalWorkspace`), nu doar layout-ul.
 
 - Rute noi: `/portal/[workspaceId]` (Home-ul clientului la acea firmă, deocamdată lista proiectelor de la ea, ca azi), `/portal/[workspaceId]/projects` și `/portal/[workspaceId]/projects/[projectId]`. Ultima apelează `getPortalProject` și dă `notFound()` dacă `project.workspace.id !== workspaceId`. Backend-ul nu se schimbă: proiectul are deja `workspace`.
 - `/portal` devine doar redirect: 0 firme → pagină goală explicativă, 1 → `/portal/{id}`, mai multe → prima (switcher-ul le arată pe toate).
@@ -86,7 +88,14 @@ Abateri față de plan, ca să nu fie o surpriză la pașii următori:
 - Mut `src/app/portal/projects/[projectId]/` sub `[workspaceId]` și actualizez linkurile din `client-portal.spec.ts` / `files.spec.ts`.
 - **Decizie nouă** în `decisions.md`: portalul are firma în URL (înlocuiește „Fără workspace în rută” pentru frontend; API-ul rămâne fără).
 
-## Pas 3: pagina proiectului (freelancer) pe taburi
+## Pas 3: pagina proiectului (freelancer) pe taburi — făcut
+
+Abateri față de planul inițial, după prima variantă văzută în aplicație:
+
+- **Doar două taburi:** Overview (etape, **Updates**, cardurile Deadline și Approvals) și **Deliverables & Files** (cele două liste alăturate pe ecran lat). Updates a trecut în Overview, iar Files lângă Deliverables.
+- **Fără tab Settings:** editarea proiectului și arhivarea sunt într-un `Sheet` (panel lateral) deschis din butonul „Edit project”, în dreapta numelui. Panelul învelește pagina, deci și „Set dates” din cardul Deadline îl deschide.
+- Tabul vine din `useSearchParams` și stă într-o stare locală (`ProjectTabs` cu `key` pe proiect); `GoToTab` e un buton, nu un link, fiindcă schimbă doar tabul. Pe ecran îngust cardurile „Deadline” și „Approvals” apar înaintea etapelor. Cardul „Deadline” nu are bară de progres (doar zilele rămase și datele).
+- La Pasul 4, aceeași idee: fișa clientului cu un buton „Edit client” (panel) în loc de tab „Details”, de confirmat înainte de implementare.
 
 `src/app/w/[workspaceId]/projects/[projectId]/page.tsx`:
 

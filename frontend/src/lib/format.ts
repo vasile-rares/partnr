@@ -29,3 +29,11 @@ const calendarDate =new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", time
 
 /** "15 Dec 2026", for a calendar date ("YYYY-MM-DD") with no time or zone of its own. */
 export const formatDate = (date: string): string => calendarDate.format(new Date(`${date}T00:00:00Z`));
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole days from today (UTC) to a calendar date ("YYYY-MM-DD"): 0 is today, negative is in the past. */
+export function daysUntil(date: string): number {
+  const today = Math.floor(Date.now() / DAY_MS) * DAY_MS;
+  return Math.round((Date.parse(`${date}T00:00:00Z`) - today) / DAY_MS);
+}

@@ -1,78 +1,29 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ProjectProgress } from "@/components/projects/ProjectProgress";
-import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
+import { redirect } from "next/navigation";
+import { AppShell } from "@/components/shell/AppShell";
 import { Page } from "@/components/shell/Page";
-import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/auth/session";
-import { formatDate } from "@/lib/format";
-import { getPortalProjects, getPortalWorkspaces } from "@/lib/portal/server";
+import { getPortalWorkspaces } from "@/lib/portal/server";
 
 export const metadata: Metadata = { title: "Your portal" };
 
-// For each freelancer or agency the client works with, the projects shared with them.
+// The portal of one freelancer or agency lives at /portal/{id}; this is only the way in. Several firms: the first one,
+// and the sidebar's switcher lists the others.
 export default async function PortalPage() {
   await requireUser();
-  const [workspaces, projects] = await Promise.all([getPortalWorkspaces(), getPortalProjects()]);
+  const [first] = await getPortalWorkspaces();
+  if (first) {
+    redirect(`/portal/${first.id}`);
+  }
 
   return (
-    <Page crumbs={[{ label: "Home" }]} narrow>
-      <h1 className="font-heading text-3xl font-semibold">Your portal</h1>
-
-      {workspaces.length === 0 ? (
+    <AppShell context={{ kind: "none" }}>
+      <Page crumbs={[{ label: "Portal" }]} narrow>
+        <h1 className="font-heading text-3xl font-semibold">Your portal</h1>
         <p className="mt-6 max-w-prose text-muted-foreground">
           You are not connected to anyone yet. When a freelancer or agency invites you, they will show up here.
         </p>
-      ) : (
-        <>
-          <p className="mt-3 max-w-prose text-muted-foreground">
-            Open a project to see where it stands and what comes next.
-          </p>
-          <div className="mt-8 flex flex-col gap-10">
-            {workspaces.map((workspace) => {
-              const shared = projects.filter((project) => project.workspace.id === workspace.id);
-
-              return (
-                <section key={workspace.id} aria-labelledby={`workspace-${workspace.id}`}>
-                  <h2 id={`workspace-${workspace.id}`} className="mb-3 font-heading text-xl font-semibold">
-                    {workspace.name}
-                  </h2>
-                  {shared.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Nothing has been shared with you yet. Projects show up here as soon as they are ready.
-                    </p>
-                  ) : (
-                    <ul className="divide-y rounded-lg border">
-                      {shared.map((project) => (
-                        <li key={project.id}>
-                          <Link
-                            href={`/portal/projects/${project.id}`}
-                            className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4 hover:bg-muted/50"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-medium">{project.name}</p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {project.dueDate ? `Due ${formatDate(project.dueDate)}` : "No due date"}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              {project.awaitingApproval > 0 ? (
-                                <Badge variant="secondary">{project.awaitingApproval} waiting for you</Badge>
-                              ) : null}
-                              <ProjectProgress progress={project.progress} />
-                              <ProjectStatusBadge status={project.status} />
-                            </div>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </Page>
+      </Page>
+    </AppShell>
   );
 }

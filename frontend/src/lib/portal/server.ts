@@ -19,6 +19,15 @@ export const getPortalWorkspaces = cache(async (): Promise<PortalWorkspace[]> =>
   return (await response.json()) as PortalWorkspace[];
 });
 
+/** One of the workspaces the signed-in person is a client of, or null (an unknown id and someone else's look the same). */
+export const getPortalWorkspace = cache(async (workspaceId: string): Promise<PortalWorkspace | null> => {
+  if (!isUuid(workspaceId)) {
+    return null;
+  }
+
+  return (await getPortalWorkspaces()).find((workspace) => workspace.id === workspaceId) ?? null;
+});
+
 export const getPortalProjects = cache(async (): Promise<PortalProjectSummary[]> => {
   const response = await serverFetch("/api/portal/projects");
 

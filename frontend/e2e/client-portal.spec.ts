@@ -1,21 +1,22 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, newUser, signIn } from "./helpers";
+import { alertWith, createAccount, mainNav, newUser, signIn } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // The freelancer's side goes through the API (tested elsewhere); these tests are about what the client sees.
 // Each test uses its own client address: it is the key to the email in Mailpit.
 const newClientEmail = () => `client-${randomUUID()}@example.com`;
 
-async function inviteClient(studio: APIRequestContext, workspaceName: string, clientEmail: string, clientName = "Elena Ionescu") {
+// `nth` picks the invitation to return when the same address is invited by several studios (they arrive in order).
+async function inviteClient(studio: APIRequestContext, workspaceName: string, clientEmail: string, clientName = "Elena Ionescu", nth = 1) {
   const workspace = await (await studio.post("/api/workspaces", { data: { name: workspaceName } })).json();
   const client = await (
     await studio.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: clientName, email: clientEmail, notes: "Pays late." } })
   ).json();
   expect((await studio.post(`/api/workspaces/${workspace.id}/clients/${client.id}/invitation`)).ok()).toBe(true);
 
-  const [email] = await waitForEmails(clientEmail);
-  return { workspace, client, token: invitationTokenIn(email) };
+  const emails = await waitForEmails(clientEmail, nth);
+  return { workspace, client, token: invitationTokenIn(emails[nth - 1]) };
 }
 
 test("someone without an account signs up through the invitation and lands in their portal", async ({ page, request }) => {
@@ -35,12 +36,11 @@ test("someone without an account signs up through the invitation and lands in th
   await page.getByLabel("Company (optional)").fill("Elena Design");
   await page.getByRole("button", { name: "Create account and accept" }).click();
 
-  await expect(page).toHaveURL("/portal");
-  await expect(page.getByRole("heading", { level: 1, name: "Your portal" })).toBeVisible();
-  await expect(page.getByText("Studio Pop")).toBeVisible();
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
 
   await page.goto("/");
-  await expect(page).toHaveURL("/portal");
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
 
   const seen = await (await request.get(`/api/workspaces/${workspace.id}/clients/${client.id}`)).json();
   expect(seen).toMatchObject({
@@ -59,7 +59,7 @@ test("someone who already has an account signs in and accepts", async ({ page, r
   const clientUser = await createAccount(clientRequest);
   await clientRequest.dispose();
   await createAccount(request);
-  const { token } = await inviteClient(request, "Studio Pop", clientUser.email);
+  const { workspace, token } = await inviteClient(request, "Studio Pop", clientUser.email);
 
   await page.goto(`/invite/${token}`);
   await expect(page.getByRole("heading", { name: "Join Studio Pop" })).toBeVisible();
@@ -70,8 +70,8 @@ test("someone who already has an account signs in and accepts", async ({ page, r
   await expect(page).toHaveURL(`/invite/${token}`);
   await page.getByRole("button", { name: "Accept invitation" }).click();
 
-  await expect(page).toHaveURL("/portal");
-  await expect(page.getByText("Studio Pop")).toBeVisible();
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
 
   await page.goto(`/invite/${token}`);
   await expect(page.getByRole("heading", { name: "Invitation already used" })).toBeVisible();
@@ -150,9 +150,9 @@ test("a client reads the updates the freelancer shared, newest first, with the e
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL("/portal");
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
 
-  await page.goto(`/portal/projects/${website.id}`);
+  await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
   const updates = page.getByRole("region", { name: "Updates" });
   await expect(updates.getByText("No updates yet. Studio Pop will post news here as the project moves.")).toBeVisible();
 
@@ -217,7 +217,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL("/portal");
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("2 waiting for you");
 
   await page.getByRole("main").getByRole("link", { name: /Website/ }).click();
@@ -249,20 +249,20 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await expect(logoItem).toContainText("Changes requested");
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
   await expect(banner).toHaveCount(0);
-  await page.goto("/portal");
+  await page.goto(`/portal/${workspace.id}`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).not.toContainText("waiting for you");
 
   // The freelancer sees both answers, replies to the changes, and asks again: the earlier answer stays as history.
   const seen = await (await request.get(`${projectUrl}/deliverables/${logo.id}`)).json();
   expect([seen.approvalStatus, seen.approvals[0].message]).toEqual(["ChangesRequested", "The blue is too dark."]);
   await ask(logo, "Bluer now?");
-  await page.goto(`/portal/projects/${website.id}`);
+  await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
   await expect(logoItem).toContainText("Awaiting approval");
   await expect(logoItem).toContainText("Studio Pop asks: “Bluer now?”");
   await logoItem.getByText("Earlier answers (1)").click();
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
   await expect(banner).toContainText("1 deliverable needs your approval.");
-  await page.goto("/portal");
+  await page.goto(`/portal/${workspace.id}`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("1 waiting for you");
 });
 
@@ -323,7 +323,7 @@ test("a client sees the projects shared with them, and what is done and what com
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL("/portal");
+  await expect(page).toHaveURL(`/portal/${workspace.id}`);
 
   const project = page.getByRole("main").getByRole("link", { name: /Website/ });
   await expect(project).toContainText("1 of 3 done");
@@ -332,7 +332,7 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(page.getByText("Brand refresh")).toHaveCount(0);
 
   await project.click();
-  await expect(page).toHaveURL(`/portal/projects/${website.id}`);
+  await expect(page).toHaveURL(`/portal/${workspace.id}/projects/${website.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
   await expect(page.getByText("A new site with five pages.")).toBeVisible();
   await expect(page.getByText("Working on Development.")).toBeVisible();
@@ -360,12 +360,77 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(page.getByRole("region", { name: "Deliverables" })).toHaveCount(0);
 
   // The draft has no page for the client until the freelancer moves it out of Planning.
-  await page.goto(`/portal/projects/${draft.id}`);
+  await page.goto(`/portal/${workspace.id}/projects/${draft.id}`);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await setStatus(draft, "Active");
-  await page.goto("/portal");
+  await page.goto(`/portal/${workspace.id}`);
   await expect(page.getByRole("main").getByRole("link", { name: /Brand refresh/ })).toContainText("No stages yet");
-  await page.goto(`/portal/projects/${draft.id}`);
+  await page.goto(`/portal/${workspace.id}/projects/${draft.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Brand refresh" })).toBeVisible();
   await expect(page.getByText("The stages of this project haven't been set up yet.")).toBeVisible();
+});
+
+test("a client of two firms moves between their portals from the sidebar, and a project opens only under its own firm", async ({
+  page,
+  request,
+  playwright,
+  baseURL,
+}) => {
+  const clientEmail = newClientEmail();
+  await createAccount(request);
+  const studioPop = await inviteClient(request, "Studio Pop", clientEmail);
+  const brandRequest = await playwright.request.newContext({ baseURL });
+  await createAccount(brandRequest);
+  const brandLab = await inviteClient(brandRequest, "Brand Lab", clientEmail, "Elena Ionescu", 2);
+
+  const startProject = async (studio: APIRequestContext, firm: typeof studioPop, name: string) => {
+    const project = await (
+      await studio.post(`/api/workspaces/${firm.workspace.id}/projects`, { data: { clientId: firm.client.id, name } })
+    ).json();
+    const shared = await studio.put(`/api/workspaces/${firm.workspace.id}/projects/${project.id}`, {
+      data: { name, description: null, startDate: null, dueDate: null, status: "Active" },
+    });
+    expect(shared.ok()).toBe(true);
+    return project;
+  };
+  await startProject(request, studioPop, "Website");
+  const logo = await startProject(brandRequest, brandLab, "Logo");
+  await brandRequest.dispose();
+
+  await page.goto(`/invite/${studioPop.token}`);
+  await page.getByLabel("Full name").fill("Elena Popescu");
+  await page.getByLabel("Password").fill("correct horse battery");
+  await page.getByRole("button", { name: "Create account and accept" }).click();
+  await expect(page).toHaveURL(`/portal/${studioPop.workspace.id}`);
+
+  // Signed in with the invited address, so the second invitation is one click.
+  await page.goto(`/invite/${brandLab.token}`);
+  await page.getByRole("button", { name: "Accept invitation" }).click();
+  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]{36}$/);
+
+  // Each portal shows only its own firm's projects, in the list and in the sidebar.
+  await page.goto(`/portal/${studioPop.workspace.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: /Logo/ })).toHaveCount(0);
+  await expect(mainNav(page).getByRole("link", { name: "Website" })).toBeVisible();
+  await expect(mainNav(page).getByRole("link", { name: "Logo" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Studio Pop" }).click();
+  await page.getByRole("menuitem", { name: "Brand Lab" }).click();
+  await expect(page).toHaveURL(`/portal/${brandLab.workspace.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Brand Lab" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: /Logo/ })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toHaveCount(0);
+  await expect(mainNav(page).getByRole("link", { name: "Logo" })).toBeVisible();
+
+  await page.getByRole("main").getByRole("link", { name: /Logo/ }).click();
+  await expect(page).toHaveURL(`/portal/${brandLab.workspace.id}/projects/${logo.id}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Logo" })).toBeVisible();
+
+  // The same project under the other firm's address, and a firm the client does not belong to, are both not found.
+  await page.goto(`/portal/${studioPop.workspace.id}/projects/${logo.id}`);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await page.goto(`/portal/${randomUUID()}`);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
 });

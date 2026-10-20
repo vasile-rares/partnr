@@ -391,8 +391,8 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
 - [ ] Refacerea UI (sidebar, taburi, dashboard), planul complet în [ui-redesign.md](ui-redesign.md):
   - [x] Pas 0: planul salvat
   - [x] Pas 1: shell-ul aplicației (sidebar, switcher, meniul contului, dark implicit)
-  - [ ] Pas 2: portalul pe firmă (`/portal/{workspaceId}/...`)
-  - [ ] Pas 3: pagina proiectului (freelancer) pe taburi
+  - [x] Pas 2: portalul pe firmă (`/portal/{workspaceId}/...`)
+  - [x] Pas 3: pagina proiectului (freelancer) pe taburi
   - [ ] Pas 4: pagina clientului (freelancer) pe taburi
   - [ ] Pas 5: proiectul în portal (client) pe taburi
   - [ ] Pas 6: dashboard-ul freelancerului

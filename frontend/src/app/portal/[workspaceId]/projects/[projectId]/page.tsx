@@ -15,14 +15,23 @@ import { formatDate } from "@/lib/format";
 import { getPortalProject } from "@/lib/portal/server";
 import { summarize } from "@/lib/portal/summary";
 
-export async function generateMetadata({ params }: PageProps<"/portal/projects/[projectId]">): Promise<Metadata> {
-  const project = await getPortalProject((await params).projectId);
+type Params = PageProps<"/portal/[workspaceId]/projects/[projectId]">["params"];
+
+// The firm in the URL has to be the project's own: a project opened under another firm's address is not found.
+async function findProject(params: Params) {
+  const { workspaceId, projectId } = await params;
+  const project = await getPortalProject(projectId);
+  return project?.workspace.id === workspaceId ? project : null;
+}
+
+export async function generateMetadata({ params }: PageProps<"/portal/[workspaceId]/projects/[projectId]">): Promise<Metadata> {
+  const project = await findProject(params);
   return { title: project ? project.name : "Not found" };
 }
 
-export default async function PortalProjectPage({ params }: PageProps<"/portal/projects/[projectId]">) {
+export default async function PortalProjectPage({ params }: PageProps<"/portal/[workspaceId]/projects/[projectId]">) {
   await requireUser();
-  const project = await getPortalProject((await params).projectId);
+  const project = await findProject(params);
   if (!project) {
     notFound();
   }
@@ -33,7 +42,7 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/p
   ].filter(Boolean);
 
   return (
-    <Page crumbs={[{ label: "Home", href: "/portal" }, { label: project.name }]} narrow>
+    <Page crumbs={[{ label: "Projects", href: `/portal/${project.workspace.id}/projects` }, { label: project.name }]} narrow>
       <div className="mb-2 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl font-semibold">{project.name}</h1>
         <ProjectStatusBadge status={project.status} />

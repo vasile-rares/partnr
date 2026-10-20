@@ -22,13 +22,10 @@ type ContextSwitcherProps = {
   clientOf: ShellWorkspace[];
 };
 
-// The portal does not carry the firm in its URL yet, so every firm leads to the same page.
-const portalHref = () => "/portal";
-
 export function ContextSwitcher({ context, workspaces, clientOf }: ContextSwitcherProps) {
-  const title = context.kind === "workspace" ? context.workspace.name : context.kind === "portal" ? "Client portal" : "Client Portal";
+  const title = context.kind === "none" ? "Client Portal" : context.workspace.name;
   const subtitle =
-    context.kind === "workspace" ? context.workspace.role : context.kind === "portal" ? "Shared with you" : "Choose a workspace";
+    context.kind === "workspace" ? context.workspace.role : context.kind === "portal" ? "Client portal" : "Choose a workspace";
 
   return (
     <SidebarMenu>
@@ -71,8 +68,11 @@ export function ContextSwitcher({ context, workspaces, clientOf }: ContextSwitch
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Client of</DropdownMenuLabel>
                   {clientOf.map((workspace) => (
-                    <DropdownMenuItem key={workspace.id} render={<Link href={portalHref()} />}>
+                    <DropdownMenuItem key={workspace.id} render={<Link href={`/portal/${workspace.id}`} />}>
                       <span className="truncate">{workspace.name}</span>
+                      {context.kind === "portal" && context.workspace.id === workspace.id ? (
+                        <CheckIcon className="ml-auto" aria-label="Current portal" />
+                      ) : null}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
