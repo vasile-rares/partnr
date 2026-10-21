@@ -14,7 +14,7 @@ test("a client is added from the clients page and shows up in the list", async (
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await mainNav(page).getByRole("link", { name: "Clients" }).click();
-  await expect(page.getByText("No active clients")).toBeVisible();
+  await expect(page.getByText("No clients yet.")).toBeVisible();
 
   const email = newClientEmail();
   const dialog = await openAddClient(page);
@@ -126,7 +126,8 @@ test("a client is edited, archived and restored, and the list follows", async ({
 
   await page.goto(`/w/${workspace.id}/clients`);
   await page.getByRole("link", { name: "Acme SRL" }).click();
-  await expect(page.getByText("contact@acme.com · 0700")).toBeVisible();
+  await expect(page.getByRole("link", { name: "contact@acme.com" })).toHaveAttribute("href", "mailto:contact@acme.com");
+  await expect(page.getByRole("link", { name: "0700" })).toHaveAttribute("href", "tel:0700");
   const editor = await openClientEditor(page);
   await expect(editor.getByLabel("Phone")).toHaveValue("0700");
   await editor.getByLabel("Name").fill("Acme International");
@@ -144,7 +145,7 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await page.keyboard.press("Escape");
   await breadcrumb(page).getByRole("link", { name: "Clients" }).click();
   await expect(page.getByText("No active clients")).toBeVisible();
-  await page.getByRole("link", { name: "Show archived clients" }).click();
+  await page.getByRole("tab", { name: /Archived/ }).click();
   await expect(page).toHaveURL(`/w/${workspace.id}/clients?archived=1`);
   await expect(page.getByRole("row", { name: /Acme International/ })).toContainText("Archived");
 
@@ -194,4 +195,58 @@ test("a client that does not exist, or belongs to another workspace, looks missi
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await expect(page.getByText("Secret Client")).toHaveCount(0);
   }
+});
+
+test("clients are searched, and the list counts each one's open projects", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const acme = await (
+    await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Acme SRL", email: newClientEmail(), company: "Acme Group" } })
+  ).json();
+  await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Beta Studio", email: newClientEmail() } });
+  await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: acme.id, name: "Website" } });
+  await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: acme.id, name: "Brand" } });
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/clients`);
+  await expect(page.getByRole("row", { name: /Acme SRL/ })).toContainText("Acme Group");
+  await expect(page.getByRole("row", { name: /Acme SRL/ }).getByRole("cell").nth(1)).toHaveText("2");
+  await expect(page.getByRole("row", { name: /Beta Studio/ }).getByRole("cell").nth(1)).toHaveText("—");
+
+  await page.getByRole("searchbox", { name: "Search clients" }).fill("group");
+  await expect(page.getByRole("row", { name: /Acme SRL/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Beta Studio/ })).toHaveCount(0);
+
+  await page.getByRole("searchbox", { name: "Search clients" }).fill("nobody");
+  await expect(page.getByText("No clients match “nobody”.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(page.getByRole("row", { name: /Beta Studio/ })).toBeVisible();
+});
+
+test("a client's notes show on their page and can be added from the card", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await (
+    await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Acme SRL", email: newClientEmail() } })
+  ).json();
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/clients/${client.id}`);
+  const notes = page.getByRole("region", { name: "Notes" });
+  await expect(notes.getByText("No notes yet.")).toBeVisible();
+  await notes.getByRole("button", { name: "Who can see the notes" }).click();
+  await expect(page.getByText("Clients never see these notes.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await notes.getByRole("button", { name: "Add notes" }).click();
+  const editor = page.getByRole("dialog", { name: "Edit client" });
+  await editor.getByLabel("Notes").fill("Prefers calls in the morning.");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  await expect(editor.getByRole("status")).toHaveText("Changes saved.");
+  await page.keyboard.press("Escape");
+
+  await expect(notes.getByText("Prefers calls in the morning.")).toBeVisible();
 });

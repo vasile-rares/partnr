@@ -116,6 +116,8 @@ Abateri față de planul inițial (Overview + Details), după ce am ales panelul
 - `ClientForm` și arhivarea / restaurarea sunt într-un `Sheet`, ca la proiect. Insigna de stare a portalului stă în card, lângă titlu, nu în antet.
 - **E2E:** helper nou `openClientEditor` în `e2e/helpers.ts`; `clients.spec.ts` și `invitations.spec.ts` lucrează în panel. Panelul e modal, deci conținutul din spate nu mai e vizibil pentru role-queries cât timp e deschis.
 
+**Retușare ulterioară:** pagina Clients are acum căutare, taburi Active / Archived și numărul de proiecte pe rând, iar pagina clientului un antet de profil și cardul „Notes”. Decizia e în `decisions.md`.
+
 ## Pas 5: proiectul în portal (client) pe taburi
 
 `/portal/[workspaceId]/projects/[projectId]`, mai simplu decât la freelancer:

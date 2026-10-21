@@ -1,8 +1,11 @@
-import { PencilIcon } from "lucide-react";
+import { CalendarIcon, MailIcon, PencilIcon, PhoneIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { InfoTip } from "@/components/actions/InfoTip";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
+import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { ClientForm } from "@/components/clients/ClientForm";
+import { ClientNotesCard } from "@/components/clients/ClientNotesCard";
 import { ClientPortalCard } from "@/components/clients/ClientPortalCard";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { ProjectsTable } from "@/components/projects/ProjectsTable";
@@ -14,6 +17,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { requireUser } from "@/lib/auth/session";
 import { getClient } from "@/lib/clients/server";
 import { displayName } from "@/lib/clients/types";
+import { formatDate } from "@/lib/format";
 import { getProjects } from "@/lib/projects/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
@@ -40,23 +44,51 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
   // Archived projects too, marked as such: this page is the client's whole history.
   const projects = await getProjects(workspace.id, { includeArchived: true, clientId: client.id });
   const archived = client.archivedAtUtc !== null;
-  // Their email is the name until they have one; then it is shown on its own.
-  const contact = [client.name ? client.email : null, client.company, client.phone].filter(Boolean);
+  // Their email is the title until they have a name; then it is a line of its own.
+  const showEmail = client.name !== null;
 
   return (
     <Page crumbs={[{ label: "Clients", href: `/w/${workspace.id}/clients` }, { label: displayName(client) }]}>
       <Sheet>
-        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-          <h1 className="font-heading text-3xl font-semibold">{displayName(client)}</h1>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <ClientAvatar name={displayName(client)} className="size-14 text-lg" />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="break-all font-heading text-3xl font-semibold">{displayName(client)}</h1>
+                <InfoTip label="When this client was added" icon={<CalendarIcon />}>
+                  Added {formatDate(client.createdAtUtc.slice(0, 10))}
+                </InfoTip>
+              </div>
+              {client.company ? <p className="mt-1 text-muted-foreground">{client.company}</p> : null}
+              <ul className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {showEmail ? (
+                  <li className="flex items-center gap-1.5">
+                    <MailIcon className="size-4" aria-hidden />
+                    <a href={`mailto:${client.email}`} className="break-all hover:text-foreground hover:underline">
+                      {client.email}
+                    </a>
+                  </li>
+                ) : null}
+                {client.phone ? (
+                  <li className="flex items-center gap-1.5">
+                    <PhoneIcon className="size-4" aria-hidden />
+                    <a href={`tel:${client.phone}`} className="hover:text-foreground hover:underline">
+                      {client.phone}
+                    </a>
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          </div>
           <SheetTrigger render={<Button variant="outline" />}>
             <PencilIcon data-icon="inline-start" />
             Edit client
           </SheetTrigger>
         </div>
-        <p className="mb-8 min-h-6 text-muted-foreground">{contact.join(" · ")}</p>
 
         {inviteFailed ? (
-          <Alert variant="destructive" className="mb-8 max-w-lg">
+          <Alert variant="destructive" className="mb-8">
             <AlertDescription>
               The client was added, but the invitation could not be sent. Try again with the button below.
             </AlertDescription>
@@ -64,7 +96,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
         ) : null}
 
         {archived ? (
-          <Alert className="mb-8 max-w-lg">
+          <Alert className="mb-8">
             <AlertDescription>
               This client is archived. It is hidden from the clients list until you restore it.
             </AlertDescription>
@@ -82,18 +114,18 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
                   workspaceId={workspace.id}
                   clients={[{ id: client.id, displayName: displayName(client) }]}
                   clientId={client.id}
-                  variant="outline"
                 />
               )}
             </div>
             {projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No projects for this client yet.</p>
+              <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No projects for this client yet.</p>
             ) : (
               <ProjectsTable workspaceId={workspace.id} projects={projects} showClient={false} />
             )}
           </section>
-          <aside aria-label="Client summary" className="order-first lg:order-0">
+          <aside aria-label="Client summary" className="order-first flex flex-col gap-4 lg:order-0">
             <ClientPortalCard workspaceId={workspace.id} client={client} />
+            <ClientNotesCard notes={client.notes} />
           </aside>
         </div>
 

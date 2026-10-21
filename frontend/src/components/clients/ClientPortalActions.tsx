@@ -51,7 +51,7 @@ export function ClientPortalActions({ workspaceId, client }: { workspaceId: stri
         </Button>
         {status === "Invited" ? (
           <Button type="submit" name="intent" value="cancel" variant="ghost" disabled={pending}>
-            Cancel invitation
+            Cancel
           </Button>
         ) : null}
       </div>

@@ -18,8 +18,17 @@ test("a client is invited, their details lock, and cancelling unlocks them again
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
-  const portal = page.getByRole("region", { name: "Client portal" });
+  const portal = page.getByRole("region", { name: "Status" });
   await expect(portal.getByText("Not invited")).toBeVisible();
+
+  // Popovers, not tooltips, so a tap opens them on a phone.
+  await portal.getByRole("button", { name: "About the client portal" }).click();
+  await expect(page.getByText("Invite this client by email so they can follow their projects")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "When this client was added" }).click();
+  await expect(page.getByText(/^Added \d{1,2} \w{3} \d{4}$/)).toBeVisible();
+  await page.keyboard.press("Escape");
+
   const before = await openClientEditor(page);
   await expect(before.getByLabel("Name")).toBeEditable();
   await page.keyboard.press("Escape");
@@ -27,7 +36,7 @@ test("a client is invited, their details lock, and cancelling unlocks them again
   await portal.getByRole("button", { name: "Send invitation" }).click();
   await expect(portal.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
   await expect(portal.getByText("Invited", { exact: true })).toBeVisible();
-  await expect(portal.getByText(`An invitation was sent to ${email}`)).toBeVisible();
+  await expect(portal.getByText(/^Expires /)).toBeVisible();
   const locked = await openClientEditor(page);
   for (const field of ["Name", "Email", "Company", "Phone"]) {
     await expect(locked.getByLabel(field)).not.toBeEditable();
@@ -47,7 +56,7 @@ test("a client is invited, their details lock, and cancelling unlocks them again
 
   // Cancelling lifts the lock (this is how a wrong address gets corrected).
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
-  await portal.getByRole("button", { name: "Cancel invitation" }).click();
+  await portal.getByRole("button", { name: "Cancel" }).click();
   await expect(portal.getByRole("status")).toHaveText("Invitation cancelled.");
   await expect(portal.getByText("Not invited")).toBeVisible();
   const unlocked = await openClientEditor(page);
@@ -69,7 +78,7 @@ test("sending the invitation again replaces the first link", async ({ page, requ
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
-  const portal = page.getByRole("region", { name: "Client portal" });
+  const portal = page.getByRole("region", { name: "Status" });
   await portal.getByRole("button", { name: "Send invitation" }).click();
   await expect(portal.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
   await portal.getByRole("button", { name: "Resend invitation" }).click();
@@ -95,7 +104,7 @@ test("an archived client cannot be invited", async ({ page, request }) => {
 
   await page.goto(`/w/${workspace.id}/clients/${old.id}`);
 
-  const portal = page.getByRole("region", { name: "Client portal" });
-  await expect(portal.getByText("Restore this client to invite them to the portal.")).toBeVisible();
+  const portal = page.getByRole("region", { name: "Status" });
+  await expect(portal.getByText("Restore to invite them")).toBeVisible();
   await expect(portal.getByRole("button")).toHaveCount(0);
 });

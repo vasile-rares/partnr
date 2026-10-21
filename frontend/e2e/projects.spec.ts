@@ -24,6 +24,8 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await page.getByRole("button", { name: "New project" }).click();
   const dialog = page.getByRole("dialog", { name: "New project" });
   await expect(dialog.getByLabel("Client", { exact: true })).toHaveValue(client.id);
+  // The client's page wraps everything in the edit Sheet, which makes this dialog "nested" for Base UI.
+  await expect(page.locator('[data-slot="dialog-overlay"]')).toBeVisible();
 
   await dialog.getByLabel("Name", { exact: true }).fill("Website");
   await dialog.getByLabel("Due date").fill("2026-12-15");
