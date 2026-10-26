@@ -15,6 +15,23 @@
       "problemMatcher": "$msCompile"
     },
     {
+      "label": "frontend",
+      "type": "shell",
+      "command": "pnpm dev",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "next",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Next\\.js",
+          "endsPattern": "Ready in"
+        }
+      },
+      "presentation": { "panel": "dedicated" }
+    },
+    {
       "label": "test",
       "type": "process",
       "command": "dotnet",

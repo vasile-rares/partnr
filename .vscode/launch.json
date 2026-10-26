@@ -13,19 +13,13 @@
         "ASPNETCORE_URLS": "http://localhost:5051",
         "Seed__ReseedOnChange": "true"
       }
-    },
-    {
-      "name": "Frontend",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "pnpm dev",
-      "cwd": "${workspaceFolder}/frontend"
     }
   ],
   "compounds": [
     {
       "name": "Full stack",
-      "configurations": ["API", "Frontend"],
+      "configurations": ["API"],
+      "preLaunchTask": "frontend",
       "stopAll": true
     }
   ]
