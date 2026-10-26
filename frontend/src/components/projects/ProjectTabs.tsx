@@ -4,50 +4,64 @@ import { useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-const tabs = [
-  { value: "overview", label: "Overview" },
-  { value: "deliverables", label: "Deliverables & Files" },
-] as const;
-
-export type ProjectTab = (typeof tabs)[number]["value"];
-
-const TabContext = createContext<((tab: ProjectTab) => void) | null>(null);
-
-const isTab = (value: string | null): value is ProjectTab => tabs.some((tab) => tab.value === value);
-
-type ProjectTabsProps = {
-  /** Shown next to a tab's name when it lists things. */
-  counts: Partial<Record<ProjectTab, number>>;
-  /** Rendered on the server; only the open tab is mounted. */
-  panels: Record<ProjectTab, ReactNode>;
+export type ProjectTabItem = {
+  value: string;
+  label: string;
+  /** Shown next to the name when it lists things; nothing for 0. */
+  count?: number;
+  /** For a count that asks something of the reader, such as approvals waiting. */
+  highlight?: boolean;
 };
 
-/** The open tab is in the address (`?tab=files`), so a link or a reload opens it, but switching never asks the server for anything. */
-export function ProjectTabs({ counts, panels }: ProjectTabsProps) {
-  const requested = useSearchParams().get("tab");
-  const [tab, setTab] = useState<ProjectTab>(isTab(requested) ? requested : "overview");
+type ProjectTabsProps = {
+  /** The first one is open when the address names none; only tabs worth showing belong here. */
+  tabs: ProjectTabItem[];
+  /** Rendered on the server, by tab value; only the open tab is mounted. */
+  panels: Record<string, ReactNode>;
+};
 
-  const select = useCallback((next: ProjectTab) => {
-    setTab(next);
-    const params = new URLSearchParams(window.location.search);
-    if (next === "overview") {
-      params.delete("tab");
-    } else {
-      params.set("tab", next);
-    }
-    window.history.replaceState(null, "", params.size > 0 ? `?${params}` : window.location.pathname);
-  }, []);
+const TabContext = createContext<((tab: string) => void) | null>(null);
+
+/** The open tab is in the address (`?tab=files`), so a link or a reload opens it, but switching never asks the server for anything. */
+export function ProjectTabs({ tabs, panels }: ProjectTabsProps) {
+  const first = tabs[0].value;
+  const requested = useSearchParams().get("tab") ?? first;
+  const [tab, setTab] = useState(tabs.some((item) => item.value === requested) ? requested : first);
+
+  const select = useCallback(
+    (next: string) => {
+      setTab(next);
+      const params = new URLSearchParams(window.location.search);
+      if (next === first) {
+        params.delete("tab");
+      } else {
+        params.set("tab", next);
+      }
+      window.history.replaceState(null, "", params.size > 0 ? `?${params}` : window.location.pathname);
+    },
+    [first],
+  );
 
   return (
     <TabContext.Provider value={select}>
-      <Tabs value={tab} onValueChange={(value) => select(value as ProjectTab)}>
+      <Tabs value={tab} onValueChange={(value) => select(value as string)}>
         <div className="overflow-x-auto border-b">
           <TabsList variant="line" className="h-10 gap-4 p-0">
-            {tabs.map(({ value, label }) => (
+            {tabs.map(({ value, label, count, highlight }) => (
               <TabsTrigger key={value} value={value} className="flex-none px-0.5 text-base">
                 {label}
-                {counts[value] ? <span className="text-xs text-muted-foreground tabular-nums">{counts[value]}</span> : null}
+                {count ? (
+                  <span
+                    className={cn(
+                      "text-xs tabular-nums",
+                      highlight ? "rounded-full bg-primary px-1.5 py-0.5 text-primary-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {count}
+                  </span>
+                ) : null}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -63,7 +77,7 @@ export function ProjectTabs({ counts, panels }: ProjectTabsProps) {
 }
 
 /** A link-looking button that opens another tab of the project page it sits in. */
-export function GoToTab({ tab, children }: { tab: ProjectTab; children: ReactNode }) {
+export function GoToTab({ tab, children }: { tab: string; children: ReactNode }) {
   const select = useContext(TabContext);
 
   return (

@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ActiveProjects } from "@/components/dashboard/ActiveProjects";
+import { ComingUp } from "@/components/dashboard/ComingUp";
+import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { WaitingOnClients } from "@/components/dashboard/WaitingOnClients";
 import { Page } from "@/components/shell/Page";
-import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
+import { getClients } from "@/lib/clients/server";
+import { displayName } from "@/lib/clients/types";
+import { openProjects, upcomingDeadlines } from "@/lib/dashboard/deadlines";
+import { getProjects } from "@/lib/projects/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
 export async function generateMetadata({ params }: PageProps<"/w/[workspaceId]">): Promise<Metadata> {
@@ -18,22 +24,35 @@ export default async function WorkspacePage({ params }: PageProps<"/w/[workspace
   if (!workspace) {
     notFound();
   }
+  const [clients, projects] = await Promise.all([getClients(workspace.id), getProjects(workspace.id)]);
+
+  const waiting = clients
+    .filter((client) => client.portal.status === "Invited" || client.portal.status === "Expired")
+    .map((client) => ({ id: client.id, displayName: displayName(client), portalStatus: client.portal.status }));
+  const running = openProjects(projects);
 
   return (
     <Page crumbs={[{ label: "Home" }]}>
       <h1 className="font-heading text-3xl font-semibold">{workspace.name}</h1>
+      <p className="mb-8 mt-1 text-muted-foreground">What is due, what is running, and who you are waiting on.</p>
 
-      <section aria-labelledby="clients-title" className="mt-10">
-        <h2 id="clients-title" className="font-heading text-xl font-semibold">
-          Clients
-        </h2>
-        <p className="mt-2 max-w-prose text-muted-foreground">
-          The people you work for. Each client will get their own projects and portal.
-        </p>
-        <Link href={`/w/${workspace.id}/clients`} className={`${buttonVariants()} mt-4`}>
-          Manage clients
-        </Link>
-      </section>
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex flex-col gap-10">
+          {projects.length === 0 ? (
+            <GettingStarted
+              workspaceId={workspace.id}
+              clients={clients.map((client) => ({ id: client.id, displayName: displayName(client) }))}
+              existingEmails={clients.map((client) => client.email)}
+            />
+          ) : (
+            <>
+              <ComingUp workspaceId={workspace.id} deadlines={upcomingDeadlines(projects)} />
+              <ActiveProjects workspaceId={workspace.id} projects={running} />
+            </>
+          )}
+        </div>
+        {clients.length > 0 ? <WaitingOnClients workspaceId={workspace.id} clients={waiting} /> : null}
+      </div>
     </Page>
   );
 }

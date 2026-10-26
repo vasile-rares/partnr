@@ -85,7 +85,10 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
 
         <ProjectTabs
           key={project.id}
-          counts={{ deliverables: deliverables.filter(isLive).length + files.filter(isLive).length }}
+          tabs={[
+            { value: "overview", label: "Overview" },
+            { value: "deliverables", label: "Deliverables & Files", count: deliverables.filter(isLive).length + files.filter(isLive).length },
+          ]}
           panels={{
             overview: (
               <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,32rem)_20rem]">

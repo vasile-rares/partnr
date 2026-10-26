@@ -394,8 +394,8 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 2: portalul pe firmă (`/portal/{workspaceId}/...`)
   - [x] Pas 3: pagina proiectului (freelancer) pe taburi
   - [x] Pas 4: pagina clientului (freelancer), cu editarea în panel lateral
-  - [ ] Pas 5: proiectul în portal (client) pe taburi
-  - [ ] Pas 6: dashboard-ul freelancerului
+  - [x] Pas 5: proiectul în portal (client) pe taburi
+  - [x] Pas 6: dashboard-ul freelancerului
   - [ ] Pas 7: Home-ul clientului
   - [ ] Pas 8 (backend): aprobările în sumarul proiectului
 

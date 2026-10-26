@@ -163,6 +163,7 @@ test("a client sees and downloads only the files the freelancer shared", async (
   await expect(page).toHaveURL(`/portal/${workspace.id}`);
 
   await page.goto(`/portal/${workspace.id}/projects/${project.id}`);
+  await openTab(page, "Files");
   const files = page.getByRole("region", { name: "Files" });
   await expect(files.getByRole("listitem")).toHaveCount(1);
   await expect(files.getByRole("listitem")).toContainText("Project brief");
@@ -178,6 +179,7 @@ test("a client sees and downloads only the files the freelancer shared", async (
   // Taking the file back hides it from the page, and its link stops working.
   expect((await request.post(`${projectUrl}/files/${brief.id}/unshare`)).ok()).toBe(true);
   await page.reload();
+  await expect(page.getByRole("tab", { name: "Files" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Files" })).toHaveCount(0);
   const gone = await page.request.get(`/api/portal/projects/${project.id}/files/${brief.id}/download`);
   expect(gone.status()).toBe(404);

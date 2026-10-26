@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, mainNav, newUser, signIn } from "./helpers";
+import { alertWith, createAccount, mainNav, newUser, openTab, signIn } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // The freelancer's side goes through the API (tested elsewhere); these tests are about what the client sees.
@@ -155,6 +155,8 @@ test("a client reads the updates the freelancer shared, newest first, with the e
   await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
   const updates = page.getByRole("region", { name: "Updates" });
   await expect(updates.getByText("No updates yet. Studio Pop will post news here as the project moves.")).toBeVisible();
+  await openTab(page, "Updates");
+  await expect(updates.getByText("No updates yet. Studio Pop will post news here as the project moves.")).toBeVisible();
 
   const addUpdate = async (title: string, body: string, share: boolean) => {
     const response = await request.post(`${projectUrl}/updates`, { data: { title, body } });
@@ -169,6 +171,13 @@ test("a client reads the updates the freelancer shared, newest first, with the e
     await addUpdate(`Update ${n}`, n === 7 ? "Layouts are signed off.\nBuild starts Monday." : `Details of ${n}.`, true);
   }
   await addUpdate("Secret draft", "Not for the client.", false);
+
+  // The overview glances at the three latest and leads to the full list, which opens the Updates tab.
+  await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
+  await expect(updates.getByRole("listitem")).toHaveCount(3);
+  await expect(updates.getByRole("listitem").first()).toContainText("Update 7");
+  await updates.getByRole("button", { name: "See all updates (7)" }).click();
+  await expect(page).toHaveURL(/\?tab=updates$/);
 
   // The five most recent are open, the other two wait behind a native disclosure.
   await page.reload();
@@ -223,6 +232,10 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await page.getByRole("main").getByRole("link", { name: /Website/ }).click();
   const banner = page.getByRole("status").filter({ hasText: "Waiting for you" });
   await expect(banner).toContainText("2 deliverables need your approval.");
+  const deliverablesTab = page.getByRole("tab", { name: /Deliverables/ });
+  await expect(deliverablesTab).toContainText("2");
+  await banner.getByRole("button", { name: "See what to approve" }).click();
+  await expect(page).toHaveURL(/\?tab=deliverables$/);
   const deliverables = page.getByRole("region", { name: "Deliverables" });
   const home = deliverables.getByRole("listitem").filter({ hasText: "Homepage mockup" });
   const logoItem = deliverables.getByRole("listitem").filter({ hasText: "Logo" });
@@ -239,7 +252,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await expect(home).toContainText("You said: “Looks great.”");
   await expect(home).not.toContainText("Awaiting approval");
   await expect(home.getByRole("button", { name: "Approve Homepage mockup" })).toBeHidden();
-  await expect(banner).toContainText("1 deliverable needs your approval.");
+  await expect(deliverablesTab).toHaveText("Deliverables1");
 
   // Asking for changes needs a reason.
   await logoItem.getByRole("button", { name: "Request changes to Logo" }).click();
@@ -248,7 +261,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await logoItem.getByRole("button", { name: "Request changes to Logo" }).click();
   await expect(logoItem).toContainText("Changes requested");
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
-  await expect(banner).toHaveCount(0);
+  await expect(deliverablesTab).toHaveText("Deliverables");
   await page.goto(`/portal/${workspace.id}`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).not.toContainText("waiting for you");
 
@@ -257,11 +270,12 @@ test("a client approves one deliverable and asks for changes on another, and is 
   expect([seen.approvalStatus, seen.approvals[0].message]).toEqual(["ChangesRequested", "The blue is too dark."]);
   await ask(logo, "Bluer now?");
   await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
+  await expect(banner).toContainText("1 deliverable needs your approval.");
+  await openTab(page, "Deliverables");
   await expect(logoItem).toContainText("Awaiting approval");
   await expect(logoItem).toContainText("Studio Pop asks: “Bluer now?”");
   await logoItem.getByText("Earlier answers (1)").click();
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
-  await expect(banner).toContainText("1 deliverable needs your approval.");
   await page.goto(`/portal/${workspace.id}`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("1 waiting for you");
 });
@@ -346,7 +360,9 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(stages.nth(2)).toContainText("To do");
   await expect(page.getByText("Pays late.")).toHaveCount(0);
 
-  // Only what was shared shows up, and it opens the freelancer's link in a new tab.
+  // Only what was shared shows up, and it opens the freelancer's link in a new tab. Files are not offered while none is shared.
+  await expect(page.getByRole("tab", { name: "Files" })).toHaveCount(0);
+  await openTab(page, "Deliverables");
   const deliverables = page.getByRole("region", { name: "Deliverables" });
   await expect(deliverables.getByRole("listitem")).toHaveCount(1);
   const link = deliverables.getByRole("link", { name: /Homepage mockup/ });
@@ -357,6 +373,7 @@ test("a client sees the projects shared with them, and what is done and what com
 
   await request.post(`/api/workspaces/${workspace.id}/projects/${website.id}/deliverables/${mockup.id}/unshare`);
   await page.reload();
+  await expect(page.getByRole("tab", { name: "Deliverables" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Deliverables" })).toHaveCount(0);
 
   // The draft has no page for the client until the freelancer moves it out of Planning.

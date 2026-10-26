@@ -32,6 +32,17 @@ export const formatDate = (date: string): string => calendarDate.format(new Date
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** "3 days overdue", "Today", "Tomorrow", "In 5 days", for a number of days from `daysUntil`. */
+export function dueIn(days: number): string {
+  if (days < 0) {
+    return days === -1 ? "1 day overdue" : `${-days} days overdue`;
+  }
+  if (days === 0) {
+    return "Today";
+  }
+  return days === 1 ? "Tomorrow" : `In ${days} days`;
+}
+
 /** Whole days from today (UTC) to a calendar date ("YYYY-MM-DD"): 0 is today, negative is in the past. */
 export function daysUntil(date: string): number {
   const today = Math.floor(Date.now() / DAY_MS) * DAY_MS;

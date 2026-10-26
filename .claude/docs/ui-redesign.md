@@ -118,17 +118,21 @@ Abateri față de planul inițial (Overview + Details), după ce am ales panelul
 
 **Retușare ulterioară:** pagina Clients are acum căutare, taburi Active / Archived și numărul de proiecte pe rând, iar pagina clientului un antet de profil și cardul „Notes”. Decizia e în `decisions.md`.
 
-## Pas 5: proiectul în portal (client) pe taburi
+## Pas 5: proiectul în portal (client) pe taburi — făcut
 
 `/portal/[workspaceId]/projects/[projectId]`, mai simplu decât la freelancer:
 
-- **Overview**: bannerul „Waiting for you” (butonul lui deschide tabul Deliverables), „Where things stand”, ultimele 3 actualizări și etapele.
-- **Deliverables**: livrabilele cu `PortalApprovalPanel`. Tabul are un însemn cu numărul celor care așteaptă clientul.
+- **Overview**: descrierea, bannerul „Waiting for you” (butonul lui, `GoToTab`, deschide tabul Deliverables), „Where things stand”, ultimele 3 actualizări (cu „See all updates (N)”) și etapele.
+- **Deliverables**: livrabilele cu `PortalApprovalPanel`. Tabul are un însemn evidențiat cu numărul celor care așteaptă clientul.
 - **Updates**: `PortalUpdateList`. **Files**: `PortalFileList`.
-- Taburile fără conținut (Deliverables, Files) se ascund, cum se ascund azi secțiunile.
-- **E2E:** `client-portal.spec.ts`, `files.spec.ts`.
+- Deliverables și Files se ascund cât timp nu au nimic partajat; Updates rămâne, pentru că starea lui goală spune la ce să se aștepte.
+- `ProjectTabs` primește acum lista de taburi (`tabs`: valoare, etichetă, contor, `highlight`) în loc de una fixă, deci îl folosesc ambele pagini; primul tab e cel implicit.
+- Bannerul e doar pe Overview, deci testele urmăresc starea aprobărilor prin însemnul tabului Deliverables.
+- **E2E:** `client-portal.spec.ts`, `files.spec.ts` (deschid tabul înainte de a citi o secțiune).
 
-## Pas 6: dashboard-ul freelancerului (`/w/[workspaceId]`)
+## Pas 6: dashboard-ul freelancerului (`/w/[workspaceId]`) — făcut
+
+Abateri: „Waiting on clients” stă într-o coloană îngustă în dreapta (pe ecran îngust vine după celelalte), iar starea goală înlocuiește „Coming up” și „Active projects” cât timp workspace-ul n-are niciun proiect nearhivat. Logica scadențelor e în `lib/dashboard/deadlines.ts`, blocurile în `components/dashboard/`.
 
 Doar din datele existente (`getProjects` cu etape, `getClients`):
 

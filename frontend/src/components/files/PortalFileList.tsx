@@ -11,7 +11,7 @@ export function PortalFileList({ projectId, files }: { projectId: string; files:
   }
 
   return (
-    <section aria-labelledby="files-title" className="mt-10">
+    <section aria-labelledby="files-title">
       <h2 id="files-title" className="mb-4 font-heading text-xl font-semibold">
         Files
       </h2>
