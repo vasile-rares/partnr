@@ -1,3 +1,4 @@
+import { orderByDate } from "@/lib/projects/timeline";
 import type { Stage, ProjectStatus } from "@/lib/projects/types";
 
 export type ProjectSummary = {
@@ -19,8 +20,9 @@ export function summarize(status: ProjectStatus, stages: Stage[]): ProjectSummar
     return { now: "The stages of this project haven't been set up yet.", next: null };
   }
 
-  const inProgress = stages.filter((s) => s.status === "InProgress");
-  const upNext = stages.find((s) => s.status === "ToDo");
+  const ordered = orderByDate(stages);
+  const inProgress = ordered.filter((s) => s.status === "InProgress");
+  const upNext = ordered.find((s) => s.status === "ToDo");
 
   if (inProgress.length === 0 && !upNext) {
     return { now: "Every stage is done.", next: null };

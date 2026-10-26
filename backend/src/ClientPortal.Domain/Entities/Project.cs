@@ -1,3 +1,4 @@
+using System.Globalization;
 using ClientPortal.Domain.Enums;
 using ClientPortal.Domain.Exceptions;
 
@@ -84,6 +85,12 @@ public sealed class Project : Entity
             throw new DomainException("The due date cannot be before the start date.");
         }
 
+        foreach (var stage in _stages.Where(s => s.DueDate is not null && !IsWithin(s.DueDate.Value, startDate, dueDate)))
+        {
+            throw new DomainException(
+                $"The stage \"{stage.Name}\" is due on {Format(stage.DueDate!.Value)}, outside these dates. Change the stage first.");
+        }
+
         Name = name.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         StartDate = startDate;
@@ -95,14 +102,19 @@ public sealed class Project : Entity
 
     public ProjectStage AddStage(string name, string? description, DateOnly? dueDate)
     {
+        EnsureStageDateFits(dueDate);
         var stage = new ProjectStage(Id, name, description, dueDate, _stages.Count);
         _stages.Add(stage);
 
         return stage;
     }
 
-    public void UpdateStage(Guid stageId, string name, string? description, DateOnly? dueDate, StageStatus status) =>
-        RequireStage(stageId).Update(name, description, dueDate, status);
+    public void UpdateStage(Guid stageId, string name, string? description, DateOnly? dueDate, StageStatus status)
+    {
+        var stage = RequireStage(stageId);
+        EnsureStageDateFits(dueDate);
+        stage.Update(name, description, dueDate, status);
+    }
 
     public void RemoveStage(Guid stageId)
     {
@@ -126,6 +138,29 @@ public sealed class Project : Entity
     }
 
     public bool HasStage(Guid stageId) => _stages.Any(s => s.Id == stageId);
+
+    /// <summary>A stage cannot end before the project starts or after it is due, whichever of those dates the project has.</summary>
+    private void EnsureStageDateFits(DateOnly? date)
+    {
+        if (date is null)
+        {
+            return;
+        }
+
+        if (StartDate is not null && date < StartDate)
+        {
+            throw new DomainException($"A stage cannot be due before the project starts ({Format(StartDate.Value)}).");
+        }
+
+        if (DueDate is not null && date > DueDate)
+        {
+            throw new DomainException($"A stage cannot be due after the project is due ({Format(DueDate.Value)}).");
+        }
+    }
+
+    private static bool IsWithin(DateOnly date, DateOnly? start, DateOnly? end) => (start is null || date >= start) && (end is null || date <= end);
+
+    private static string Format(DateOnly date) => date.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
 
     private ProjectStage RequireStage(Guid stageId) =>
         _stages.FirstOrDefault(s => s.Id == stageId) ?? throw new DomainException("This project has no such stage.");

@@ -30,6 +30,11 @@ const calendarDate =new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", time
 /** "15 Dec 2026", for a calendar date ("YYYY-MM-DD") with no time or zone of its own. */
 export const formatDate = (date: string): string => calendarDate.format(new Date(`${date}T00:00:00Z`));
 
+const dayAndMonth = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+/** "15 Dec", for a label with little room. */
+export const formatDayMonth = (date: string): string => dayAndMonth.format(new Date(`${date}T00:00:00Z`));
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "3 days overdue", "Today", "Tomorrow", "In 5 days", for a number of days from `daysUntil`. */
@@ -48,3 +53,13 @@ export function daysUntil(date: string): number {
   const today = Math.floor(Date.now() / DAY_MS) * DAY_MS;
   return Math.round((Date.parse(`${date}T00:00:00Z`) - today) / DAY_MS);
 }
+
+/** A calendar date ("YYYY-MM-DD") as a local Date at midnight, for a calendar to draw; no time zone moves it a day. */
+export function toLocalDate(date: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/** The calendar date ("YYYY-MM-DD") of a local Date, the other way round from `toLocalDate`. */
+export const fromLocalDate = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;

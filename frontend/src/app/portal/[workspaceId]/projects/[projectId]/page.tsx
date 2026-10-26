@@ -3,15 +3,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalFileList } from "@/components/files/PortalFileList";
 import { PortalApprovalPanel } from "@/components/portal/PortalApprovalPanel";
-import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { GoToTab, ProjectTabs, type ProjectTabItem } from "@/components/projects/ProjectTabs";
+import { ProjectTimeline } from "@/components/projects/ProjectTimeline";
 import { StageStatusBadge } from "@/components/projects/StageStatusBadge";
 import { Page } from "@/components/shell/Page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { PortalUpdateList } from "@/components/updates/PortalUpdateList";
 import { requireUser } from "@/lib/auth/session";
+import { orderByDate } from "@/lib/projects/timeline";
 import { formatDate } from "@/lib/format";
 import { getPortalProject } from "@/lib/portal/server";
 import { summarize } from "@/lib/portal/summary";
@@ -39,10 +40,6 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
     notFound();
   }
   const { now, next } = summarize(project.status, project.stages);
-  const dates = [
-    project.startDate ? `Started ${formatDate(project.startDate)}` : null,
-    project.dueDate ? `Due ${formatDate(project.dueDate)}` : null,
-  ].filter(Boolean);
 
   // A tab with nothing in it is not offered; Updates stays because its empty state says what to expect.
   const tabs: ProjectTabItem[] = [{ value: "overview", label: "Overview" }];
@@ -60,10 +57,9 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
         <h1 className="font-heading text-3xl font-semibold">{project.name}</h1>
         <ProjectStatusBadge status={project.status} />
       </div>
-      <p className="mb-8 text-muted-foreground">
-        With {project.workspace.name}
-        {dates.length > 0 ? ` · ${dates.join(" · ")}` : null}
-      </p>
+      <p className="mb-6 text-muted-foreground">With {project.workspace.name}</p>
+
+      <ProjectTimeline project={project} />
 
       <ProjectTabs
         key={project.id}
@@ -88,10 +84,7 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
 
               <Card>
                 <CardContent className="flex flex-col gap-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="font-heading text-xl font-semibold">Where things stand</h2>
-                    <ProjectProgress progress={project.progress} />
-                  </div>
+                  <h2 className="font-heading text-xl font-semibold">Where things stand</h2>
                   <dl className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <dt className="text-sm text-muted-foreground">Right now</dt>
@@ -121,7 +114,7 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
                     Stages
                   </h2>
                   <ol className="flex flex-col divide-y rounded-lg border">
-                    {project.stages.map((stage) => (
+                    {orderByDate(project.stages).map((stage) => (
                       <li key={stage.id} className="p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <p className="font-medium">{stage.name}</p>

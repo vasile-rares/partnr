@@ -1,8 +1,8 @@
 "use client";
 
-import { ArchiveIcon, ArchiveRestoreIcon, DownloadIcon, EyeIcon, EyeOffIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ArchiveIcon, ArchiveRestoreIcon, DownloadIcon, EyeIcon, EyeOffIcon, PencilIcon, Trash2Icon, UploadCloudIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type FormEvent, type Ref } from "react";
+import { useState, useTransition, type DragEvent, type FormEvent } from "react";
 import { IconButton, IconLink } from "@/components/actions/IconButton";
 import { DeliverableStatusBadge } from "@/components/deliverables/DeliverableStatusBadge";
 import { FileDropzone } from "@/components/files/FileDropzone";
@@ -22,10 +22,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendForm, sendJson } from "@/lib/api/client";
 import { MAX_FILE_BYTES, type ProjectFile } from "@/lib/files/types";
 import { formatDate, formatFileSize } from "@/lib/format";
 import type { Project } from "@/lib/projects/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   workspaceId: string;
@@ -42,7 +44,9 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState<string>();
-  const addForm = useRef<HTMLFormElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dropped, setDropped] = useState<File | null>(null);
+  const [over, setOver] = useState(false);
   const readOnly = project.archivedAtUtc !== null;
   const base = `/api/workspaces/${workspaceId}/projects/${project.id}/files`;
   const active = files.filter((f) => f.archivedAtUtc === null);
@@ -72,7 +76,7 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
       setMessage(undefined);
       const result = await sendForm(base, form);
       if (result.ok) {
-        addForm.current?.reset();
+        setUploading(false);
         router.refresh();
       } else {
         setMessage(result.message);
@@ -105,32 +109,103 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
     );
   }
 
+  // A file dropped anywhere on the section opens the upload dialog with that file already chosen.
+  const droppable = (event: DragEvent<HTMLElement>) => !readOnly && event.dataTransfer.types.includes("Files");
+
+  function openUpload(file: File | null) {
+    setDropped(file);
+    setMessage(undefined);
+    setUploading(true);
+  }
+
   return (
-    <section aria-labelledby="files-title" className="mb-12 max-w-lg">
-      <h2 id="files-title" className="mb-4 font-heading text-xl font-semibold">
-        Files
-      </h2>
+    <>
+      <section
+        aria-labelledby="files-title"
+        className="mb-12 max-w-lg"
+        onDragEnter={(event) => droppable(event) && setOver(true)}
+        onDragOver={(event) => {
+          if (droppable(event)) {
+            event.preventDefault();
+            setOver(true);
+          }
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setOver(false);
+          }
+        }}
+        onDrop={(event) => {
+          if (droppable(event)) {
+            event.preventDefault();
+            setOver(false);
+            const file = event.dataTransfer.files[0];
+            if (file) {
+              openUpload(file);
+            }
+          }
+        }}
+      >
+        <h2 id="files-title" className="mb-4 font-heading text-xl font-semibold">
+          Files
+        </h2>
 
-      {readOnly ? null : <UploadForm formRef={addForm} pending={pending} onSubmit={upload} />}
+        {uploading ? null : <FormError message={message} />}
 
-      <FormError message={message} />
+        {readOnly ? null : (
+          <label
+            className={cn(
+              "mb-4 flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-6 text-center transition-colors hover:bg-muted/50 has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+              over && "border-foreground bg-muted/50",
+            )}
+          >
+            <input
+              type="file"
+              aria-label="Choose a file to upload"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) {
+                  openUpload(file);
+                }
+              }}
+            />
+            <UploadCloudIcon className="size-6 text-muted-foreground" aria-hidden />
+            <span className="text-sm font-medium">{over ? "Drop to upload" : "Drop a file here, or click to browse"}</span>
+            <span className="text-sm text-muted-foreground">Up to {formatFileSize(MAX_FILE_BYTES)}. You can name it and add a note next.</span>
+          </label>
+        )}
 
-      {active.length === 0 ? (
-        <p className="mb-6 text-sm text-muted-foreground">
-          {readOnly ? "This project has no files." : "No files yet. Share a file with your client once it's ready."}
-        </p>
-      ) : (
-        <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
-      )}
+        {active.length === 0 ? (
+          <p className="mb-6 text-sm text-muted-foreground">
+            {readOnly ? "This project has no files." : "No files yet. Share a file with your client once it's ready."}
+          </p>
+        ) : (
+          <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
+        )}
 
-      {archived.length > 0 ? (
-        <div className="mb-6">
-          <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
-          <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
-        </div>
-      ) : null}
+        {archived.length > 0 ? (
+          <div className="mb-6">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
+            <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+          </div>
+        ) : null}
 
-    </section>
+      </section>
+
+      {/* Outside the section, so a drop inside the dialog does not reach the section's own drop handler. */}
+      <Dialog open={uploading} onOpenChange={setUploading}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Upload a file</DialogTitle>
+            <DialogDescription>It starts as a draft. Share it with your client when it is ready.</DialogDescription>
+          </DialogHeader>
+          <UploadForm initialFile={dropped} pending={pending} onSubmit={upload} onCancel={() => setUploading(false)} />
+          <FormError message={message} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -200,25 +275,33 @@ function FileRow({
 }
 
 function UploadForm({
+  initialFile,
   pending,
   onSubmit,
-  formRef,
+  onCancel,
 }: {
+  /** A file dropped on the section before the dialog opened. */
+  initialFile: File | null;
   pending: boolean;
   onSubmit: (form: FormData) => void;
-  formRef: Ref<HTMLFormElement>;
+  onCancel: () => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(initialFile);
   const hintId = "upload-file-hint";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit(new FormData(event.currentTarget));
+    const data = new FormData(event.currentTarget);
+    // A dropped file is not in the input, so it is added here whichever way the file was chosen.
+    if (file) {
+      data.set("file", file);
+    }
+    onSubmit(data);
   }
 
   // The edit form can be open at the same time, so these labels differ from its "Name" and "Description".
   return (
-    <form ref={formRef} onSubmit={handleSubmit} onReset={() => setFile(null)} className="mb-6 flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <FileDropzone name="file" describedBy={hintId} hint={`Up to ${formatFileSize(MAX_FILE_BYTES)}.`} file={file} onFileChange={setFile} />
       {file ? (
         <>
@@ -228,7 +311,7 @@ function UploadForm({
             <Button type="submit" disabled={pending}>
               {pending ? "Uploading…" : "Upload file"}
             </Button>
-            <Button type="reset" variant="outline" disabled={pending}>
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancel
             </Button>
           </div>

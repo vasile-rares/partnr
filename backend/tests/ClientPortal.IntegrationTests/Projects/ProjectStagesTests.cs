@@ -196,6 +196,37 @@ public sealed class ProjectStagesTests(ApiFactory factory)
         Assert.Equal("By member", Assert.Single(fetched!.Stages).Name);
     }
 
+    [Fact]
+    public async Task Stages_CannotBeDueOutsideTheProjectsDates_NorCanTheProjectMoveAwayFromThem()
+    {
+        var (http, workspaceId, _) = await SignedInWithProject();
+        var clientResponse = await http.PostAsJsonAsync($"/api/workspaces/{workspaceId}/clients", new { name = "Dated", email = NewEmail() });
+        var client = (await clientResponse.Content.ReadFromJsonAsync<ClientResponse>())!;
+        var projectUrl = $"/api/workspaces/{workspaceId}/projects";
+        var created = await http.PostAsJsonAsync(projectUrl, new { clientId = client.Id, name = "Dated", startDate = "2026-10-01", dueDate = "2026-12-15" });
+        var project = (await created.Content.ReadFromJsonAsync<ProjectResponse>())!;
+        var stagesUrl = $"{projectUrl}/{project.Id}/stages";
+
+        var fits = await http.PostAsJsonAsync(stagesUrl, new { name = "Launch", dueDate = "2026-12-15" });
+        var after = await http.PostAsJsonAsync(stagesUrl, new { name = "Late", dueDate = "2026-12-16" });
+        var before = await http.PostAsJsonAsync(stagesUrl, new { name = "Early", dueDate = "2026-09-30" });
+        var stage = (await fits.Content.ReadFromJsonAsync<ProjectResponse>())!.Stages.Single();
+        var moved = await http.PutAsJsonAsync($"{stagesUrl}/{stage.Id}", new { name = "Launch", dueDate = "2027-01-01", status = "ToDo" });
+        var shortened = await http.PutAsJsonAsync($"{projectUrl}/{project.Id}", new { name = "Dated", startDate = "2026-10-01", dueDate = "2026-12-01", status = "Planning" });
+
+        Assert.Equal(HttpStatusCode.OK, fits.StatusCode);
+        foreach (var refused in new[] { after, before, moved, shortened })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        }
+
+        Assert.Contains("after the project is due", await after.Content.ReadAsStringAsync());
+        Assert.Contains("Change the stage first", await shortened.Content.ReadAsStringAsync());
+        var fetched = await http.GetFromJsonAsync<ProjectResponse>($"{projectUrl}/{project.Id}");
+        Assert.Equal(["Launch"], fetched!.Stages.Select(s => s.Name));
+        Assert.Equal(new DateOnly(2026, 12, 15), fetched.DueDate);
+    }
+
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 
     private async Task<(HttpClient Http, Guid WorkspaceId, ProjectResponse Project)> SignedInWithProject()

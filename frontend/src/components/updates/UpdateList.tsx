@@ -1,8 +1,8 @@
 "use client";
 
-import { ArchiveIcon, ArchiveRestoreIcon, EyeIcon, EyeOffIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ArchiveIcon, ArchiveRestoreIcon, EyeIcon, EyeOffIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type FormEvent, type Ref } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { IconButton } from "@/components/actions/IconButton";
 import { DeliverableStatusBadge } from "@/components/deliverables/DeliverableStatusBadge";
 import { FormError } from "@/components/forms/FormMessage";
@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendJson } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import type { Project } from "@/lib/projects/types";
@@ -40,7 +41,7 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState<string>();
-  const addForm = useRef<HTMLFormElement>(null);
+  const [adding, setAdding] = useState(false);
   const readOnly = project.archivedAtUtc !== null;
   const base = `/api/workspaces/${workspaceId}/projects/${project.id}/updates`;
   const active = updates.filter((u) => u.archivedAtUtc === null);
@@ -85,42 +86,63 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
   }
 
   return (
-    <section aria-labelledby="updates-title" className="mb-12 max-w-lg">
-      <h2 id="updates-title" className="mb-4 font-heading text-xl font-semibold">
-        Updates
-      </h2>
-
-      {active.length === 0 ? (
-        <p className="mb-6 text-sm text-muted-foreground">
-          {readOnly
-            ? "This project has no updates."
-            : "No updates yet. Write a short note about where the project stands and share it with your client when it's ready."}
-        </p>
-      ) : (
-        <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
-      )}
-
-      {archived.length > 0 ? (
-        <div className="mb-6">
-          <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
-          <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+    <>
+      <section aria-labelledby="updates-title" className="mb-12 max-w-lg">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="updates-title" className="font-heading text-xl font-semibold">
+            Updates
+          </h2>
+          {readOnly ? null : (
+            <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+              <PlusIcon data-icon="inline-start" />
+              Add update
+            </Button>
+          )}
         </div>
-      ) : null}
 
-      <FormError message={message} />
+        {active.length === 0 ? (
+          <div className="mb-6 flex flex-col items-start gap-3">
+            <p className="text-sm text-muted-foreground">
+              {readOnly
+                ? "This project has no updates."
+                : "No updates yet. Write a short note about where the project stands and share it with your client when it's ready."}
+            </p>
+            {readOnly ? null : (
+              <Button type="button" size="sm" onClick={() => setAdding(true)}>
+                Add the first update
+              </Button>
+            )}
+          </div>
+        ) : (
+          <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
+        )}
 
-      {readOnly ? null : (
-        <div className="mt-4 rounded-lg border p-4">
-          <h3 className="mb-4 font-medium">Add an update</h3>
+        {archived.length > 0 ? (
+          <div className="mb-6">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
+            <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+          </div>
+        ) : null}
+
+        {adding ? null : <FormError message={message} />}
+      </section>
+
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add an update</DialogTitle>
+            <DialogDescription>It starts as a draft. Share it with your client when it is ready.</DialogDescription>
+          </DialogHeader>
           <UpdateForm
-            formRef={addForm}
             pending={pending}
             submitLabel="Add update"
-            onSubmit={(values) => run("POST", "", values, () => addForm.current?.reset())}
+            onSubmit={(values) => run("POST", "", values, () => setAdding(false))}
+            onCancel={() => setAdding(false)}
           />
-        </div>
-      )}
-    </section>
+          <FormError message={message} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -188,16 +210,14 @@ function UpdateForm({
   submitLabel,
   onSubmit,
   onCancel,
-  formRef,
 }: {
   update?: ProjectUpdate;
   pending: boolean;
   submitLabel: string;
   onSubmit: (values: Values) => void;
   onCancel?: () => void;
-  formRef?: Ref<HTMLFormElement>;
 }) {
-  // The add form and an open edit form are on screen together, so their labels must differ.
+  // The add dialog can open while an edit form is on the page, so their labels must differ.
   const names = update ? { title: "Title", body: "Details" } : { title: "Update title", body: "What's happening now?" };
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -207,7 +227,7 @@ function UpdateForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <TextField label={names.title} name="title" required maxLength={200} defaultValue={update?.title} />
       <TextAreaField label={names.body} name="body" maxLength={4000} rows={3} defaultValue={update?.body ?? ""} hint="Optional." />
       <div className="flex gap-2">

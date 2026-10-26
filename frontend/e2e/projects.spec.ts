@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, createWorkspace, mainNav, openEditor, openTab, signIn } from "./helpers";
+import { alertWith, calendarDay, createAccount, createWorkspace, mainNav, openEditor, openTab, pickDate, signIn } from "./helpers";
 
 // Added through the API, without an invitation: a project can be prepared before the client is invited.
 async function addClient(request: APIRequestContext, workspaceId: string, name: string): Promise<{ id: string }> {
@@ -58,7 +58,7 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(page.getByText("No active projects")).toBeVisible();
 });
 
-test("stages are added, reordered, finished and deleted, and the progress follows", async ({ page, request }) => {
+test("stages are added, reordered, edited and deleted from the bar, and the progress follows", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
   const client = await addClient(request, workspace.id, "Acme SRL");
@@ -70,49 +70,143 @@ test("stages are added, reordered, finished and deleted, and the progress follow
   await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
-  const stages = page.getByRole("region", { name: "Stages" });
-  await expect(stages.getByText("No stages yet. Break the project")).toBeVisible();
+  const timeline = page.getByRole("region", { name: "Timeline" });
+  const segment = (name: string) => timeline.getByRole("button", { name: new RegExp(`^${name},`) });
+  const order = () =>
+    timeline
+      .getByRole("button", { name: /^(Design|Development|Launch),/ })
+      .evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")!.split(",")[0]));
+  await expect(timeline.getByText("Break the project into steps")).toBeVisible();
 
-  for (const name of ["Design", "Development", "Launch"]) {
-    await stages.getByLabel("Stage name").fill(name);
-    await stages.getByRole("button", { name: "Add stage" }).click();
-    await expect(stages.getByRole("listitem").filter({ hasText: name })).toBeVisible();
+  // Stages are made in a dialog: the first one from the empty bar, the next ones from the + at its end.
+  const adding = page.getByRole("dialog", { name: "Add a stage" });
+  for (const [position, name] of ["Design", "Development", "Launch"].entries()) {
+    await timeline.getByRole("button", { name: position === 0 ? "Add the first stage" : "Add stage" }).click();
+    await adding.getByLabel("Stage name").fill(name);
+    await adding.getByRole("button", { name: "Add stage" }).click();
+    await expect(adding).toBeHidden();
+    await expect(segment(name)).toBeVisible();
   }
-  await expect(stages.getByText("0 of 3 done")).toBeVisible();
-  const order = stages.getByRole("listitem").getByRole("paragraph").filter({ hasText: /^(Design|Development|Launch)$/ });
-  await expect(order).toHaveText(["Design", "Development", "Launch"]);
+  await expect(timeline.getByText("0 of 3 done")).toBeVisible();
+  await expect.poll(order).toEqual(["Design", "Development", "Launch"]);
 
-  // The first stage cannot go up and the last cannot go down; moving Launch up puts it before Development.
-  await expect(stages.getByRole("button", { name: "Move Design up" })).toBeDisabled();
-  await expect(stages.getByRole("button", { name: "Move Launch down" })).toBeDisabled();
-  await stages.getByRole("button", { name: "Move Launch up" }).click();
-  await expect(order).toHaveText(["Design", "Launch", "Development"]);
+  // The bar draws the stages by their dates, so giving Launch an earlier date than Development puts it before it. The
+  // menu under a segment edits everything in place; a date is picked on a calendar and saved at once.
+  const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const menu = page.locator('[data-slot="popover-content"]').filter({ has: page.getByLabel("Stage name") });
+  await segment("Development").click();
+  await menu.getByLabel("Due date").click();
+  await pickDate(page, inDays(20));
+  await expect(menu.getByRole("status")).toHaveText("Saved");
+  await page.keyboard.press("Escape");
+  await segment("Launch").click();
+  await menu.getByLabel("Due date").click();
+  await pickDate(page, inDays(10));
+  await expect.poll(order).toEqual(["Design", "Launch", "Development"]);
+  await page.keyboard.press("Escape");
 
-  await stages.getByRole("button", { name: "Edit Design" }).click();
-  await stages.getByLabel("Status").selectOption("Done");
-  await stages.getByRole("button", { name: "Save stage" }).click();
-  await expect(stages.getByText("1 of 3 done")).toBeVisible();
-  await expect(stages.getByRole("listitem").filter({ hasText: "Design" })).toContainText("Done");
+  // Status is one click, the name and the description save when they are left, and a name cannot be emptied.
+  await segment("Design").click();
+  await menu.getByRole("button", { name: "Done" }).click();
+  await expect(timeline.getByText("1 of 3 done")).toBeVisible();
+  await expect(segment("Design")).toHaveAccessibleName(/^Design, Done/);
+  await menu.getByLabel("Description").fill("Logo and layouts.");
+  await menu.getByLabel("Stage name").fill("");
+  await menu.getByLabel("Stage name").blur();
+  await expect(menu.getByText("A stage needs a name.")).toBeVisible();
+  await expect(menu.getByLabel("Stage name")).toHaveValue("Design");
+  await menu.getByLabel("Stage name").fill("Visual design");
+  await menu.getByLabel("Stage name").press("Enter");
+  await expect(timeline.getByRole("button", { name: /^Visual design, Done/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await timeline.getByRole("button", { name: /^Visual design,/ }).click();
+  await expect(menu.getByLabel("Description")).toHaveValue("Logo and layouts.");
+  await menu.getByLabel("Stage name").fill("Design");
+  await menu.getByLabel("Stage name").press("Enter");
+  await expect(segment("Design")).toBeVisible();
+  await page.keyboard.press("Escape");
 
-  await stages.getByRole("button", { name: "Delete Launch" }).click();
+  await segment("Launch").click();
+  await page.getByRole("button", { name: "Delete Launch" }).click();
   await page.getByRole("button", { name: "Keep stage" }).click();
-  await expect(order).toHaveText(["Design", "Launch", "Development"]);
-  await stages.getByRole("button", { name: "Delete Launch" }).click();
+  await expect.poll(order).toEqual(["Design", "Launch", "Development"]);
+  await expect(page.getByRole("button", { name: "Delete Launch" })).toBeVisible();
+  await page.getByRole("button", { name: "Delete Launch" }).click();
   await page.getByRole("button", { name: "Delete stage" }).click();
-  await expect(order).toHaveText(["Design", "Development"]);
-  await expect(stages.getByText("1 of 2 done")).toBeVisible();
+  await expect.poll(order).toEqual(["Design", "Development"]);
+  await expect(timeline.getByText("1 of 2 done")).toBeVisible();
 
   await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByRole("row", { name: /Website/ })).toContainText("1 of 2 done");
 
+  // An archived project's bar can be read, but not changed.
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   const editor = await openEditor(page);
   await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(stages.getByRole("listitem")).toHaveCount(2);
-  await expect(stages.getByRole("button", { name: "Add stage" })).toBeHidden();
-  await expect(stages.getByRole("button", { name: "Edit Design" })).toBeHidden();
+  await expect(timeline.getByRole("button", { name: "Add stage" })).toBeHidden();
+  await segment("Design").click();
+  await expect(page.locator('[data-slot="popover-content"]')).toContainText("Design");
+  await expect(page.getByLabel("Stage name")).toBeHidden();
+});
+
+test("a stage's end is dragged, or nudged with the keyboard, to change its due date", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const projectsUrl = `/api/workspaces/${workspace.id}/projects`;
+  const project = await (
+    await request.post(projectsUrl, { data: { clientId: client.id, name: "Website", startDate: inDays(-5), dueDate: inDays(35) } })
+  ).json();
+  for (const [name, due] of [["Design", 5], ["Build", 15], ["Launch", 35]] as const) {
+    expect((await request.post(`${projectsUrl}/${project.id}/stages`, { data: { name, dueDate: inDays(due) } })).ok()).toBe(true);
+  }
+  const dueOf = async (name: string) =>
+    (await (await request.get(`${projectsUrl}/${project.id}`)).json()).stages.find((stage: { name: string }) => stage.name === name).dueDate;
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  const timeline = page.getByRole("region", { name: "Timeline" });
+  // The last stage ends where the project does, so only the edges between stages can be moved.
+  await expect(timeline.getByRole("slider")).toHaveCount(2);
+
+  // Arrow keys move it a day at a time, and the change is saved a moment after the last key.
+  const design = timeline.getByRole("slider", { name: "Due date of Design" });
+  await design.focus();
+  for (let press = 0; press < 3; press++) {
+    await page.keyboard.press("ArrowRight");
+  }
+  await expect(timeline.getByRole("status")).toContainText("+3 days");
+  await expect.poll(() => dueOf("Design")).toBe(inDays(8));
+  await expect(timeline.getByRole("status")).toBeHidden();
+
+  // Dragging does the same with the pointer, and a plain press without moving leaves the date alone.
+  const build = timeline.getByRole("slider", { name: "Due date of Build" });
+  await timeline.hover();
+  const box = (await build.boundingBox())!;
+  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.up();
+  expect(await dueOf("Build")).toBe(inDays(15));
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 80, y, { steps: 8 });
+  await expect(timeline.getByRole("status")).toContainText("days)");
+  await page.mouse.up();
+  // Dates are ISO strings, so they compare as text.
+  await expect.poll(async () => (await dueOf("Build")) < inDays(15)).toBe(true);
+  expect((await dueOf("Build")) > (await dueOf("Design"))).toBe(true);
+
+  // An archived project's dates stay as they are.
+  expect((await request.post(`${projectsUrl}/${project.id}/archive`)).ok()).toBe(true);
+  await page.reload();
+  await expect(timeline.getByRole("slider")).toHaveCount(0);
 });
 
 test("deliverables are added as links, shared, edited, archived and deleted", async ({ page, request }) => {
@@ -131,20 +225,25 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   const deliverables = page.getByRole("region", { name: "Deliverables" });
   await expect(deliverables.getByText("No deliverables yet.")).toBeVisible();
 
+  // Adding is asked for: nothing of the form is on the page, and the dialog opens from the header or the empty message.
+  const adding = page.getByRole("dialog", { name: "Add a deliverable" });
+  await expect(deliverables.getByLabel("Deliverable title")).toHaveCount(0);
+  await deliverables.getByRole("button", { name: "Add the first deliverable" }).click();
+
   // The API only accepts https links; its message reaches the form.
-  await deliverables.getByLabel("Deliverable title").fill("Homepage mockup");
-  await deliverables.getByLabel("Deliverable link").fill("http://figma.example/file");
-  await deliverables.getByRole("button", { name: "Add deliverable" }).click();
+  await adding.getByLabel("Deliverable title").fill("Homepage mockup");
+  await adding.getByLabel("Deliverable link").fill("http://figma.example/file");
+  await adding.getByRole("button", { name: "Add deliverable" }).click();
   await expect(alertWith(page, "The link must be a valid https address.")).toBeVisible();
 
-  await deliverables.getByLabel("Deliverable link").fill("https://figma.example/file");
-  await deliverables.getByLabel("Deliverable stage").selectOption({ label: "Design" });
-  await deliverables.getByRole("button", { name: "Add deliverable" }).click();
+  await adding.getByLabel("Deliverable link").fill("https://figma.example/file");
+  await adding.getByLabel("Deliverable stage").selectOption({ label: "Design" });
+  await adding.getByRole("button", { name: "Add deliverable" }).click();
   const item = deliverables.getByRole("listitem").filter({ hasText: "Homepage mockup" });
   await expect(item).toContainText("Draft");
   await expect(item).toContainText("Stage: Design");
   await expect(item.getByRole("link", { name: "Homepage mockup" })).toHaveAttribute("href", "https://figma.example/file");
-  await expect(deliverables.getByLabel("Deliverable title")).toHaveValue("");
+  await expect(adding).toBeHidden();
 
   // A shared deliverable cannot be deleted; it goes back to draft first.
   await item.getByRole("button", { name: "Share Homepage mockup" }).click();
@@ -179,9 +278,10 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   await page.getByRole("button", { name: "Delete deliverable" }).click();
   await expect(deliverables.getByText("No deliverables yet.")).toBeVisible();
 
-  await deliverables.getByLabel("Deliverable title").fill("Contract");
-  await deliverables.getByLabel("Deliverable link").fill("https://docs.example/contract");
-  await deliverables.getByRole("button", { name: "Add deliverable" }).click();
+  await deliverables.getByRole("button", { name: "Add the first deliverable" }).click();
+  await adding.getByLabel("Deliverable title").fill("Contract");
+  await adding.getByLabel("Deliverable link").fill("https://docs.example/contract");
+  await adding.getByRole("button", { name: "Add deliverable" }).click();
   await expect(deliverables.getByRole("listitem").filter({ hasText: "Contract" })).toBeVisible();
   const editor = await openEditor(page);
   await editor.getByRole("button", { name: "Archive project" }).click();
@@ -264,13 +364,17 @@ test("updates are written, shared, edited, archived and deleted", async ({ page,
   const updates = page.getByRole("region", { name: "Updates" });
   await expect(updates.getByText("No updates yet.")).toBeVisible();
 
-  await updates.getByLabel("Update title").fill("Design approved");
-  await updates.getByLabel("What's happening now?").fill("Layouts are signed off.\nDevelopment starts Monday.");
+  // Adding is asked for: nothing of the form is on the page, and the dialog opens from the header button.
+  const adding = page.getByRole("dialog", { name: "Add an update" });
+  await expect(updates.getByLabel("Update title")).toHaveCount(0);
   await updates.getByRole("button", { name: "Add update" }).click();
+  await adding.getByLabel("Update title").fill("Design approved");
+  await adding.getByLabel("What's happening now?").fill("Layouts are signed off.\nDevelopment starts Monday.");
+  await adding.getByRole("button", { name: "Add update" }).click();
   const item = updates.getByRole("listitem").filter({ hasText: "Design approved" });
   await expect(item).toContainText("Draft");
   await expect(item).toContainText("Development starts Monday.");
-  await expect(updates.getByLabel("Update title")).toHaveValue("");
+  await expect(adding).toBeHidden();
 
   // A shared update cannot be deleted; it goes back to draft first.
   await item.getByRole("button", { name: "Share Design approved" }).click();
@@ -307,8 +411,9 @@ test("updates are written, shared, edited, archived and deleted", async ({ page,
   await page.getByRole("button", { name: "Delete update" }).click();
   await expect(updates.getByText("No updates yet.")).toBeVisible();
 
-  await updates.getByLabel("Update title").fill("Kickoff done");
-  await updates.getByRole("button", { name: "Add update" }).click();
+  await updates.getByRole("button", { name: "Add the first update" }).click();
+  await adding.getByLabel("Update title").fill("Kickoff done");
+  await adding.getByRole("button", { name: "Add update" }).click();
   await expect(updates.getByRole("listitem").filter({ hasText: "Kickoff done" })).toBeVisible();
   const editor = await openEditor(page);
   await editor.getByRole("button", { name: "Archive project" }).click();
@@ -359,7 +464,7 @@ test("a project page keeps its sections in tabs, the open tab is in the address,
   const projectUrl = `/w/${workspace.id}/projects/${project.id}`;
   await page.goto(projectUrl);
   await expect(page.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("region", { name: "Stages" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Timeline" })).toBeVisible();
   await expect(page.getByText(/^(9|10) days left$/)).toBeVisible();
   await expect(page.getByText("1 waiting for the client")).toBeVisible();
   await expect(page.getByRole("region", { name: "Updates" })).toBeVisible();
@@ -371,7 +476,7 @@ test("a project page keeps its sections in tabs, the open tab is in the address,
   await expect(page).toHaveURL(`${projectUrl}?tab=deliverables`);
   await expect(page.getByRole("region", { name: "Deliverables" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Files" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Stages" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Updates" })).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByRole("tab", { name: "Deliverables & Files" })).toHaveAttribute("aria-selected", "true");
@@ -394,4 +499,108 @@ test("a project page keeps its sections in tabs, the open tab is in the address,
   await expect(page.getByText("No dates yet.")).toBeVisible();
   await page.getByRole("button", { name: "Set dates" }).click();
   await expect(page.getByRole("dialog", { name: "Edit project" }).getByLabel("Due date")).toBeVisible();
+});
+
+test("the project bar lays the stages along the dates, and a stage's status is changed from its segment", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const projectsUrl = `/api/workspaces/${workspace.id}/projects`;
+  const project = await (
+    await request.post(projectsUrl, { data: { clientId: client.id, name: "Website", startDate: inDays(-5), dueDate: inDays(25) } })
+  ).json();
+  for (const [name, due] of [["Design", 5], ["Build", 15], ["Launch", 25]] as const) {
+    const added = await request.post(`${projectsUrl}/${project.id}/stages`, { data: { name, dueDate: inDays(due) } });
+    expect(added.ok()).toBe(true);
+  }
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  const timeline = page.getByRole("region", { name: "Timeline" });
+  await expect(timeline.getByText("0 of 3 done")).toBeVisible();
+  await expect(timeline.getByText(/^2[45] days left$/)).toBeVisible();
+  await expect(timeline.getByText("Today", { exact: true })).toBeVisible();
+  await expect(timeline.getByRole("button", { name: /, (To do|In progress|Done)/ })).toHaveCount(3);
+  await expect(timeline.getByRole("button", { name: "Add stage" })).toBeVisible();
+
+  // A segment opens the stage; its status buttons write the change and the bar follows.
+  await timeline.getByRole("button", { name: /^Design, To do/ }).click();
+  const statuses = page.getByRole("group", { name: "Status of Design" });
+  await expect(statuses.getByRole("button", { name: "To do" })).toHaveAttribute("aria-pressed", "true");
+  await statuses.getByRole("button", { name: "Done" }).click();
+  await expect(timeline.getByText("1 of 3 done")).toBeVisible();
+  await expect(timeline.getByRole("button", { name: /^Design, Done/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // An archived project's stages can be read, but not changed.
+  expect((await request.post(`${projectsUrl}/${project.id}/archive`)).ok()).toBe(true);
+  await page.reload();
+  await timeline.getByRole("button", { name: /^Build, To do/ }).click();
+  await expect(page.locator('[data-slot="popover-content"]')).toContainText("Build");
+  await expect(page.getByRole("group", { name: "Status of Build" })).toHaveCount(0);
+});
+
+test("a stage's date is picked on a calendar where days outside the project cannot be selected", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const projectsUrl = `/api/workspaces/${workspace.id}/projects`;
+  const project = await (
+    await request.post(projectsUrl, { data: { clientId: client.id, name: "Website", startDate: "2040-03-10", dueDate: "2040-05-20" } })
+  ).json();
+  expect((await request.post(`${projectsUrl}/${project.id}/stages`, { data: { name: "Design", dueDate: "2040-04-15" } })).ok()).toBe(true);
+  const stagesOf = async () => (await (await request.get(`${projectsUrl}/${project.id}`)).json()).stages;
+  await page.goto("/login");
+  await signIn(page, user.email, user.password);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
+  const timeline = page.getByRole("region", { name: "Timeline" });
+  const menu = page.locator('[data-slot="popover-content"]').filter({ has: page.getByLabel("Stage name") });
+  const previous = page.getByRole("button", { name: /previous month/i });
+  const next = page.getByRole("button", { name: /next month/i });
+
+  // The calendar opens on the stage's month, stops at the project's first and last months, and greys out what is outside.
+  await timeline.getByRole("button", { name: /^Design,/ }).click();
+  await menu.getByLabel("Due date").click();
+  await expect(calendarDay(page, "2040-04-15")).toBeVisible();
+  await previous.click();
+  await expect(calendarDay(page, "2040-03-09")).toBeDisabled();
+  await expect(calendarDay(page, "2040-03-10")).toBeEnabled();
+  await expect(previous).toBeDisabled();
+  await next.click();
+  await next.click();
+  await expect(calendarDay(page, "2040-05-20")).toBeEnabled();
+  await expect(calendarDay(page, "2040-05-21")).toBeDisabled();
+  await expect(next).toBeDisabled();
+  await calendarDay(page, "2040-05-21").click({ force: true });
+  expect((await stagesOf())[0].dueDate).toBe("2040-04-15");
+
+  await calendarDay(page, "2040-05-18").click();
+  await expect.poll(async () => (await stagesOf())[0].dueDate).toBe("2040-05-18");
+  await expect(menu.getByLabel("Due date")).toHaveText("18 May 2040");
+  await page.keyboard.press("Escape");
+
+  // A new stage has the same calendar, and a date can be taken back.
+  await timeline.getByRole("button", { name: "Add stage" }).click();
+  const adding = page.getByRole("dialog", { name: "Add a stage" });
+  await adding.getByLabel("Stage name").fill("Launch");
+  await adding.getByLabel("Stage due date").click();
+  await expect(calendarDay(page, "2040-03-09")).toBeDisabled();
+  await pickDate(page, "2040-05-20");
+  await adding.getByRole("button", { name: "Add stage" }).click();
+  await expect(adding).toBeHidden();
+  await expect(timeline.getByRole("button", { name: /^Launch, To do, due 20 May 2040/ })).toBeVisible();
+
+  // The API says the same if a request gets past the page, and the project's own dates cannot leave a stage outside them.
+  const refused = await request.post(`${projectsUrl}/${project.id}/stages`, { data: { name: "Late", dueDate: "2040-05-21" } });
+  expect(refused.status()).toBe(400);
+  expect(await stagesOf()).toHaveLength(2);
+  const editor = await openEditor(page);
+  await editor.getByLabel("Due date").fill("2040-05-01");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  await expect(alertWith(page, "Change the stage first")).toBeVisible();
 });

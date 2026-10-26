@@ -108,6 +108,10 @@ Abateri față de planul inițial, după prima variantă văzută în aplicație
 - Taburile cu număr afișează un contor discret (de ex. „Deliverables 3”).
 - **E2E** (`projects.spec.ts`, `files.spec.ts`): clic pe tab înainte de a lucra într-o secțiune.
 
+## Retușare: bara de timeline
+
+După pașii 3 și 5: deasupra taburilor, pe pagina proiectului (freelancer) și pe cea din portal, o bară mare cu stagiile așezate după date și cu „Today” (`ProjectTimeline`, `StagePopover`, `lib/projects/timeline.ts`). Înlocuiește cardul „Deadline” și bara mică din titlul „Stages”. Detaliile sunt în `decisions.md`, secțiunea Interfață. Apoi, stagiile se editează chiar din bară (popover, panel, dialog și mânere de tras pentru date), iar lista „Stages” a fost scoasă din Overview.
+
 ## Pas 4: pagina clientului (freelancer), cu editarea în panel lateral — făcut
 
 Abateri față de planul inițial (Overview + Details), după ce am ales panelul în loc de tab:

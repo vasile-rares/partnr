@@ -119,6 +119,60 @@ public class ProjectTests
     }
 
     [Fact]
+    public void AddStage_DueOutsideTheProjectsDates_Throws_ButTheDatesThemselvesAreFine()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website", null, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 15));
+
+        project.AddStage("First day", null, new DateOnly(2026, 10, 1));
+        project.AddStage("Last day", null, new DateOnly(2026, 12, 15));
+        var early = Assert.Throws<DomainException>(() => project.AddStage("Early", null, new DateOnly(2026, 9, 30)));
+        var late = Assert.Throws<DomainException>(() => project.AddStage("Late", null, new DateOnly(2026, 12, 16)));
+
+        Assert.Contains("before the project starts (1 Oct 2026)", early.Message);
+        Assert.Contains("after the project is due (15 Dec 2026)", late.Message);
+        Assert.Equal(["First day", "Last day"], project.Stages.Select(s => s.Name));
+    }
+
+    [Fact]
+    public void Stages_OfAProjectWithOnlyOneDate_AreOnlyBoundedByThatDate()
+    {
+        var onlyDue = Project.Create(WorkspaceId, ClientId, "A", null, null, new DateOnly(2026, 12, 15));
+        var onlyStart = Project.Create(WorkspaceId, ClientId, "B", null, new DateOnly(2026, 10, 1), null);
+
+        onlyDue.AddStage("Long before", null, new DateOnly(2020, 1, 1));
+        onlyStart.AddStage("Long after", null, new DateOnly(2030, 1, 1));
+
+        Assert.Throws<DomainException>(() => onlyDue.AddStage("Late", null, new DateOnly(2026, 12, 16)));
+        Assert.Throws<DomainException>(() => onlyStart.AddStage("Early", null, new DateOnly(2026, 9, 30)));
+    }
+
+    [Fact]
+    public void UpdateStage_ToADateOutsideTheProject_Throws_AndChangesNothing()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website", null, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 15));
+        var design = project.AddStage("Design", "Layouts", new DateOnly(2026, 11, 1));
+
+        Assert.Throws<DomainException>(() => project.UpdateStage(design.Id, "Renamed", null, new DateOnly(2027, 1, 1), StageStatus.Done));
+
+        Assert.Equal(("Design", new DateOnly(2026, 11, 1), StageStatus.ToDo), (design.Name, design.DueDate, design.Status));
+    }
+
+    [Fact]
+    public void UpdateDetails_ThatLeavesAStageOutside_Throws_ButClearingTheDatesIsFine()
+    {
+        var project = Project.Create(WorkspaceId, ClientId, "Website", null, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 15));
+        project.AddStage("Launch", null, new DateOnly(2026, 12, 15));
+
+        var shorter = Assert.Throws<DomainException>(() => project.UpdateDetails("Website", null, new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 1)));
+        var later = Assert.Throws<DomainException>(() => project.UpdateDetails("Website", null, new DateOnly(2026, 12, 16), null));
+        project.UpdateDetails("Website", null, null, null);
+
+        Assert.Contains("\"Launch\" is due on 15 Dec 2026", shorter.Message);
+        Assert.NotNull(later);
+        Assert.Null(project.DueDate);
+    }
+
+    [Fact]
     public void UpdateStage_OfAnotherProject_Throws()
     {
         var project = Project.Create(WorkspaceId, ClientId, "Website");

@@ -1,8 +1,8 @@
 "use client";
 
-import { ArchiveIcon, ArchiveRestoreIcon, EyeIcon, EyeOffIcon, PencilIcon, SendIcon, Trash2Icon, Undo2Icon } from "lucide-react";
+import { ArchiveIcon, ArchiveRestoreIcon, EyeIcon, EyeOffIcon, PencilIcon, PlusIcon, SendIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type FormEvent, type Ref } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { IconButton } from "@/components/actions/IconButton";
 import { ApprovalRequestForm } from "@/components/deliverables/ApprovalRequestForm";
 import { ApprovalSummary } from "@/components/deliverables/ApprovalSummary";
@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendJson } from "@/lib/api/client";
 import type { Deliverable } from "@/lib/deliverables/types";
 import { formatDate } from "@/lib/format";
@@ -44,7 +45,7 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
   const [editing, setEditing] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [message, setMessage] = useState<string>();
-  const addForm = useRef<HTMLFormElement>(null);
+  const [adding, setAdding] = useState(false);
   const readOnly = project.archivedAtUtc !== null;
   const base = `/api/workspaces/${workspaceId}/projects/${project.id}/deliverables`;
   const active = deliverables.filter((d) => d.archivedAtUtc === null);
@@ -105,43 +106,64 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
   }
 
   return (
-    <section aria-labelledby="deliverables-title" className="mb-12 max-w-lg">
-      <h2 id="deliverables-title" className="mb-4 font-heading text-xl font-semibold">
-        Deliverables
-      </h2>
-
-      {active.length === 0 ? (
-        <p className="mb-6 text-sm text-muted-foreground">
-          {readOnly
-            ? "This project has no deliverables."
-            : "No deliverables yet. Add a link (a design, a staging site, a document) and share it with your client when it's ready."}
-        </p>
-      ) : (
-        <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
-      )}
-
-      {archived.length > 0 ? (
-        <div className="mb-6">
-          <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
-          <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+    <>
+      <section aria-labelledby="deliverables-title" className="mb-12 max-w-lg">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="deliverables-title" className="font-heading text-xl font-semibold">
+            Deliverables
+          </h2>
+          {readOnly ? null : (
+            <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+              <PlusIcon data-icon="inline-start" />
+              Add deliverable
+            </Button>
+          )}
         </div>
-      ) : null}
 
-      <FormError message={message} />
+        {active.length === 0 ? (
+          <div className="mb-6 flex flex-col items-start gap-3">
+            <p className="text-sm text-muted-foreground">
+              {readOnly
+                ? "This project has no deliverables."
+                : "No deliverables yet. Add a link (a design, a staging site, a document) and share it with your client when it's ready."}
+            </p>
+            {readOnly ? null : (
+              <Button type="button" size="sm" onClick={() => setAdding(true)}>
+                Add the first deliverable
+              </Button>
+            )}
+          </div>
+        ) : (
+          <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
+        )}
 
-      {readOnly ? null : (
-        <div className="mt-4 rounded-lg border p-4">
-          <h3 className="mb-4 font-medium">Add a deliverable</h3>
+        {archived.length > 0 ? (
+          <div className="mb-6">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
+            <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+          </div>
+        ) : null}
+
+        {adding ? null : <FormError message={message} />}
+      </section>
+
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add a deliverable</DialogTitle>
+            <DialogDescription>A link to what you made. It starts as a draft: share it with your client when it is ready.</DialogDescription>
+          </DialogHeader>
           <DeliverableForm
-            formRef={addForm}
             project={project}
             pending={pending}
             submitLabel="Add deliverable"
-            onSubmit={(values) => run("POST", "", values, () => addForm.current?.reset())}
+            onSubmit={(values) => run("POST", "", values, () => setAdding(false))}
+            onCancel={() => setAdding(false)}
           />
-        </div>
-      )}
-    </section>
+          <FormError message={message} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -242,7 +264,6 @@ function DeliverableForm({
   submitLabel,
   onSubmit,
   onCancel,
-  formRef,
 }: {
   project: Project;
   deliverable?: Deliverable;
@@ -250,9 +271,8 @@ function DeliverableForm({
   submitLabel: string;
   onSubmit: (values: Values) => void;
   onCancel?: () => void;
-  formRef?: Ref<HTMLFormElement>;
 }) {
-  // The add form and an open edit form are on screen together, so their labels must differ.
+  // The add dialog can open while an edit form is on the page, so their labels must differ.
   const names = deliverable
     ? { title: "Title", description: "Description", url: "Link", stage: "Stage" }
     : { title: "Deliverable title", description: "Deliverable description", url: "Deliverable link", stage: "Deliverable stage" };
@@ -270,7 +290,7 @@ function DeliverableForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <TextField label={names.title} name="title" required maxLength={200} defaultValue={deliverable?.title} />
       <TextField
         label={names.url}

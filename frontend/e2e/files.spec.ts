@@ -6,7 +6,10 @@ import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 const text = (name: string, content: string) => ({ name, mimeType: "text/plain", buffer: Buffer.from(content) });
 
-test("a file dropped on the upload area is chosen, shown, and uploaded", async ({ page, request }) => {
+test("a file dropped on the Files section opens the upload dialog with it chosen, and one can be dropped in the dialog too", async ({
+  page,
+  request,
+}) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
   const client = await (
@@ -21,19 +24,40 @@ test("a file dropped on the upload area is chosen, shown, and uploaded", async (
   await openTab(page, "Files");
   const files = page.getByRole("region", { name: "Files" });
 
-  const zone = files.getByText("Drop a file here, or click to browse");
-  const dataTransfer = await page.evaluateHandle(() => {
-    const transfer = new DataTransfer();
-    transfer.items.add(new File(["Dropped in."], "dropped.txt", { type: "text/plain" }));
-    return transfer;
-  });
-  await zone.dispatchEvent("dragover", { dataTransfer });
-  await zone.dispatchEvent("drop", { dataTransfer });
+  const dialog = page.getByRole("dialog", { name: "Upload a file" });
+  const transferOf = (name: string, content: string) =>
+    page.evaluateHandle(
+      ([fileName, body]) => {
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([body], fileName, { type: "text/plain" }));
+        return transfer;
+      },
+      [name, content],
+    );
 
-  await expect(files.getByText("dropped.txt", { exact: true })).toBeVisible();
-  await files.getByRole("button", { name: "Upload file" }).click();
-  await expect(files.getByRole("listitem").filter({ hasText: "dropped.txt · 11 B" })).toBeVisible();
+  // The drop area is on the page from the start; dragging a file over the section lights it up.
   await expect(files.getByText("Drop a file here, or click to browse")).toBeVisible();
+  const dataTransfer = await transferOf("dropped.txt", "Dropped in.");
+  await files.dispatchEvent("dragover", { dataTransfer });
+  await expect(files.getByText("Drop to upload")).toBeVisible();
+  await files.dispatchEvent("drop", { dataTransfer });
+
+  await expect(dialog.getByText("dropped.txt", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Upload file" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(files.getByRole("listitem").filter({ hasText: "dropped.txt · 11 B" })).toBeVisible();
+
+  // Choosing a file from the drop area opens the same dialog, whose own drop area can swap it for another.
+  await files.getByLabel("Choose a file to upload").setInputFiles(text("first.txt", "Chosen by clicking."));
+  await expect(dialog.getByText("first.txt", { exact: true })).toBeVisible();
+  const second = await transferOf("second.txt", "Dropped in the dialog.");
+  const zone = dialog.getByText("Click or drop to replace");
+  await zone.dispatchEvent("dragover", { dataTransfer: second });
+  await zone.dispatchEvent("drop", { dataTransfer: second });
+  await expect(dialog.getByText("second.txt", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Upload file" }).click();
+  await expect(files.getByRole("listitem").filter({ hasText: "second.txt · 22 B" })).toBeVisible();
+  await expect(files.getByRole("listitem")).toHaveCount(2);
 });
 
 test("files are uploaded, downloaded, shared, edited, archived and deleted", async ({ page, request }) => {
@@ -52,30 +76,34 @@ test("files are uploaded, downloaded, shared, edited, archived and deleted", asy
   const files = page.getByRole("region", { name: "Files" });
   await expect(files.getByText("No files yet.")).toBeVisible();
 
-  await files.getByLabel("File", { exact: true }).setInputFiles(text("brief.txt", "Read me first."));
-  await files.getByLabel("Name (optional)").fill("Project brief");
-  await files.getByLabel("Note (optional)").fill("Goals and pages.");
-  await files.getByRole("button", { name: "Upload file" }).click();
+  // Choosing a file in the drop area opens the dialog where it is named.
+  const dialog = page.getByRole("dialog", { name: "Upload a file" });
+  await files.getByLabel("Choose a file to upload").setInputFiles(text("brief.txt", "Read me first."));
+  await dialog.getByLabel("Name (optional)").fill("Project brief");
+  await dialog.getByLabel("Note (optional)").fill("Goals and pages.");
+  await dialog.getByRole("button", { name: "Upload file" }).click();
   const item = files.getByRole("listitem").filter({ hasText: "Project brief" });
   await expect(item).toContainText("Draft");
   await expect(item).toContainText("Goals and pages.");
   await expect(item).toContainText("brief.txt · 14 B");
-  // The form closes again once the file is up.
-  await expect(files.getByLabel("Name (optional)")).toBeHidden();
+  // The dialog closes once the file is up.
+  await expect(dialog).toBeHidden();
 
-  // A file type that is not allowed is refused by the API, and its message reaches the form.
-  await files.getByLabel("File", { exact: true }).setInputFiles({ name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") });
-  await files.getByRole("button", { name: "Upload file" }).click();
+  // A file type that is not allowed is refused by the API, and its message reaches the dialog.
+  await files.getByLabel("Choose a file to upload").setInputFiles({ name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") });
+  await dialog.getByRole("button", { name: "Upload file" }).click();
   await expect(alertWith(page, "Files of this type are not allowed.")).toBeVisible();
 
   // A file over 25 MB is refused before it is sent.
-  await files.getByLabel("File", { exact: true }).setInputFiles({
+  await dialog.getByLabel("File", { exact: true }).setInputFiles({
     name: "huge.zip",
     mimeType: "application/zip",
     buffer: Buffer.alloc(25 * 1024 * 1024 + 1),
   });
-  await files.getByRole("button", { name: "Upload file" }).click();
+  await dialog.getByRole("button", { name: "Upload file" }).click();
   await expect(alertWith(page, "huge.zip is larger than 25 MB.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
   await expect(files.getByRole("listitem")).toHaveCount(1);
 
   const downloading = page.waitForEvent("download");
@@ -117,14 +145,14 @@ test("files are uploaded, downloaded, shared, edited, archived and deleted", asy
   await page.getByRole("button", { name: "Delete file" }).click();
   await expect(files.getByText("No files yet.")).toBeVisible();
 
-  await files.getByLabel("File", { exact: true }).setInputFiles(text("notes.txt", "Later."));
-  await files.getByRole("button", { name: "Upload file" }).click();
+  await files.getByLabel("Choose a file to upload").setInputFiles(text("notes.txt", "Later."));
+  await dialog.getByRole("button", { name: "Upload file" }).click();
   await expect(files.getByRole("listitem").filter({ hasText: "notes.txt" })).toBeVisible();
   const editor = await openEditor(page);
   await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(files.getByRole("button", { name: "Upload file" })).toBeHidden();
+  await expect(files.getByText("Drop a file here, or click to browse")).toBeHidden();
   await expect(files.getByRole("button", { name: "Share notes.txt" })).toBeHidden();
   await expect(files.getByRole("link", { name: "Download notes.txt" })).toBeVisible();
 });

@@ -62,3 +62,21 @@ export async function openClientEditor(page: Page) {
   await page.getByRole("button", { name: "Edit client", exact: true }).click();
   return page.getByRole("dialog", { name: "Edit client" });
 }
+
+// A day on an open calendar, found by the date it stands for as the browser writes it (the tests run in en-US).
+export const calendarDay = (page: Page, isoDate: string) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return page.locator(`[data-slot="calendar"] [data-day="${month}/${day}/${year}"]`);
+};
+
+// Pages the open calendar until the day is on it, then picks it.
+export async function pickDate(page: Page, isoDate: string) {
+  const day = calendarDay(page, isoDate);
+  for (const direction of ["next", "previous"]) {
+    const paging = page.getByRole("button", { name: new RegExp(`${direction} month`, "i") });
+    for (let step = 0; step < 12 && !(await day.isVisible()) && (await paging.isEnabled()); step++) {
+      await paging.click();
+    }
+  }
+  await day.click();
+}

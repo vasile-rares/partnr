@@ -6,11 +6,10 @@ import { DeliverableList } from "@/components/deliverables/DeliverableList";
 import { FileList } from "@/components/files/FileList";
 import { ArchiveProjectButton } from "@/components/projects/ArchiveProjectButton";
 import { ProjectApprovalsCard } from "@/components/projects/ProjectApprovalsCard";
-import { ProjectDeadlineCard } from "@/components/projects/ProjectDeadlineCard";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { ProjectTabs } from "@/components/projects/ProjectTabs";
-import { StageList } from "@/components/projects/StageList";
+import { ProjectTimeline } from "@/components/projects/ProjectTimeline";
 import { Page } from "@/components/shell/Page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -67,7 +66,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
             Edit project
           </SheetTrigger>
         </div>
-        <p className="mb-8 text-muted-foreground">
+        <p className="mb-6 text-muted-foreground">
           Client:{" "}
           <Link href={`/w/${workspace.id}/clients/${project.client.id}`} className="font-medium text-foreground hover:underline">
             {project.client.displayName}
@@ -83,6 +82,17 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           </Alert>
         ) : null}
 
+        <ProjectTimeline
+          project={project}
+          editable={archived ? undefined : { workspaceId: workspace.id, projectId: project.id }}
+          datesAction={
+            // Opens the project's edit panel: the timeline sits inside the page's <Sheet>.
+            <SheetTrigger render={<Button type="button" variant="link" className="h-auto p-0 underline underline-offset-4" />}>
+              Set dates
+            </SheetTrigger>
+          }
+        />
+
         <ProjectTabs
           key={project.id}
           tabs={[
@@ -93,11 +103,9 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
             overview: (
               <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,32rem)_20rem]">
                 <div>
-                  <StageList workspaceId={workspace.id} project={project} />
                   <UpdateList workspaceId={workspace.id} project={project} updates={updates} isOwner={isOwner} />
                 </div>
                 <aside aria-label="Project summary" className="order-first flex flex-col gap-4 lg:order-none">
-                  <ProjectDeadlineCard project={project} />
                   <ProjectApprovalsCard approvals={project.approvals} />
                 </aside>
               </div>

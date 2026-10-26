@@ -56,7 +56,6 @@ export function FileDropzone({
         ref={input}
         type="file"
         name={name}
-        required
         aria-label="File"
         aria-describedby={describedBy}
         className="sr-only"
