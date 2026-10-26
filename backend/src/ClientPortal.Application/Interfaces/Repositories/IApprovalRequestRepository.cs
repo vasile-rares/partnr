@@ -24,5 +24,13 @@ public interface IApprovalRequestRepository
     /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> CountPendingForClientAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// How many deliverables of each project wait for the client or came back with changes, going by each deliverable's latest
+    /// round that was not withdrawn. Only shared, non-archived deliverables count; projects with neither are absent.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, ApprovalCounts>> CountForProjectsAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken);
+
     void Add(ApprovalRequest request);
 }
+
+public sealed record ApprovalCounts(int Pending, int ChangesRequested);

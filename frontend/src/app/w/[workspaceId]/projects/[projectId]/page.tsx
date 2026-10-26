@@ -98,7 +98,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
                 </div>
                 <aside aria-label="Project summary" className="order-first flex flex-col gap-4 lg:order-none">
                   <ProjectDeadlineCard project={project} />
-                  <ProjectApprovalsCard deliverables={deliverables} />
+                  <ProjectApprovalsCard approvals={project.approvals} />
                 </aside>
               </div>
             ),

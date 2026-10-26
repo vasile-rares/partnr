@@ -34,7 +34,7 @@ public class ProjectServiceTests
         _service = new ProjectService(
             _projects,
             _clients,
-            new ProjectResponseBuilder(_clients, clientResponses),
+            new ProjectResponseBuilder(_clients, clientResponses, new FakeApprovalRequestRepository()),
             new WorkspaceAccess(_workspaces, _currentUser),
             _unitOfWork);
     }

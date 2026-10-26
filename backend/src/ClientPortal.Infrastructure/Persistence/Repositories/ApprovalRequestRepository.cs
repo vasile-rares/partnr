@@ -59,5 +59,31 @@ internal sealed class ApprovalRequestRepository(ApplicationDbContext dbContext) 
         return counts.ToDictionary(c => c.ProjectId, c => c.Count);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, ApprovalCounts>> CountForProjectsAsync(
+        IReadOnlyCollection<Guid> projectIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = projectIds.ToList();
+        var rounds = await (
+            from approval in dbContext.ApprovalRequests.AsNoTracking()
+            join deliverable in dbContext.Deliverables on approval.DeliverableId equals deliverable.Id
+            where ids.Contains(approval.ProjectId)
+                && approval.Status != ApprovalStatus.Withdrawn
+                && deliverable.Status == DeliverableStatus.Shared
+                && deliverable.ArchivedAtUtc == null
+            select new { approval.ProjectId, approval.DeliverableId, approval.Status, approval.RequestedAtUtc, approval.Id })
+            .ToListAsync(cancellationToken);
+
+        // Same order as the lists: newest request first, the later id breaking a tie.
+        return rounds
+            .GroupBy(r => r.DeliverableId)
+            .Select(g => g.OrderByDescending(r => r.RequestedAtUtc).ThenByDescending(r => r.Id).First())
+            .Where(r => r.Status is ApprovalStatus.Pending or ApprovalStatus.ChangesRequested)
+            .GroupBy(r => r.ProjectId)
+            .ToDictionary(
+                g => g.Key,
+                g => new ApprovalCounts(g.Count(r => r.Status == ApprovalStatus.Pending), g.Count(r => r.Status == ApprovalStatus.ChangesRequested)));
+    }
+
     public void Add(ApprovalRequest request) => dbContext.ApprovalRequests.Add(request);
 }

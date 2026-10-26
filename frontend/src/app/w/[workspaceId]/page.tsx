@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import { ActiveProjects } from "@/components/dashboard/ActiveProjects";
 import { ComingUp } from "@/components/dashboard/ComingUp";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
 import { WaitingOnClients } from "@/components/dashboard/WaitingOnClients";
 import { Page } from "@/components/shell/Page";
 import { requireUser } from "@/lib/auth/session";
 import { getClients } from "@/lib/clients/server";
 import { displayName } from "@/lib/clients/types";
-import { openProjects, upcomingDeadlines } from "@/lib/dashboard/deadlines";
+import { needingAttention, openProjects, upcomingDeadlines } from "@/lib/dashboard/deadlines";
 import { getProjects } from "@/lib/projects/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
@@ -46,6 +47,7 @@ export default async function WorkspacePage({ params }: PageProps<"/w/[workspace
             />
           ) : (
             <>
+              <NeedsAttention workspaceId={workspace.id} projects={needingAttention(projects)} />
               <ComingUp workspaceId={workspace.id} deadlines={upcomingDeadlines(projects)} />
               <ActiveProjects workspaceId={workspace.id} projects={running} />
             </>

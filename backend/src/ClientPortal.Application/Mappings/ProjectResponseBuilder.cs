@@ -4,8 +4,8 @@ using ClientPortal.Domain.Entities;
 
 namespace ClientPortal.Application.Mappings;
 
-/// <summary>Names the client through <see cref="ClientResponseBuilder"/>, so the account's name wins.</summary>
-internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientResponseBuilder clientResponses)
+/// <summary>Names the client through <see cref="ClientResponseBuilder"/>, so the account's name wins, and counts the approvals in one query.</summary>
+internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientResponseBuilder clientResponses, IApprovalRequestRepository approvals)
 {
     public async Task<ProjectResponse> BuildAsync(Project project, CancellationToken cancellationToken) =>
         (await BuildAsync(project.WorkspaceId, [project], cancellationToken))[0];
@@ -23,6 +23,7 @@ internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientRe
         var cards = await clients.ListByIdsAsync(workspaceId, projects.Select(p => p.ClientId).Distinct().ToList(), cancellationToken);
         var names = (await clientResponses.BuildAsync(cards, cancellationToken))
             .ToDictionary(c => c.Id, c => c.Name ?? c.Email);
+        var counts = await approvals.CountForProjectsAsync(projects.Select(p => p.Id).ToList(), cancellationToken);
 
         return projects.Select(p =>
         {
@@ -38,6 +39,9 @@ internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientRe
                 p.CreatedAtUtc,
                 p.ArchivedAtUtc,
                 new ProjectProgressResponse(p.DoneStageCount, stages.Count),
+                counts.TryGetValue(p.Id, out var approval)
+                    ? new ProjectApprovalsResponse(approval.Pending, approval.ChangesRequested)
+                    : new ProjectApprovalsResponse(0, 0),
                 stages.Select(s => new StageResponse(s.Id, s.Name, s.Description, s.DueDate, s.Status.ToString())).ToList());
         }).ToList();
     }

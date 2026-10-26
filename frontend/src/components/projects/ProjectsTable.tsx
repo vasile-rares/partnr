@@ -37,6 +37,16 @@ export function ProjectsTable({ workspaceId, projects, showClient = true }: Proj
                   Archived
                 </Badge>
               ) : null}
+              {project.approvals.changesRequested > 0 ? (
+                <Badge variant="destructive" className="ml-2">
+                  {project.approvals.changesRequested} changes requested
+                </Badge>
+              ) : null}
+              {project.approvals.pending > 0 ? (
+                <Badge variant="secondary" className="ml-2">
+                  {project.approvals.pending} waiting for client
+                </Badge>
+              ) : null}
             </TableCell>
             {showClient ? (
               <TableCell>

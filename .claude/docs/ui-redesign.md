@@ -144,7 +144,9 @@ Doar din datele existente (`getProjects` cu etape, `getClients`):
 
 Fără rânduri de „stat cards” decorative: fiecare bloc e o listă pe care se poate acționa. Test e2e nou: dashboard-ul arată un proiect creat și deadline-ul lui.
 
-## Pas 7: Home-ul clientului (`/portal/[workspaceId]`)
+## Pas 7: Home-ul clientului (`/portal/[workspaceId]`) — făcut
+
+Abateri: titlul `h1` rămâne numele firmei, iar salutul e linia de sub el. „Active projects” cuprinde și proiectele On hold, ca la freelancer, iar „Latest updates” arată ultimele 5. Lista completă cu insigna „N waiting for you” a rămas la `/portal/{id}/projects`. Blocurile sunt în `components/portal/` (`PortalWaitingForYou`, `PortalActiveProjects`, `PortalLatestUpdates`).
 
 - „Welcome back, {prenume}. Here’s where things stand with {firmă}.”
 - **„Waiting for you”**: livrabilele care cer aprobare, cu link direct la tabul Deliverables al proiectului. Răspunde la „trebuie să fac eu ceva?”.
@@ -153,7 +155,9 @@ Fără rânduri de „stat cards” decorative: fiecare bloc e o listă pe care 
 - Detaliile vin din `getPortalProject` pentru proiectele acelei firme, în paralel (un client are puține). De reconsiderat dacă ajung să fie multe.
 - Test e2e în `client-portal.spec.ts`.
 
-## Pas 8 (backend): aprobările în sumarul proiectului
+## Pas 8 (backend): aprobările în sumarul proiectului — făcut
+
+Abateri: numărătoarea e pe livrabil (nu pe rundă) și vine din `IApprovalRequestRepository.CountForProjectsAsync`, apelat o singură dată pentru toată lista de proiecte din `ProjectResponseBuilder`; se alege runda cea mai recentă nenulă ca retrasă a fiecărui livrabil, în memorie, după o singură interogare. Cardul „Approvals” de pe pagina proiectului citește acum aceste cifre, nu mai calculează din livrabile. Cu ele: blocul „Needs your attention” pe dashboard și insignele din `ProjectsTable`.
 
 - Adaug în `ProjectResponse` / sumarul din listă `approvals: { pending, changesRequested }`, calculate în repository dintr-o singură interogare. Respect regulile din `backend/CLAUDE.md`, plus teste de integrare.
 - Frontend: blocul „Needs your attention” pe dashboard (modificări cerute primele) și un însemn în `ProjectsTable`.

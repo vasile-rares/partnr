@@ -1,12 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Deliverable } from "@/lib/deliverables/types";
+import type { ProjectApprovals } from "@/lib/projects/types";
 import { GoToTab } from "./ProjectTabs";
 
-/** Where the client's sign-offs stand, from the deliverables the page already has (archived ones do not count). */
-export function ProjectApprovalsCard({ deliverables }: { deliverables: Deliverable[] }) {
-  const open = deliverables.filter((deliverable) => deliverable.archivedAtUtc === null);
-  const waiting = open.filter((deliverable) => deliverable.approvalStatus === "Pending").length;
-  const changes = open.filter((deliverable) => deliverable.approvalStatus === "ChangesRequested").length;
+/** Where the client's sign-offs stand; the API counts them (archived and draft deliverables do not count). */
+export function ProjectApprovalsCard({ approvals }: { approvals: ProjectApprovals }) {
+  const { pending, changesRequested } = approvals;
 
   return (
     <Card size="sm">
@@ -14,12 +12,12 @@ export function ProjectApprovalsCard({ deliverables }: { deliverables: Deliverab
         <CardTitle>Approvals</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
-        {waiting === 0 && changes === 0 ? (
+        {pending === 0 && changesRequested === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing is waiting on your client.</p>
         ) : (
           <>
-            {waiting > 0 ? <p className="text-lg font-medium">{waiting} waiting for the client</p> : null}
-            {changes > 0 ? <p className="text-lg font-medium">{changes} with changes requested</p> : null}
+            {pending > 0 ? <p className="text-lg font-medium">{pending} waiting for the client</p> : null}
+            {changesRequested > 0 ? <p className="text-lg font-medium">{changesRequested} with changes requested</p> : null}
           </>
         )}
         <p className="text-sm">

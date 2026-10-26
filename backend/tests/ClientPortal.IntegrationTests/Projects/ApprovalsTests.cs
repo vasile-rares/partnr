@@ -219,6 +219,57 @@ public sealed class ApprovalsTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Project_CountsWhatWaitsAndWhatCameBackWithChanges_ByEachDeliverablesLatestRound()
+    {
+        var (http, workspaceId, project) = await SignedInWithProject();
+        var projectUrl = $"/api/workspaces/{workspaceId}/projects/{project.Id}";
+
+        async Task<Guid> Ask(string title)
+        {
+            var deliverable = await SharedDeliverable(http, workspaceId, project.Id, title);
+            var asked = await (await http.PostAsJsonAsync(ApprovalsUrl(workspaceId, project.Id, deliverable.Id), new { })).Content
+                .ReadFromJsonAsync<DeliverableResponse>();
+            return asked!.Approvals[0].Id;
+        }
+
+        await Ask("Waiting");
+        await Decide(await Ask("Changes"), approve: false, message: "Bigger logo.");
+        await Decide(await Ask("Approved"), approve: true);
+        var withdrawn = await SharedDeliverable(http, workspaceId, project.Id, "Withdrawn");
+        var withdrawnRound = (await (await http.PostAsJsonAsync(ApprovalsUrl(workspaceId, project.Id, withdrawn.Id), new { })).Content
+            .ReadFromJsonAsync<DeliverableResponse>())!.Approvals.Single();
+        await http.PostAsync($"{ApprovalsUrl(workspaceId, project.Id, withdrawn.Id)}/{withdrawnRound.Id}/withdraw", null);
+
+        // Asked again after the changes: it counts as waiting, not twice.
+        var again = await SharedDeliverable(http, workspaceId, project.Id, "Again");
+        var againUrl = ApprovalsUrl(workspaceId, project.Id, again.Id);
+        var againRound = (await (await http.PostAsJsonAsync(againUrl, new { })).Content.ReadFromJsonAsync<DeliverableResponse>())!.Approvals.Single();
+        await Decide(againRound.Id, approve: false, message: "Redo.");
+        await http.PostAsJsonAsync(againUrl, new { });
+
+        // A deliverable taken back to a draft or archived is nobody's to answer, whatever its last round said.
+        var draft = await SharedDeliverable(http, workspaceId, project.Id, "Back to draft");
+        var draftRound = (await (await http.PostAsJsonAsync(ApprovalsUrl(workspaceId, project.Id, draft.Id), new { })).Content
+            .ReadFromJsonAsync<DeliverableResponse>())!.Approvals.Single();
+        await Decide(draftRound.Id, approve: false, message: "No.");
+        await http.PostAsync($"{DeliverablesUrl(workspaceId, project.Id)}/{draft.Id}/unshare", null);
+
+        var single = await http.GetFromJsonAsync<ProjectResponse>(projectUrl);
+        var listed = (await http.GetFromJsonAsync<ProjectResponse[]>($"/api/workspaces/{workspaceId}/projects"))!.Single();
+
+        Assert.Equal(new ProjectApprovalsResponse(Pending: 2, ChangesRequested: 1), single!.Approvals);
+        Assert.Equal(single.Approvals, listed.Approvals);
+    }
+
+    [Fact]
+    public async Task Project_WithoutApprovals_CountsZero()
+    {
+        var (_, _, project) = await SignedInWithProject();
+
+        Assert.Equal(new ProjectApprovalsResponse(0, 0), project.Approvals);
+    }
+
+    [Fact]
     public async Task SignedOut_GetsUnauthorized()
     {
         var url = ApprovalsUrl(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

@@ -33,6 +33,9 @@ export type Stage = {
 
 export type Progress = { done: number; total: number };
 
+/** Counted by deliverable: the ones waiting for the client's answer, and the ones the client sent back with changes. */
+export type ProjectApprovals = { pending: number; changesRequested: number };
+
 export type Project = {
   id: string;
   client: { id: string; displayName: string };
@@ -45,5 +48,6 @@ export type Project = {
   /** Set when the project is archived: hidden from the default list, and read-only until restored. */
   archivedAtUtc: string | null;
   progress: Progress;
+  approvals: ProjectApprovals;
   stages: Stage[];
 };

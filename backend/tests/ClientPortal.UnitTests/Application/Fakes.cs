@@ -155,6 +155,18 @@ internal sealed class FakeApprovalRequestRepository : IApprovalRequestRepository
             .GroupBy(a => a.ProjectId)
             .ToDictionary(g => g.Key, g => g.Count()));
 
+    // The real query also joins the deliverable (shared and not archived); the unit tests that use it only have such deliverables.
+    public Task<IReadOnlyDictionary<Guid, ApprovalCounts>> CountForProjectsAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, ApprovalCounts>>(NewestFirst(Items.Where(a => projectIds.Contains(a.ProjectId)))
+            .Where(a => a.Status != ApprovalStatus.Withdrawn)
+            .GroupBy(a => a.DeliverableId)
+            .Select(g => g.First())
+            .Where(a => a.Status is ApprovalStatus.Pending or ApprovalStatus.ChangesRequested)
+            .GroupBy(a => a.ProjectId)
+            .ToDictionary(
+                g => g.Key,
+                g => new ApprovalCounts(g.Count(a => a.IsPending), g.Count(a => a.Status == ApprovalStatus.ChangesRequested))));
+
     public void Add(ApprovalRequest request) => Items.Add(request);
 
     // Reversed first: rounds added within the same tick keep the later one in front, like the real ordering by id.

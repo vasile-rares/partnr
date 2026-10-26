@@ -39,6 +39,13 @@ export function upcomingDeadlines(projects: Project[]): Deadline[] {
     .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
+/** Projects with an answer to act on or to wait for; the ones the client sent back with changes come first. */
+export function needingAttention(projects: Project[]): Project[] {
+  return projects
+    .filter(({ approvals }) => approvals.pending + approvals.changesRequested > 0)
+    .sort((a, b) => b.approvals.changesRequested - a.approvals.changesRequested || a.name.localeCompare(b.name));
+}
+
 /** Active and on-hold projects, the ones with a date first. */
 export function openProjects(projects: Project[]): Project[] {
   return projects
