@@ -21,7 +21,7 @@ export default async function WorkspaceSettingsPage({ params }: PageProps<"/w/[w
       {workspace.role === "Owner" ? (
         <RenameWorkspaceForm workspaceId={workspace.id} name={workspace.name} />
       ) : (
-        <dl className="max-w-sm">
+        <dl className="settings-workspace-name max-w-sm">
           <dt className="text-sm font-medium">Workspace name</dt>
           <dd className="mt-1">{workspace.name}</dd>
           <dd className="mt-3 text-sm text-muted-foreground">Only the owner of this workspace can rename it.</dd>

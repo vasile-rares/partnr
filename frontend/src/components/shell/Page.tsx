@@ -26,7 +26,7 @@ type PageFrameProps = {
 export function Page({ crumbs, narrow = false, children }: PageFrameProps) {
   return (
     <>
-      <header className="sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 py-2">
+      <header className="page-topbar sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 py-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-1 data-vertical:h-4 data-vertical:self-center" />
         <Breadcrumb>
@@ -46,7 +46,7 @@ export function Page({ crumbs, narrow = false, children }: PageFrameProps) {
           </BreadcrumbList>
         </Breadcrumb>
       </header>
-      <div className={cn("mx-auto w-full px-6 py-8", narrow ? "max-w-3xl" : "max-w-5xl")}>{children}</div>
+      <div className={cn("page-content mx-auto w-full px-6 py-8", narrow ? "max-w-3xl" : "max-w-5xl")}>{children}</div>
     </>
   );
 }

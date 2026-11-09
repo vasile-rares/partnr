@@ -5,18 +5,18 @@ import { dueIn, formatDate } from "@/lib/format";
 
 export function ComingUp({ workspaceId, deadlines }: { workspaceId: string; deadlines: Deadline[] }) {
   return (
-    <section aria-labelledby="coming-up-title">
+    <section aria-labelledby="coming-up-title" className="coming-up">
       <h2 id="coming-up-title" className="mb-4 font-heading text-xl font-semibold">
         Coming up
       </h2>
       {deadlines.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing is due in the next {UPCOMING_DAYS} days.</p>
       ) : (
-        <ul className="flex flex-col divide-y rounded-lg border">
+        <ul className="coming-up-list flex flex-col divide-y rounded-lg border">
           {deadlines.map((deadline) => {
             const late = deadline.daysLeft < 0;
             return (
-              <li key={deadline.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-4">
+              <li key={deadline.key} className="coming-up-item flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-4">
                 <div className="min-w-0">
                   <Link href={`/w/${workspaceId}/projects/${deadline.project.id}`} className="font-medium hover:underline">
                     {deadline.title}

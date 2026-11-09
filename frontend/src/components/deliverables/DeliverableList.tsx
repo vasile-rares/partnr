@@ -68,7 +68,7 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
     const pendingRound = deliverable.approvals.find((round) => round.status === "Pending");
 
     return (
-      <li key={deliverable.id} className="p-3">
+      <li key={deliverable.id} className="deliverable-item p-3">
         {editing === deliverable.id ? (
           <DeliverableForm
             project={project}
@@ -107,8 +107,8 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
 
   return (
     <>
-      <section aria-labelledby="deliverables-title" className="mb-12 max-w-lg">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section aria-labelledby="deliverables-title" className="deliverable-list mb-12 max-w-lg">
+        <div className="deliverable-list-header mb-4 flex items-center justify-between gap-3">
           <h2 id="deliverables-title" className="font-heading text-xl font-semibold">
             Deliverables
           </h2>
@@ -121,7 +121,7 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
         </div>
 
         {active.length === 0 ? (
-          <div className="mb-6 flex flex-col items-start gap-3">
+          <div className="deliverable-list-empty mb-6 flex flex-col items-start gap-3">
             <p className="text-sm text-muted-foreground">
               {readOnly
                 ? "This project has no deliverables."
@@ -134,13 +134,13 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
             )}
           </div>
         ) : (
-          <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
+          <ul className="deliverable-list-active mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
         )}
 
         {archived.length > 0 ? (
-          <div className="mb-6">
+          <div className="deliverable-list-archived mb-6">
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
-            <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+            <ul className="deliverable-list-archived-items flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
           </div>
         ) : null}
 
@@ -148,7 +148,7 @@ export function DeliverableList({ workspaceId, project, deliverables, isOwner }:
       </section>
 
       <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="add-deliverable-dialog max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add a deliverable</DialogTitle>
             <DialogDescription>A link to what you made. It starts as a draft: share it with your client when it is ready.</DialogDescription>
@@ -196,22 +196,22 @@ function DeliverableRow({
   const deletable = !shared && deliverable.approvals.length === 0;
 
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0 flex-1">
+    <div className="deliverable-row flex items-start justify-between gap-3">
+      <div className="deliverable-row-info min-w-0 flex-1">
         <p className="font-medium">
           <a href={deliverable.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
             {deliverable.title}
           </a>
         </p>
         {deliverable.description ? <p className="mt-1 text-sm text-muted-foreground">{deliverable.description}</p> : null}
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div className="deliverable-row-meta mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {archivedAt ? <span>Archived {formatDate(archivedAt.slice(0, 10))}</span> : <DeliverableStatusBadge status={deliverable.status} />}
           {deliverable.stageName ? <span>Stage: {deliverable.stageName}</span> : null}
         </div>
         <ApprovalSummary deliverable={deliverable} />
       </div>
       {readOnly ? null : (
-        <div className="flex shrink-0 gap-1">
+        <div className="deliverable-row-actions flex shrink-0 gap-1">
           {archived ? (
             isOwner ? (
               <IconButton icon={ArchiveRestoreIcon} tooltip="Restore" disabled={pending} aria-label={`Restore ${deliverable.title}`} onClick={() => onAction("restore")} />
@@ -290,7 +290,7 @@ function DeliverableForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="deliverable-form flex flex-col gap-4">
       <TextField label={names.title} name="title" required maxLength={200} defaultValue={deliverable?.title} />
       <TextField
         label={names.url}

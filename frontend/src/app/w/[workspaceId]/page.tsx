@@ -37,8 +37,8 @@ export default async function WorkspacePage({ params }: PageProps<"/w/[workspace
       <h1 className="font-heading text-3xl font-semibold">{workspace.name}</h1>
       <p className="mb-8 mt-1 text-muted-foreground">What is due, what is running, and who you are waiting on.</p>
 
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex flex-col gap-10">
+      <div className="dashboard grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="dashboard-main flex flex-col gap-10">
           {projects.length === 0 ? (
             <GettingStarted
               workspaceId={workspace.id}

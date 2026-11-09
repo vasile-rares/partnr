@@ -50,20 +50,20 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
   return (
     <Page crumbs={[{ label: "Clients", href: `/w/${workspace.id}/clients` }, { label: displayName(client) }]}>
       <Sheet>
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
+        <div className="client-header mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div className="client-profile flex min-w-0 items-center gap-4">
             <ClientAvatar name={displayName(client)} className="size-14 text-lg" />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="client-profile-info min-w-0">
+              <div className="client-title flex flex-wrap items-center gap-3">
                 <h1 className="break-all font-heading text-3xl font-semibold">{displayName(client)}</h1>
                 <InfoTip label="When this client was added" icon={<CalendarIcon />}>
                   Added {formatDate(client.createdAtUtc.slice(0, 10))}
                 </InfoTip>
               </div>
               {client.company ? <p className="mt-1 text-muted-foreground">{client.company}</p> : null}
-              <ul className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <ul className="client-contacts mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 {showEmail ? (
-                  <li className="flex items-center gap-1.5">
+                  <li className="client-contact-email flex items-center gap-1.5">
                     <MailIcon className="size-4" aria-hidden />
                     <a href={`mailto:${client.email}`} className="break-all hover:text-foreground hover:underline">
                       {client.email}
@@ -71,7 +71,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
                   </li>
                 ) : null}
                 {client.phone ? (
-                  <li className="flex items-center gap-1.5">
+                  <li className="client-contact-phone flex items-center gap-1.5">
                     <PhoneIcon className="size-4" aria-hidden />
                     <a href={`tel:${client.phone}`} className="hover:text-foreground hover:underline">
                       {client.phone}
@@ -88,7 +88,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
         </div>
 
         {inviteFailed ? (
-          <Alert variant="destructive" className="mb-8">
+          <Alert variant="destructive" className="client-invite-failed mb-8">
             <AlertDescription>
               The client was added, but the invitation could not be sent. Try again with the button below.
             </AlertDescription>
@@ -96,16 +96,16 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
         ) : null}
 
         {archived ? (
-          <Alert className="mb-8">
+          <Alert className="client-archived-notice mb-8">
             <AlertDescription>
               This client is archived. It is hidden from the clients list until you restore it.
             </AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <section aria-labelledby="projects-title">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="client-body grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <section aria-labelledby="projects-title" className="client-projects">
+            <div className="client-projects-header mb-4 flex flex-wrap items-center justify-between gap-4">
               <h2 id="projects-title" className="font-heading text-xl font-semibold">
                 Projects
               </h2>
@@ -118,28 +118,28 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
               )}
             </div>
             {projects.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No projects for this client yet.</p>
+              <p className="client-projects-empty rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No projects for this client yet.</p>
             ) : (
               <ProjectsTable workspaceId={workspace.id} projects={projects} showClient={false} />
             )}
           </section>
-          <aside aria-label="Client summary" className="order-first flex flex-col gap-4 lg:order-0">
+          <aside aria-label="Client summary" className="client-summary order-first flex flex-col gap-4 lg:order-0">
             <ClientPortalCard workspaceId={workspace.id} client={client} />
             <ClientNotesCard notes={client.notes} />
           </aside>
         </div>
 
-        <SheetContent className="data-[side=right]:w-full data-[side=right]:sm:max-w-lg">
+        <SheetContent className="client-edit-sheet data-[side=right]:w-full data-[side=right]:sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>Edit client</SheetTitle>
             <SheetDescription>Contact details and your private notes about this client.</SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+          <div className="client-edit-body min-h-0 flex-1 overflow-y-auto px-4 pb-6">
             <ClientForm workspaceId={workspace.id} client={client} />
 
             <Separator className="my-8" />
 
-            <section aria-labelledby="archive-title">
+            <section aria-labelledby="archive-title" className="client-archive-section">
               <h2 id="archive-title" className="font-heading text-xl font-semibold">
                 {archived ? "Restore client" : "Archive client"}
               </h2>

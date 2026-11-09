@@ -15,7 +15,7 @@ type ProjectsTableProps = {
 
 export function ProjectsTable({ workspaceId, projects, showClient = true }: ProjectsTableProps) {
   return (
-    <Table>
+    <Table className="projects-table">
       <TableHeader>
         <TableRow>
           <TableHead>Project</TableHead>
@@ -27,7 +27,7 @@ export function ProjectsTable({ workspaceId, projects, showClient = true }: Proj
       </TableHeader>
       <TableBody>
         {projects.map((project) => (
-          <TableRow key={project.id}>
+          <TableRow key={project.id} className="projects-table-row">
             <TableCell className="font-medium">
               <Link href={`/w/${workspaceId}/projects/${project.id}`} className="hover:underline">
                 {project.name}

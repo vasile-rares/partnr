@@ -53,7 +53,7 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
 
   return (
     <Page crumbs={[{ label: "Projects", href: `/portal/${project.workspace.id}/projects` }, { label: project.name }]} narrow>
-      <div className="mb-2 flex flex-wrap items-center gap-3">
+      <div className="portal-project-header mb-2 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl font-semibold">{project.name}</h1>
         <ProjectStatusBadge status={project.status} />
       </div>
@@ -66,12 +66,12 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
         tabs={tabs}
         panels={{
           overview: (
-            <div className="flex flex-col gap-10">
+            <div className="portal-project-overview flex flex-col gap-10">
               {project.description ? <p className="max-w-prose whitespace-pre-line">{project.description}</p> : null}
 
               {project.awaitingApproval > 0 ? (
                 // role="status": worth announcing politely, but not an error, so not the assertive default of Alert.
-                <Alert role="status">
+                <Alert role="status" className="portal-project-waiting">
                   <AlertTitle>Waiting for you</AlertTitle>
                   <AlertDescription>
                     {project.awaitingApproval === 1
@@ -82,10 +82,10 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
                 </Alert>
               ) : null}
 
-              <Card>
+              <Card className="portal-project-standing">
                 <CardContent className="flex flex-col gap-4">
                   <h2 className="font-heading text-xl font-semibold">Where things stand</h2>
-                  <dl className="grid gap-3 sm:grid-cols-2">
+                  <dl className="portal-project-standing-list grid gap-3 sm:grid-cols-2">
                     <div>
                       <dt className="text-sm text-muted-foreground">Right now</dt>
                       <dd className="font-medium">{now}</dd>
@@ -109,14 +109,14 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
               </PortalUpdateList>
 
               {project.stages.length > 0 ? (
-                <section aria-labelledby="stages-title">
+                <section aria-labelledby="stages-title" className="portal-project-stages">
                   <h2 id="stages-title" className="mb-4 font-heading text-xl font-semibold">
                     Stages
                   </h2>
-                  <ol className="flex flex-col divide-y rounded-lg border">
+                  <ol className="portal-project-stages-list flex flex-col divide-y rounded-lg border">
                     {orderByDate(project.stages).map((stage) => (
-                      <li key={stage.id} className="p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                      <li key={stage.id} className="portal-project-stage p-4">
+                        <div className="portal-project-stage-header flex flex-wrap items-center justify-between gap-3">
                           <p className="font-medium">{stage.name}</p>
                           <StageStatusBadge status={stage.status} />
                         </div>
@@ -132,13 +132,13 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
             </div>
           ),
           deliverables: (
-            <section aria-labelledby="deliverables-title">
+            <section aria-labelledby="deliverables-title" className="portal-project-deliverables">
               <h2 id="deliverables-title" className="mb-4 font-heading text-xl font-semibold">
                 Deliverables
               </h2>
-              <ul className="flex flex-col divide-y rounded-lg border">
+              <ul className="portal-project-deliverables-list flex flex-col divide-y rounded-lg border">
                 {project.deliverables.map((deliverable) => (
-                  <li key={deliverable.id} className="p-4">
+                  <li key={deliverable.id} className="portal-project-deliverable p-4">
                     <p className="font-medium">
                       <a
                         href={deliverable.url}

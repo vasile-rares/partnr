@@ -32,7 +32,7 @@ export function LoginForm({ next }: { next: string }) {
   );
 
   return (
-    <form action={submit} className="flex flex-col gap-6">
+    <form action={submit} className="login-form flex flex-col gap-6">
       <TextField
         label="Email"
         name="email"

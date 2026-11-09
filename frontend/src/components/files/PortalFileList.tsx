@@ -11,16 +11,16 @@ export function PortalFileList({ projectId, files }: { projectId: string; files:
   }
 
   return (
-    <section aria-labelledby="files-title">
+    <section aria-labelledby="files-title" className="portal-files">
       <h2 id="files-title" className="mb-4 font-heading text-xl font-semibold">
         Files
       </h2>
-      <ul className="flex flex-col divide-y rounded-lg border">
+      <ul className="portal-files-list flex flex-col divide-y rounded-lg border">
         {files.map((file) => (
-          <li key={file.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
-            <div className="flex min-w-0 gap-3">
+          <li key={file.id} className="portal-files-item flex flex-wrap items-start justify-between gap-3 p-4">
+            <div className="portal-files-main flex min-w-0 gap-3">
               <FileTypeIcon fileName={file.fileName} />
-              <div className="min-w-0">
+              <div className="portal-files-info min-w-0">
                 <p className="mb-1.5 break-all text-sm text-muted-foreground">
                   {file.fileName} · {formatFileSize(file.sizeBytes)}
                 </p>

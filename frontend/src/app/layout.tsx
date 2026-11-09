@@ -19,7 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // next-themes sets the theme class on <html> before React hydrates; this silences the expected mismatch.
     <html lang="en" suppressHydrationWarning className={cn("h-full antialiased", geist.variable)}>
-      <body className="min-h-full">
+      <body className="app-body min-h-full">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

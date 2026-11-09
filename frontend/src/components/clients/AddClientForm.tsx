@@ -115,7 +115,7 @@ export function AddClientForm({ workspaceId, existingEmails, onDone }: AddClient
   const hasFieldError = Object.keys(errors).length > 0 || state.emailTaken;
 
   return (
-    <form action={submit} className="flex flex-col gap-6">
+    <form action={submit} className="add-client-form flex flex-col gap-6">
       <Field data-invalid={emailError ? true : undefined}>
         <FieldLabel htmlFor={`${hintId}-email`}>Email</FieldLabel>
         <Autocomplete

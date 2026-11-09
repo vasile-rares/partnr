@@ -62,7 +62,7 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
 
   function row(update: ProjectUpdate) {
     return (
-      <li key={update.id} className="p-3">
+      <li key={update.id} className="update-item p-3">
         {editing === update.id ? (
           <UpdateForm
             update={update}
@@ -87,8 +87,8 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
 
   return (
     <>
-      <section aria-labelledby="updates-title" className="mb-12 max-w-lg">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section aria-labelledby="updates-title" className="update-list mb-12 max-w-lg">
+        <div className="update-list-header mb-4 flex items-center justify-between gap-3">
           <h2 id="updates-title" className="font-heading text-xl font-semibold">
             Updates
           </h2>
@@ -101,7 +101,7 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
         </div>
 
         {active.length === 0 ? (
-          <div className="mb-6 flex flex-col items-start gap-3">
+          <div className="update-list-empty mb-6 flex flex-col items-start gap-3">
             <p className="text-sm text-muted-foreground">
               {readOnly
                 ? "This project has no updates."
@@ -114,13 +114,13 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
             )}
           </div>
         ) : (
-          <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
+          <ul className="update-list-active mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
         )}
 
         {archived.length > 0 ? (
-          <div className="mb-6">
+          <div className="update-list-archived mb-6">
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
-            <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+            <ul className="update-list-archived-items flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
           </div>
         ) : null}
 
@@ -128,7 +128,7 @@ export function UpdateList({ workspaceId, project, updates, isOwner }: Props) {
       </section>
 
       <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="add-update-dialog sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add an update</DialogTitle>
             <DialogDescription>It starts as a draft. Share it with your client when it is ready.</DialogDescription>
@@ -167,17 +167,17 @@ function UpdateRow({
   const shared = update.status === "Shared";
 
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0 flex-1">
+    <div className="update-row flex items-start justify-between gap-3">
+      <div className="update-row-info min-w-0 flex-1">
         <p className="font-medium">{update.title}</p>
         {update.body ? <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{update.body}</p> : null}
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div className="update-row-meta mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {archivedAt ? <span>Archived {formatDate(archivedAt.slice(0, 10))}</span> : <DeliverableStatusBadge status={update.status} />}
           {shared && update.sharedAtUtc ? <span>Shared {formatDate(update.sharedAtUtc.slice(0, 10))}</span> : null}
         </div>
       </div>
       {readOnly ? null : (
-        <div className="flex shrink-0 gap-1">
+        <div className="update-row-actions flex shrink-0 gap-1">
           {archivedAt ? (
             isOwner ? (
               <IconButton icon={ArchiveRestoreIcon} tooltip="Restore" disabled={pending} aria-label={`Restore ${update.title}`} onClick={() => onAction("restore")} />
@@ -227,7 +227,7 @@ function UpdateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="update-form flex flex-col gap-4">
       <TextField label={names.title} name="title" required maxLength={200} defaultValue={update?.title} />
       <TextAreaField label={names.body} name="body" maxLength={4000} rows={3} defaultValue={update?.body ?? ""} hint="Optional." />
       <div className="flex gap-2">

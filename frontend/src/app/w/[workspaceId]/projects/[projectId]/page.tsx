@@ -56,8 +56,8 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
     <Page crumbs={[{ label: "Projects", href: `/w/${workspace.id}/projects` }, { label: project.name }]}>
       {/* The panel that edits the project wraps the page, so the button below and the overview's "Set dates" both open it. */}
       <Sheet>
-        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="project-header mb-2 flex flex-wrap items-start justify-between gap-3">
+          <div className="project-title flex flex-wrap items-center gap-3">
             <h1 className="font-heading text-3xl font-semibold">{project.name}</h1>
             <ProjectStatusBadge status={project.status} />
           </div>
@@ -66,7 +66,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
             Edit project
           </SheetTrigger>
         </div>
-        <p className="mb-6 text-muted-foreground">
+        <p className="project-client mb-6 text-muted-foreground">
           Client:{" "}
           <Link href={`/w/${workspace.id}/clients/${project.client.id}`} className="font-medium text-foreground hover:underline">
             {project.client.displayName}
@@ -75,7 +75,7 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
         </p>
 
         {archived ? (
-          <Alert className="mb-8 max-w-lg">
+          <Alert className="project-archived-notice mb-8 max-w-lg">
             <AlertDescription>
               This project is archived: it is hidden from the projects list and can&apos;t be changed until you restore it.
             </AlertDescription>
@@ -101,17 +101,17 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           ]}
           panels={{
             overview: (
-              <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,32rem)_20rem]">
+              <div className="project-overview grid items-start gap-8 lg:grid-cols-[minmax(0,32rem)_20rem]">
                 <div>
                   <UpdateList workspaceId={workspace.id} project={project} updates={updates} isOwner={isOwner} />
                 </div>
-                <aside aria-label="Project summary" className="order-first flex flex-col gap-4 lg:order-none">
+                <aside aria-label="Project summary" className="project-summary order-first flex flex-col gap-4 lg:order-none">
                   <ProjectApprovalsCard approvals={project.approvals} />
                 </aside>
               </div>
             ),
             deliverables: (
-              <div className="grid items-start gap-x-10 xl:grid-cols-2">
+              <div className="project-deliverables-files grid items-start gap-x-10 xl:grid-cols-2">
                 <DeliverableList workspaceId={workspace.id} project={project} deliverables={deliverables} isOwner={isOwner} />
                 <FileList workspaceId={workspace.id} project={project} files={files} isOwner={isOwner} />
               </div>
@@ -119,17 +119,17 @@ export default async function ProjectPage({ params }: PageProps<"/w/[workspaceId
           }}
         />
 
-        <SheetContent className="data-[side=right]:w-full data-[side=right]:sm:max-w-lg">
+        <SheetContent className="project-edit-sheet data-[side=right]:w-full data-[side=right]:sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>Edit project</SheetTitle>
             <SheetDescription>Name, dates and status. Your client sees a project once it leaves Planning.</SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+          <div className="project-edit-body min-h-0 flex-1 overflow-y-auto px-4 pb-6">
             <ProjectForm workspaceId={workspace.id} project={project} />
 
             <Separator className="my-8" />
 
-            <section aria-labelledby="archive-title">
+            <section aria-labelledby="archive-title" className="project-archive-section">
               <h2 id="archive-title" className="font-heading text-xl font-semibold">
                 {archived ? "Restore project" : "Archive project"}
               </h2>

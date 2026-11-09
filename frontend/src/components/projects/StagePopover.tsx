@@ -105,7 +105,7 @@ export function StagePopover({ stage, label, className, editable, limits = { min
         {children}
       </PopoverTrigger>
       {/* Opens centred under the segment, below its label (about 40 px under the bar) so the stage name stays readable. */}
-      <PopoverContent align="center" sideOffset={40} className="w-80 gap-3 p-3.5">
+      <PopoverContent align="center" sideOffset={40} className="stage-popover w-80 gap-3 p-3.5">
         {editable ? (
           <>
             <div>
@@ -117,12 +117,12 @@ export function StagePopover({ stage, label, className, editable, limits = { min
                 onChange={(event) => change({ name: event.target.value })}
                 onBlur={leaveName}
                 onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
-                className="-mx-1.5 w-[calc(100%+0.75rem)] rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-base font-semibold outline-none hover:border-input focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive"
+                className="stage-popover-name -mx-1.5 w-[calc(100%+0.75rem)] rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-base font-semibold outline-none hover:border-input focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive"
               />
               {nameError ? <p className="mt-1 text-xs text-destructive">{nameError}</p> : null}
             </div>
 
-            <div role="group" aria-label={`Status of ${stage.name}`} className="flex gap-0.5 rounded-lg bg-muted p-0.5">
+            <div role="group" aria-label={`Status of ${stage.name}`} className="stage-popover-status flex gap-0.5 rounded-lg bg-muted p-0.5">
               {stageStatuses.map((status) => {
                 const current = stage.status === status.value;
                 return (
@@ -143,14 +143,14 @@ export function StagePopover({ stage, label, className, editable, limits = { min
               })}
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="stage-popover-due flex flex-col gap-1.5">
               <label htmlFor={`${ids}-due`} className="text-xs text-muted-foreground">
                 Due date
               </label>
               <DatePicker id={`${ids}-due`} value={draft.dueDate} limits={limits} onChange={(value) => change({ dueDate: value }, true)} />
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="stage-popover-description flex flex-col gap-1.5">
               <label htmlFor={`${ids}-description`} className="text-xs text-muted-foreground">
                 Description
               </label>
@@ -168,7 +168,7 @@ export function StagePopover({ stage, label, className, editable, limits = { min
 
             <FormError message={message} />
 
-            <div className="flex items-center justify-between gap-2 border-t pt-3">
+            <div className="stage-popover-footer flex items-center justify-between gap-2 border-t pt-3">
               {confirming ? (
                 <>
                   <span className="text-xs whitespace-nowrap">Delete this stage?</span>

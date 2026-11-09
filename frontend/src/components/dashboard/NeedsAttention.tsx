@@ -9,18 +9,18 @@ export function NeedsAttention({ workspaceId, projects }: { workspaceId: string;
   }
 
   return (
-    <section aria-labelledby="attention-title">
+    <section aria-labelledby="attention-title" className="needs-attention">
       <h2 id="attention-title" className="mb-4 font-heading text-xl font-semibold">
         Needs your attention
       </h2>
-      <ul className="flex flex-col divide-y rounded-lg border">
+      <ul className="needs-attention-list flex flex-col divide-y rounded-lg border">
         {projects.map((project) => {
           const { pending, changesRequested } = project.approvals;
           return (
-            <li key={project.id}>
+            <li key={project.id} className="needs-attention-item">
               <Link
                 href={`/w/${workspaceId}/projects/${project.id}?tab=deliverables`}
-                className="flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
+                className="needs-attention-link flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
               >
                 <div className="min-w-0">
                   <p className="font-medium">{project.name}</p>

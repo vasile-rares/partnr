@@ -22,7 +22,7 @@ export function NewProjectDialog({ workspaceId, clients, clientId, variant = "de
         <PlusIcon data-icon="inline-start" />
         New project
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="new-project-dialog max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New project</DialogTitle>
           <DialogDescription>
@@ -30,7 +30,7 @@ export function NewProjectDialog({ workspaceId, clients, clientId, variant = "de
           </DialogDescription>
         </DialogHeader>
         {clients.length === 0 ? (
-          <div className="flex flex-col items-start gap-4">
+          <div className="new-project-no-clients flex flex-col items-start gap-4">
             <p className="text-muted-foreground">A project belongs to a client. Add your first client to start one.</p>
             <Link href={`/w/${workspaceId}/clients`} className={buttonVariants()}>
               Go to clients

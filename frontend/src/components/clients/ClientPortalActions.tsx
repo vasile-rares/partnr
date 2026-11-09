@@ -37,7 +37,7 @@ export function ClientPortalActions({ workspaceId, client }: { workspaceId: stri
     status === "NotInvited" ? "Send invitation" : status === "Invited" ? "Resend invitation" : "Send a new invitation";
 
   return (
-    <form action={submit} className="flex flex-col gap-3">
+    <form action={submit} className="client-portal-actions flex flex-col gap-3">
       <FormError message={state.message} />
       {state.done ? (
         <p role="status" className="text-sm text-status-done">
@@ -45,7 +45,7 @@ export function ClientPortalActions({ workspaceId, client }: { workspaceId: stri
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="client-portal-buttons flex flex-wrap gap-3">
         <Button type="submit" name="intent" value="send" variant={status === "NotInvited" ? "default" : "outline"} disabled={pending}>
           {sendLabel}
         </Button>

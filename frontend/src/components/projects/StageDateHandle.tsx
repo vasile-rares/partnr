@@ -139,7 +139,7 @@ export function StageDateHandle({ workspaceId, projectId, stage, index, ranges }
         // The part the stage gains (hatched, past its end) or loses (hatched, over its tail) if the handle is let go here.
         <span
           aria-hidden
-          className="pointer-events-none absolute top-1/2 z-[5] h-2 -translate-y-1/2 rounded-full border border-dashed"
+          className="stage-date-ghost pointer-events-none absolute top-1/2 z-[5] h-2 -translate-y-1/2 rounded-full border border-dashed"
           style={{
             ...(shift > 0 ? { left: "100%" } : { right: 0 }),
             width: Math.abs(shift),
@@ -169,16 +169,16 @@ export function StageDateHandle({ workspaceId, projectId, stage, index, ranges }
         onKeyDown={onKeyDown}
         style={{ translate: `${shift}px -50%` }}
         className={cn(
-          "group/handle absolute top-1/2 -right-[10px] z-10 flex h-7 w-4 cursor-col-resize touch-none items-center justify-center outline-none",
+          "stage-date-handle group/handle absolute top-1/2 -right-[10px] z-10 flex h-7 w-4 cursor-col-resize touch-none items-center justify-center outline-none",
           "opacity-0 transition-opacity group-hover/bar:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100",
           shown && "opacity-100",
         )}
       >
-        <span className="h-6 w-2 rounded-full bg-foreground shadow-sm group-focus-visible/handle:ring-2 group-focus-visible/handle:ring-ring group-focus-visible/handle:ring-offset-2 group-focus-visible/handle:ring-offset-background" />
+        <span className="stage-date-grip h-6 w-2 rounded-full bg-foreground shadow-sm group-focus-visible/handle:ring-2 group-focus-visible/handle:ring-ring group-focus-visible/handle:ring-offset-2 group-focus-visible/handle:ring-offset-background" />
         {shown ? (
           <span
             role="status"
-            className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-xs whitespace-nowrap text-background"
+            className="stage-date-tooltip pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-xs whitespace-nowrap text-background"
           >
             {stage.name} · due {formatDayMonth(isoDate(day))}
             {change !== 0 ? ` (${change > 0 ? "+" : "−"}${Math.abs(change)} ${Math.abs(change) === 1 ? "day" : "days"})` : ""}

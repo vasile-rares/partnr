@@ -14,9 +14,9 @@ export function ApprovalSummary({ deliverable }: { deliverable: Deliverable }) {
   const current = approvals.find((round) => round.status !== "Withdrawn");
 
   return (
-    <div className="mt-3 flex flex-col gap-2 text-sm">
+    <div className="approval-summary mt-3 flex flex-col gap-2 text-sm">
       {current ? (
-        <div className="flex flex-col gap-1">
+        <div className="approval-summary-current flex flex-col gap-1">
           <p className="flex flex-wrap items-center gap-2">
             <ApprovalStatusBadge status={current.status} />
             {current.resolvedAtUtc ? <span className="text-muted-foreground">{day(current.resolvedAtUtc)}</span> : null}
@@ -35,7 +35,7 @@ export function ApprovalSummary({ deliverable }: { deliverable: Deliverable }) {
         <summary className="w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           Approval history ({approvals.length})
         </summary>
-        <ol className="mt-2 flex flex-col divide-y rounded-lg border">
+        <ol className="approval-summary-history mt-2 flex flex-col divide-y rounded-lg border">
           {approvals.map((round) => (
             <HistoryRow key={round.id} round={round} />
           ))}
@@ -47,7 +47,7 @@ export function ApprovalSummary({ deliverable }: { deliverable: Deliverable }) {
 
 function HistoryRow({ round }: { round: ApprovalRound }) {
   return (
-    <li className="flex flex-col gap-1 p-3">
+    <li className="approval-summary-round flex flex-col gap-1 p-3">
       <p className="flex flex-wrap items-center gap-2">
         <ApprovalStatusBadge status={round.status} />
         <span className="text-muted-foreground">

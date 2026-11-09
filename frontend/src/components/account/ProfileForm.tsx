@@ -43,7 +43,7 @@ export function ProfileForm({ fullName, phone, company }: ProfileFormProps) {
   const formError = Object.keys(errors).length > 0 ? undefined : state.message;
 
   return (
-    <form action={submit} className="flex max-w-lg flex-col gap-6">
+    <form action={submit} className="profile-form flex max-w-lg flex-col gap-6">
       <TextField
         label="Full name"
         name="fullName"

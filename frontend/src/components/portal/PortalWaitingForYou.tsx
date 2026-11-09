@@ -24,16 +24,16 @@ export function PortalWaitingForYou({
   }
 
   return (
-    <section aria-labelledby="waiting-title">
+    <section aria-labelledby="waiting-title" className="portal-waiting">
       <h2 id="waiting-title" className="mb-4 font-heading text-xl font-semibold">
         Waiting for you
       </h2>
-      <ul className="flex flex-col divide-y rounded-lg border">
+      <ul className="portal-waiting-list flex flex-col divide-y rounded-lg border">
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} className="portal-waiting-item">
             <Link
               href={`/portal/${workspaceId}/projects/${item.projectId}?tab=deliverables`}
-              className="flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
+              className="portal-waiting-link flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
             >
               <div className="min-w-0">
                 <p className="font-medium">{item.title}</p>

@@ -73,9 +73,9 @@ export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: P
   }
 
   return (
-    <div className="mt-3 flex flex-col gap-3 text-sm">
+    <div className="portal-approval mt-3 flex flex-col gap-3 text-sm">
       {open ? (
-        <form ref={form} onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-3 rounded-lg border p-3">
+        <form ref={form} onSubmit={(event) => event.preventDefault()} className="portal-approval-form flex flex-col gap-3 rounded-lg border p-3">
           <p className="flex flex-wrap items-center gap-2">
             <ApprovalStatusBadge status="Pending" />
             <span className="text-muted-foreground">Asked {day(open.requestedAtUtc)}</span>
@@ -91,7 +91,7 @@ export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: P
             hint="Optional when you approve. Say what should change if you ask for changes."
           />
           <FormError message={message} />
-          <div className="flex flex-wrap gap-2">
+          <div className="portal-approval-buttons flex flex-wrap gap-2">
             <ApproveButton title={deliverable.title} disabled={pending} onConfirm={() => answer("approve")} />
             <Button
               type="button"
@@ -105,7 +105,7 @@ export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: P
           </div>
         </form>
       ) : latest ? (
-        <div className="flex flex-col gap-1">
+        <div className="portal-approval-answer flex flex-col gap-1">
           <p className="flex flex-wrap items-center gap-2">
             <ApprovalStatusBadge status={latest.decision} />
             <span className="text-muted-foreground">Answered {day(latest.decidedAtUtc)}</span>
@@ -119,7 +119,7 @@ export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: P
           <summary className="w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             Earlier answers ({earlier.length})
           </summary>
-          <ol className="mt-2 flex flex-col divide-y rounded-lg border">
+          <ol className="portal-approval-history mt-2 flex flex-col divide-y rounded-lg border">
             {earlier.map((round) => (
               <EarlierAnswer key={round.requestedAtUtc} round={round} workspaceName={workspaceName} />
             ))}
@@ -132,7 +132,7 @@ export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: P
 
 function EarlierAnswer({ round, workspaceName }: { round: Answer; workspaceName: string }) {
   return (
-    <li className="flex flex-col gap-1 p-3">
+    <li className="portal-approval-round flex flex-col gap-1 p-3">
       <p className="flex flex-wrap items-center gap-2">
         <ApprovalStatusBadge status={round.decision} />
         <span className="text-muted-foreground">Answered {day(round.decidedAtUtc)}</span>

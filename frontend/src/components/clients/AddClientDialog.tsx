@@ -21,7 +21,7 @@ export function AddClientDialog({ workspaceId, existingEmails }: AddClientDialog
         <PlusIcon data-icon="inline-start" />
         Add client
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="add-client-dialog sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add a client</DialogTitle>
           <DialogDescription>

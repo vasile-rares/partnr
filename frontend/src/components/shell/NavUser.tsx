@@ -32,14 +32,14 @@ export function NavUser({ user }: { user: ShellUser }) {
             <Avatar>
               <AvatarFallback>{initials(user.fullName)}</AvatarFallback>
             </Avatar>
-            <span className="grid flex-1 text-left leading-tight">
+            <span className="nav-user-label grid flex-1 text-left leading-tight">
               <span className="truncate font-medium">{user.fullName}</span>
               <span className="truncate text-xs text-sidebar-foreground/70">{user.email}</span>
             </span>
             <ChevronsUpDownIcon className="ml-auto" aria-hidden />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent side="top" align="start" className="min-w-56">
+          <DropdownMenuContent side="top" align="start" className="nav-user-menu min-w-56">
             <DropdownMenuGroup>
               <DropdownMenuItem render={<Link href="/account" />}>
                 <UserIcon /> Account

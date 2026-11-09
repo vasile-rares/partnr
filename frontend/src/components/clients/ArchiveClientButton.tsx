@@ -25,7 +25,7 @@ export function ArchiveClientButton({ workspaceId, client }: { workspaceId: stri
   }, {});
 
   return (
-    <form action={submit} className="flex flex-col gap-3">
+    <form action={submit} className="archive-client-form flex flex-col gap-3">
       <FormError message={state.message} />
       <Button type="submit" variant={archived ? "default" : "outline"} disabled={pending}>
         {archived ? (pending ? "Restoring…" : "Restore client") : pending ? "Archiving…" : "Archive client"}

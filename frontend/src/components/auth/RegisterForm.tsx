@@ -43,7 +43,7 @@ export function RegisterForm() {
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
   return (
-    <form action={submit} className="flex flex-col gap-6">
+    <form action={submit} className="register-form flex flex-col gap-6">
       <TextField
         label="Full name"
         name="fullName"

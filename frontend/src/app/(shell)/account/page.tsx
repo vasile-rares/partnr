@@ -16,7 +16,7 @@ export default async function AccountPage() {
         The people you work with see these details, including the freelancers whose client you are.
       </p>
 
-      <dl className="mb-8 max-w-lg">
+      <dl className="account-email mb-8 max-w-lg">
         <dt className="text-sm font-medium">Email</dt>
         <dd className="mt-1">{user.email}</dd>
         <dd className="mt-1 text-sm text-muted-foreground">You can&apos;t change your email yet.</dd>

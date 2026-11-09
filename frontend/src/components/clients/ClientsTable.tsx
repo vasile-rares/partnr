@@ -54,7 +54,7 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
 
   if (clients.length === 0) {
     return (
-      <div className="flex max-w-prose flex-col items-start gap-4 rounded-lg border border-dashed p-8">
+      <div className="clients-empty flex max-w-prose flex-col items-start gap-4 rounded-lg border border-dashed p-8">
         <p className="text-muted-foreground">No clients yet. Add your first client to start working on their projects.</p>
         {addClient}
       </div>
@@ -62,10 +62,10 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b">
+    <div className="clients-list flex flex-col gap-4">
+      <div className="clients-toolbar flex flex-wrap items-center justify-between gap-3 border-b">
         <Tabs value={scope} onValueChange={(value) => selectScope(value as Scope)}>
-          <TabsList variant="line" className="h-10 gap-4 p-0">
+          <TabsList variant="line" className="clients-tabs h-10 gap-4 p-0">
             <TabsTrigger value="active" className="flex-none px-0.5 text-base">
               Active
               <span className="text-xs text-muted-foreground tabular-nums">{activeCount}</span>
@@ -76,7 +76,7 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative mb-2 w-full sm:w-64">
+        <div className="clients-search relative mb-2 w-full sm:w-64">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
             type="search"
@@ -90,7 +90,7 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
       </div>
 
       {visible.length === 0 ? (
-        <div className="flex max-w-prose flex-col items-start gap-3 py-4">
+        <div className="clients-no-results flex max-w-prose flex-col items-start gap-3 py-4">
           {needle !== "" ? (
             <>
               <p className="text-muted-foreground">No clients match “{search.trim()}”.</p>
@@ -107,7 +107,7 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
           )}
         </div>
       ) : (
-        <Table>
+        <Table className="clients-table">
           <TableHeader>
             <TableRow>
               <TableHead>Client</TableHead>
@@ -117,11 +117,11 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
           </TableHeader>
           <TableBody>
             {visible.map((client) => (
-              <TableRow key={client.id}>
+              <TableRow key={client.id} className="clients-table-row">
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <div className="clients-table-person flex items-center gap-3">
                     <ClientAvatar name={client.displayName} />
-                    <div className="min-w-0">
+                    <div className="clients-table-person-info min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/w/${workspaceId}/clients/${client.id}`} className="font-medium hover:underline">
                           {client.displayName}

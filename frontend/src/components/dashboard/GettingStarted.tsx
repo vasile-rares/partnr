@@ -13,7 +13,7 @@ export function GettingStarted({ workspaceId, clients, existingEmails }: Getting
   const hasClients = clients.length > 0;
 
   return (
-    <Card>
+    <Card className="getting-started">
       <CardHeader>
         <CardTitle>{hasClients ? "Create a project" : "Add your first client"}</CardTitle>
         <CardDescription>

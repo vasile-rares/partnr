@@ -47,8 +47,8 @@ export function ProjectTimeline({ project, editable, datesAction }: ProjectTimel
   const ranges = timeline.segments.map(({ fromDay, toDay }) => ({ fromDay, toDay }));
 
   return (
-    <section aria-label="Timeline" className="group/bar mb-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+    <section aria-label="Timeline" className="project-timeline group/bar mb-8">
+      <div className="project-timeline-summary flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         {project.dueDate ? <Remaining dueDate={project.dueDate} completed={completed} /> : completed ? <p className="text-sm font-medium">Completed</p> : null}
         <p className="ml-auto flex flex-wrap items-baseline justify-end gap-x-3 text-sm">
           <span className="font-medium">{total === 0 ? "No stages yet" : `${done} of ${total} done`}</span>
@@ -63,7 +63,7 @@ export function ProjectTimeline({ project, editable, datesAction }: ProjectTimel
       </div>
 
       {total === 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="project-timeline-empty mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
           <p className="text-sm text-muted-foreground">
             {editable ? "Break the project into steps your client can follow." : "Stages show up here once they are planned."}
           </p>
@@ -71,17 +71,17 @@ export function ProjectTimeline({ project, editable, datesAction }: ProjectTimel
         </div>
       ) : (
         <>
-          <div className={editable ? "pr-8" : undefined}>
-            <div className={cn("relative", today !== null ? "mt-7" : "mt-3", project.status === "OnHold" && "opacity-60")}>
-              <ol className="flex gap-1">
+          <div className={cn("project-timeline-body", editable && "pr-8")}>
+            <div className={cn("project-timeline-bar relative", today !== null ? "mt-7" : "mt-3", project.status === "OnHold" && "opacity-60")}>
+              <ol className="project-timeline-stages flex gap-1">
                 {timeline.segments.map(({ stage, width }, index) => (
-                  <li key={stage.id} style={{ flex: `${width} 1 0%` }} className="relative min-w-0">
+                  <li key={stage.id} style={{ flex: `${width} 1 0%` }} className="project-timeline-stage relative min-w-0">
                     <StagePopover
                       stage={stage}
                       editable={editable}
                       limits={limits}
                       label={`${stage.name}, ${stageStatusLabel(stage.status)}${stage.dueDate ? `, due ${formatDate(stage.dueDate)}` : ""}`}
-                      className="group flex h-5 w-full items-center rounded-full"
+                      className="project-timeline-stage-button group flex h-5 w-full items-center rounded-full"
                     >
                       <span className={cn("h-2 w-full rounded-full transition-[height] group-hover:h-2.5", barColors[stage.status])} />
                     </StagePopover>
@@ -99,18 +99,18 @@ export function ProjectTimeline({ project, editable, datesAction }: ProjectTimel
               </ol>
               {today !== null ? <TodayMarker position={today} late={timeline.state === "over"} /> : null}
               {editable ? (
-                <div className="absolute top-1/2 -right-8 -translate-y-1/2">
+                <div className="project-timeline-add absolute top-1/2 -right-8 -translate-y-1/2">
                   <AddStageDialog workspaceId={editable.workspaceId} projectId={editable.projectId} variant="icon" limits={limits} />
                 </div>
               ) : null}
             </div>
 
-            <ol aria-hidden className="mt-1 hidden gap-1 sm:flex">
+            <ol aria-hidden className="project-timeline-labels mt-1 hidden gap-1 sm:flex">
               {timeline.segments.map(({ stage, width }) => {
                 const { Icon, color } = labelIcons[stage.status];
                 const late = stage.dueDate !== null && stage.status !== "Done" && daysUntil(stage.dueDate) < 0;
                 return (
-                  <li key={stage.id} style={{ flex: `${width} 1 0%` }} className="min-w-0">
+                  <li key={stage.id} style={{ flex: `${width} 1 0%` }} className="project-timeline-label min-w-0">
                     <p className={cn("flex items-center gap-1 text-xs", stage.id === current?.id ? "font-medium" : "text-muted-foreground")}>
                       <Icon className={cn("size-3 shrink-0", color)} />
                       <span className="truncate">{stage.name}</span>
@@ -147,7 +147,7 @@ function TodayMarker({ position, late }: { position: number; late: boolean }) {
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full", late ? "bg-destructive" : "bg-foreground")}
+      className={cn("project-timeline-today pointer-events-none absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full", late ? "bg-destructive" : "bg-foreground")}
       style={{ left: `${position * 100}%` }}
     >
       <span

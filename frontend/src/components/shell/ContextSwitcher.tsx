@@ -34,18 +34,18 @@ export function ContextSwitcher({ context, workspaces, clientOf }: ContextSwitch
           <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent" />}>
             <span
               aria-hidden
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground"
+              className="context-switcher-badge flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground"
             >
               {Array.from(title)[0]?.toUpperCase()}
             </span>
-            <span className="grid flex-1 text-left leading-tight">
+            <span className="context-switcher-label grid flex-1 text-left leading-tight">
               <span className="truncate font-medium">{title}</span>
               <span className="truncate text-xs text-sidebar-foreground/70">{subtitle}</span>
             </span>
             <ChevronsUpDownIcon className="ml-auto" aria-hidden />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="start" className="min-w-60">
+          <DropdownMenuContent align="start" className="context-switcher-menu min-w-60">
             <DropdownMenuGroup>
               <DropdownMenuLabel>Your workspaces</DropdownMenuLabel>
               {workspaces.length === 0 ? (

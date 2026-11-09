@@ -15,7 +15,7 @@ export default async function WorkspacesPage() {
 
   return (
     <Page crumbs={[{ label: "Workspaces" }]} narrow>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="workspaces-header flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-heading text-3xl font-semibold">Your workspaces</h1>
         {/* A link styled as a button: Base UI's Button would replace the link role (see shadcn's Button docs). */}
         <Link href="/workspaces/new" className={buttonVariants({ size: "lg" })}>
@@ -28,13 +28,13 @@ export default async function WorkspacesPage() {
           You are not in any workspace yet. Create one to start adding clients and projects.
         </p>
       ) : (
-        <Card className="mt-8 gap-0 py-0">
-          <ul className="divide-y">
+        <Card className="workspaces-card mt-8 gap-0 py-0">
+          <ul className="workspaces-list divide-y">
             {workspaces.map((workspace) => (
-              <li key={workspace.id}>
+              <li key={workspace.id} className="workspaces-item">
                 <Link
                   href={`/w/${workspace.id}`}
-                  className="flex items-center justify-between gap-4 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
+                  className="workspaces-link flex items-center justify-between gap-4 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
                 >
                   <span className="truncate font-medium">{workspace.name}</span>
                   <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">

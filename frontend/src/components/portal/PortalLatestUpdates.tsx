@@ -17,13 +17,13 @@ export function PortalLatestUpdates({ workspaceId, updates }: { workspaceId: str
   }
 
   return (
-    <section aria-labelledby="latest-updates-title">
+    <section aria-labelledby="latest-updates-title" className="portal-latest-updates">
       <h2 id="latest-updates-title" className="mb-4 font-heading text-xl font-semibold">
         Latest updates
       </h2>
-      <ol className="flex flex-col divide-y rounded-lg border">
+      <ol className="portal-latest-updates-list flex flex-col divide-y rounded-lg border">
         {updates.map((update) => (
-          <li key={update.id} className="p-4">
+          <li key={update.id} className="portal-latest-updates-item p-4">
             <p className="font-medium">{update.title}</p>
             {update.body ? <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-muted-foreground">{update.body}</p> : null}
             <p className="mt-2 text-sm text-muted-foreground">

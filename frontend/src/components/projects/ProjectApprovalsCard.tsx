@@ -7,7 +7,7 @@ export function ProjectApprovalsCard({ approvals }: { approvals: ProjectApproval
   const { pending, changesRequested } = approvals;
 
   return (
-    <Card size="sm">
+    <Card size="sm" className="project-approvals-card">
       <CardHeader>
         <CardTitle>Approvals</CardTitle>
       </CardHeader>

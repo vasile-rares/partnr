@@ -71,12 +71,12 @@ export function AddStageDialog({ workspaceId, projectId, variant, limits }: AddS
           Add the first stage
         </Button>
       )}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="add-stage-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add a stage</DialogTitle>
           <DialogDescription>A step your client can follow. With a due date it is placed on the bar by that date.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <form onSubmit={onSubmit} className="add-stage-form flex flex-col gap-4">
           <TextField label="Stage name" name="name" required maxLength={200} />
           <DateField
             label="Stage due date"

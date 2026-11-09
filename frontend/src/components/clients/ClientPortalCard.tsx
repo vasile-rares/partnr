@@ -8,7 +8,7 @@ import { ClientPortalActions } from "./ClientPortalActions";
 
 export function ClientPortalCard({ workspaceId, client }: { workspaceId: string; client: Client }) {
   return (
-    <section aria-labelledby="portal-title">
+    <section aria-labelledby="portal-title" className="client-portal-card">
       <Card size="sm">
         <CardHeader>
           <CardTitle id="portal-title" className="flex items-center gap-1">
@@ -29,8 +29,8 @@ function PortalState({ client }: { client: Client }) {
   const { icon: Icon, tone, title, detail } = state(client);
 
   return (
-    <div className="flex items-center gap-3">
-      <span aria-hidden className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", tone)}>
+    <div className="client-portal-state flex items-center gap-3">
+      <span aria-hidden className={cn("client-portal-state-icon flex size-10 shrink-0 items-center justify-center rounded-lg", tone)}>
         <Icon className="size-5" />
       </span>
       <div className="min-w-0">

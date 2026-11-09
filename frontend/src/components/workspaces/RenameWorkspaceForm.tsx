@@ -33,7 +33,7 @@ export function RenameWorkspaceForm({ workspaceId, name }: { workspaceId: string
   );
 
   return (
-    <form action={submit} className="flex max-w-sm flex-col gap-6">
+    <form action={submit} className="rename-workspace-form flex max-w-sm flex-col gap-6">
       <TextField
         label="Workspace name"
         name="name"

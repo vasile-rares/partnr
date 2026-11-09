@@ -51,7 +51,7 @@ export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarPr
       </SidebarHeader>
 
       <SidebarContent>
-        <nav aria-label="Main" className="flex flex-col">
+        <nav aria-label="Main" className="sidebar-nav flex flex-col">
           {groups.map((group) => (
             <SidebarGroup key={group.label ?? "primary"}>
               {group.label ? <SidebarGroupLabel>{group.label}</SidebarGroupLabel> : null}

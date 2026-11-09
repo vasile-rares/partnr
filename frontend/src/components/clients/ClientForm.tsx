@@ -61,7 +61,7 @@ export function ClientForm({ workspaceId, client }: { workspaceId: string; clien
   const locked = client.detailsLocked;
 
   return (
-    <form action={submit} className="flex max-w-lg flex-col gap-6">
+    <form action={submit} className="client-form flex max-w-lg flex-col gap-6">
       <TextField
         label="Name"
         name="name"

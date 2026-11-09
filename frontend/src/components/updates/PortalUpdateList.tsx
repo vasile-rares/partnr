@@ -18,7 +18,7 @@ export function PortalUpdateList({ updates, workspaceName, latest, children }: P
   const earlier = latest ? [] : updates.slice(VISIBLE);
 
   return (
-    <section aria-labelledby="updates-title">
+    <section aria-labelledby="updates-title" className="portal-updates">
       <h2 id="updates-title" className="mb-4 font-heading text-xl font-semibold">
         Updates
       </h2>
@@ -29,13 +29,13 @@ export function PortalUpdateList({ updates, workspaceName, latest, children }: P
         </p>
       ) : (
         <>
-          <ol className="flex flex-col divide-y rounded-lg border">{recent.map(item)}</ol>
+          <ol className="portal-updates-list flex flex-col divide-y rounded-lg border">{recent.map(item)}</ol>
           {earlier.length > 0 ? (
-            <details className="mt-3">
+            <details className="portal-updates-earlier mt-3">
               <summary className="cursor-pointer rounded-sm text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Show earlier updates ({earlier.length})
               </summary>
-              <ol className="mt-3 flex flex-col divide-y rounded-lg border">{earlier.map(item)}</ol>
+              <ol className="portal-updates-earlier-list mt-3 flex flex-col divide-y rounded-lg border">{earlier.map(item)}</ol>
             </details>
           ) : null}
         </>
@@ -47,7 +47,7 @@ export function PortalUpdateList({ updates, workspaceName, latest, children }: P
 
 function item(update: PortalProjectUpdate) {
   return (
-    <li key={update.id} className="p-4">
+    <li key={update.id} className="portal-updates-item p-4">
       <p className="font-medium">{update.title}</p>
       {update.body ? <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{update.body}</p> : null}
       <p className="mt-2 text-sm text-muted-foreground">

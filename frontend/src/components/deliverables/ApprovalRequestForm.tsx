@@ -18,7 +18,7 @@ export function ApprovalRequestForm({ pending, onSubmit, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-4 rounded-lg border p-3">
+    <form onSubmit={handleSubmit} className="approval-request-form mt-3 flex flex-col gap-4 rounded-lg border p-3">
       <TextAreaField
         label="Note for your client"
         name="note"

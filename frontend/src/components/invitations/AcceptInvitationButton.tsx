@@ -24,7 +24,7 @@ export function AcceptInvitationButton({ token }: { token: string }) {
   }, {});
 
   return (
-    <form action={submit} className="flex flex-col gap-6">
+    <form action={submit} className="accept-invitation-form flex flex-col gap-6">
       <FormError message={state.message} />
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Accepting…" : "Accept invitation"}

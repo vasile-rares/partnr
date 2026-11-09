@@ -47,8 +47,8 @@ export function ProjectTabs({ tabs, panels }: ProjectTabsProps) {
   return (
     <TabContext.Provider value={select}>
       <Tabs value={tab} onValueChange={(value) => select(value as string)}>
-        <div className="overflow-x-auto border-b">
-          <TabsList variant="line" className="h-10 gap-4 p-0">
+        <div className="project-tabs-bar overflow-x-auto border-b">
+          <TabsList variant="line" className="project-tabs-list h-10 gap-4 p-0">
             {tabs.map(({ value, label, count, highlight }) => (
               <TabsTrigger key={value} value={value} className="flex-none px-0.5 text-base">
                 {label}
@@ -67,7 +67,7 @@ export function ProjectTabs({ tabs, panels }: ProjectTabsProps) {
           </TabsList>
         </div>
         {tabs.map(({ value }) => (
-          <TabsContent key={value} value={value} className="pt-8 text-base">
+          <TabsContent key={value} value={value} className="project-tabs-panel pt-8 text-base">
             {panels[value]}
           </TabsContent>
         ))}

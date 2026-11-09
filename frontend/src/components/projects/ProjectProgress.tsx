@@ -11,15 +11,15 @@ export function ProjectProgress({ progress }: { progress: Progress }) {
   }
 
   return (
-    <div className="flex min-w-28 flex-col gap-1">
+    <div className="project-progress flex min-w-28 flex-col gap-1">
       {progress.total <= MAX_SEGMENTS ? (
-        <div aria-hidden className="flex gap-0.5">
+        <div aria-hidden className="project-progress-segments flex gap-0.5">
           {Array.from({ length: progress.total }, (_, index) => (
             <span key={index} className={cn("h-1.5 flex-1 rounded-full", index < progress.done ? "bg-status-done" : "bg-muted")} />
           ))}
         </div>
       ) : (
-        <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div aria-hidden className="project-progress-bar h-1.5 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-status-done" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
         </div>
       )}

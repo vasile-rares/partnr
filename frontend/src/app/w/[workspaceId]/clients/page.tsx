@@ -41,7 +41,7 @@ export default async function ClientsPage({ params, searchParams }: PageProps<"/
 
   return (
     <Page crumbs={[{ label: "Clients" }]}>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="clients-header mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-3xl font-semibold">Clients</h1>
         {rows.length > 0 ? addClient : null}
       </div>

@@ -66,7 +66,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
       {user && signedInAsInvited ? (
         <AcceptInvitationButton token={token} />
       ) : user ? (
-        <div className="flex flex-col gap-6">
+        <div className="invite-wrong-account flex flex-col gap-6">
           <Alert>
             <AlertDescription>
               You are signed in as {user.email}, but this invitation is for {email}. Only that address can accept it.
@@ -75,7 +75,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
           <SwitchAccountButton />
         </div>
       ) : invitation.accountExists ? (
-        <div className="flex flex-col gap-4">
+        <div className="invite-sign-in flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">You already have an account with this address. Sign in to accept.</p>
           <Link
             href={`/login?next=${encodeURIComponent(`/invite/${token}`)}`}
@@ -95,7 +95,7 @@ function Message({ title, children }: { title: string; children: ReactNode }) {
   return (
     <>
       <h1 className="mb-3 font-heading text-3xl font-semibold">{title}</h1>
-      <div className="flex flex-col text-muted-foreground">{children}</div>
+      <div className="invite-message flex flex-col text-muted-foreground">{children}</div>
     </>
   );
 }

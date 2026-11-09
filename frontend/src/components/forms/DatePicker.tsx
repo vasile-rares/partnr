@@ -45,7 +45,7 @@ export function DatePicker({ id, value, onChange, limits, clearable = false, nam
         <CalendarIcon aria-hidden className="text-muted-foreground" />
       </PopoverTrigger>
       {name ? <input type="hidden" name={name} value={value} /> : null}
-      <PopoverContent align="center" className="w-auto p-0">
+      <PopoverContent align="center" className="date-picker-popup w-auto p-0">
         <Calendar
           mode="single"
           weekStartsOn={1}

@@ -37,7 +37,7 @@ function Marker({ status }: { status: Status }) {
 
 export function ProjectTimeline() {
   return (
-    <section aria-labelledby="timeline-title" className="w-full max-w-md">
+    <section aria-labelledby="timeline-title" className="auth-timeline w-full max-w-md">
       <h2 id="timeline-title" className="font-heading text-3xl font-semibold leading-tight">
         What your client sees
       </h2>
@@ -48,7 +48,7 @@ export function ProjectTimeline() {
       <p className="mt-12 font-heading text-xl font-semibold">Bakery website</p>
       <p className="text-sm text-muted-foreground">Example project</p>
 
-      <ol className="relative mt-6 flex flex-col gap-8">
+      <ol className="auth-timeline-steps relative mt-6 flex flex-col gap-8">
         <span
           aria-hidden
           className="timeline-line absolute bottom-3 left-3 top-3 w-0.5 -translate-x-1/2 bg-border"

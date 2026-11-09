@@ -25,7 +25,7 @@ export function ArchiveProjectButton({ workspaceId, project }: { workspaceId: st
   }, {});
 
   return (
-    <form action={submit} className="flex flex-col gap-3">
+    <form action={submit} className="archive-project-form flex flex-col gap-3">
       <FormError message={state.message} />
       <Button type="submit" variant={archived ? "default" : "outline"} disabled={pending}>
         {archived ? (pending ? "Restoring…" : "Restore project") : pending ? "Archiving…" : "Archive project"}

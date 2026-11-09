@@ -98,8 +98,8 @@ export function ProjectForm({ workspaceId, project, clients, clientId }: Project
   const hasFieldError = Object.keys(errors).length > 0;
 
   return (
-    <form action={submit} className="flex max-w-lg flex-col gap-6">
-      <fieldset disabled={readOnly || pending} className="flex flex-col gap-6">
+    <form action={submit} className="project-form flex max-w-lg flex-col gap-6">
+      <fieldset disabled={readOnly || pending} className="project-form-fields flex flex-col gap-6">
         {editing ? null : (
           <SelectField
             label="Client"
@@ -124,7 +124,7 @@ export function ProjectForm({ workspaceId, project, clients, clientId }: Project
           hint="Optional. Your client will see it in their portal."
           error={errors.description}
         />
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="project-form-dates grid gap-6 sm:grid-cols-2">
           <TextField
             label="Start date"
             name="startDate"

@@ -86,7 +86,7 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
 
   function row(file: ProjectFile) {
     return (
-      <li key={file.id} className="p-3">
+      <li key={file.id} className="file-item p-3">
         {editing === file.id ? (
           <FileEditForm
             file={file}
@@ -122,7 +122,7 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
     <>
       <section
         aria-labelledby="files-title"
-        className="mb-12 max-w-lg"
+        className="file-list mb-12 max-w-lg"
         onDragEnter={(event) => droppable(event) && setOver(true)}
         onDragOver={(event) => {
           if (droppable(event)) {
@@ -155,7 +155,7 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
         {readOnly ? null : (
           <label
             className={cn(
-              "mb-4 flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-6 text-center transition-colors hover:bg-muted/50 has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+              "file-list-dropzone mb-4 flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-6 text-center transition-colors hover:bg-muted/50 has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
               over && "border-foreground bg-muted/50",
             )}
           >
@@ -182,13 +182,13 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
             {readOnly ? "This project has no files." : "No files yet. Share a file with your client once it's ready."}
           </p>
         ) : (
-          <ul className="mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
+          <ul className="file-list-active mb-6 flex flex-col divide-y rounded-lg border">{active.map(row)}</ul>
         )}
 
         {archived.length > 0 ? (
-          <div className="mb-6">
+          <div className="file-list-archived mb-6">
             <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived</h3>
-            <ul className="flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
+            <ul className="file-list-archived-items flex flex-col divide-y rounded-lg border">{archived.map(row)}</ul>
           </div>
         ) : null}
 
@@ -196,7 +196,7 @@ export function FileList({ workspaceId, project, files, isOwner }: Props) {
 
       {/* Outside the section, so a drop inside the dialog does not reach the section's own drop handler. */}
       <Dialog open={uploading} onOpenChange={setUploading}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="upload-file-dialog max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload a file</DialogTitle>
             <DialogDescription>It starts as a draft. Share it with your client when it is ready.</DialogDescription>
@@ -232,11 +232,11 @@ function FileRow({
   const shared = file.status === "Shared";
 
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-1 gap-3">
+    <div className="file-row flex items-start justify-between gap-3">
+      <div className="file-row-main flex min-w-0 flex-1 gap-3">
         <FileTypeIcon fileName={file.fileName} contentType={file.contentType} />
-        <div className="min-w-0">
-          <div className="mb-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div className="file-row-info min-w-0">
+          <div className="file-row-meta mb-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {archivedAt ? <span>Archived {formatDate(archivedAt.slice(0, 10))}</span> : <DeliverableStatusBadge status={file.status} />}
             <span className="break-all">
               {file.fileName} · {formatFileSize(file.sizeBytes)}
@@ -246,7 +246,7 @@ function FileRow({
           {file.description ? <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{file.description}</p> : null}
         </div>
       </div>
-      <div className="flex shrink-0 gap-1">
+      <div className="file-row-actions flex shrink-0 gap-1">
         {/* A plain link: the API answers with an attachment, so the browser saves it instead of navigating away. */}
         <IconLink href={downloadUrl} download icon={DownloadIcon} tooltip="Download" aria-label={`Download ${file.name}`} />
         {readOnly ? null : archivedAt ? (
@@ -301,7 +301,7 @@ function UploadForm({
 
   // The edit form can be open at the same time, so these labels differ from its "Name" and "Description".
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="upload-file-form flex flex-col gap-4">
       <FileDropzone name="file" describedBy={hintId} hint={`Up to ${formatFileSize(MAX_FILE_BYTES)}.`} file={file} onFileChange={setFile} />
       {file ? (
         <>
@@ -339,7 +339,7 @@ function FileEditForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="file-edit-form flex flex-col gap-4">
       <TextField label="Name" name="name" required maxLength={200} defaultValue={file.name} />
       <TextAreaField label="Description" name="description" maxLength={2000} rows={2} defaultValue={file.description ?? ""} hint="Optional." />
       <div className="flex gap-2">

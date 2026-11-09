@@ -16,12 +16,12 @@ export function PortalProjectList({ workspaceId, projects }: { workspaceId: stri
   }
 
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="portal-project-list divide-y rounded-lg border">
       {projects.map((project) => (
-        <li key={project.id}>
+        <li key={project.id} className="portal-project-item">
           <Link
             href={`/portal/${workspaceId}/projects/${project.id}`}
-            className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4 hover:bg-muted/50"
+            className="portal-project-link flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4 hover:bg-muted/50"
           >
             <div className="min-w-0">
               <p className="font-medium">{project.name}</p>
@@ -29,7 +29,7 @@ export function PortalProjectList({ workspaceId, projects }: { workspaceId: stri
                 {project.dueDate ? `Due ${formatDate(project.dueDate)}` : "No due date"}
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="portal-project-status flex items-center gap-4">
               {project.awaitingApproval > 0 ? (
                 <Badge variant="secondary">{project.awaitingApproval} waiting for you</Badge>
               ) : null}

@@ -43,7 +43,7 @@ export function InvitationRegisterForm({ token, email }: { token: string; email:
   const hasFieldErrors = Object.keys(errors).length > 0;
 
   return (
-    <form action={submit} className="flex flex-col gap-6">
+    <form action={submit} className="invitation-register-form flex flex-col gap-6">
       <TextField
         label="Email"
         type="email"

@@ -57,7 +57,7 @@ export default async function PortalHomePage({ params }: PageProps<"/portal/[wor
           Nothing has been shared with you yet. Projects show up here as soon as they are ready.
         </p>
       ) : (
-        <div className="flex flex-col gap-10">
+        <div className="portal-home flex flex-col gap-10">
           <PortalWaitingForYou workspaceId={workspace.id} workspaceName={workspace.name} items={waiting} />
           <PortalActiveProjects workspaceId={workspace.id} projects={running} />
           <PortalLatestUpdates workspaceId={workspace.id} updates={updates} />

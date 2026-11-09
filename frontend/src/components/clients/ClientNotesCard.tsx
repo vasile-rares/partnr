@@ -7,7 +7,7 @@ import { SheetTrigger } from "@/components/ui/sheet";
 /** The private notes, so they show without opening the edit panel; its trigger sits inside the page's `Sheet`. */
 export function ClientNotesCard({ notes }: { notes: string | null }) {
   return (
-    <section aria-labelledby="notes-title">
+    <section aria-labelledby="notes-title" className="client-notes-card">
       <Card size="sm">
         <CardHeader>
           <CardTitle id="notes-title" className="flex items-center gap-1">
