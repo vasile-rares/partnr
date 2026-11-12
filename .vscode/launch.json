@@ -6,8 +6,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build-api",
-      "program": "${workspaceFolder}/backend/src/ClientPortal.Api/bin/Debug/net10.0/ClientPortal.Api.dll",
-      "cwd": "${workspaceFolder}/backend/src/ClientPortal.Api",
+      "program": "${workspaceFolder}/backend/src/Partnr.Api/bin/Debug/net10.0/Partnr.Api.dll",
+      "cwd": "${workspaceFolder}/backend/src/Partnr.Api",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:5051",

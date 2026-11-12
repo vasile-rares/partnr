@@ -1,0 +1,48 @@
+using Partnr.Application.DTOs.Projects;
+using Partnr.Application.Interfaces.Repositories;
+using Partnr.Domain.Entities;
+
+namespace Partnr.Application.Mappings;
+
+/// <summary>Names the client through <see cref="ClientResponseBuilder"/>, so the account's name wins, and counts the approvals in one query.</summary>
+internal sealed class ProjectResponseBuilder(IClientRepository clients, ClientResponseBuilder clientResponses, IApprovalRequestRepository approvals)
+{
+    public async Task<ProjectResponse> BuildAsync(Project project, CancellationToken cancellationToken) =>
+        (await BuildAsync(project.WorkspaceId, [project], cancellationToken))[0];
+
+    public async Task<IReadOnlyList<ProjectResponse>> BuildAsync(
+        Guid workspaceId,
+        IReadOnlyList<Project> projects,
+        CancellationToken cancellationToken)
+    {
+        if (projects.Count == 0)
+        {
+            return [];
+        }
+
+        var cards = await clients.ListByIdsAsync(workspaceId, projects.Select(p => p.ClientId).Distinct().ToList(), cancellationToken);
+        var names = (await clientResponses.BuildAsync(cards, cancellationToken))
+            .ToDictionary(c => c.Id, c => c.Name ?? c.Email);
+        var counts = await approvals.CountForProjectsAsync(projects.Select(p => p.Id).ToList(), cancellationToken);
+
+        return projects.Select(p =>
+        {
+            var stages = p.Stages; // sorted on every read, so read it once
+            return new ProjectResponse(
+                p.Id,
+                new ProjectClientResponse(p.ClientId, names.GetValueOrDefault(p.ClientId, "Unknown client")),
+                p.Name,
+                p.Description,
+                p.StartDate,
+                p.DueDate,
+                p.Status.ToString(),
+                p.CreatedAtUtc,
+                p.ArchivedAtUtc,
+                new ProjectProgressResponse(p.DoneStageCount, stages.Count),
+                counts.TryGetValue(p.Id, out var approval)
+                    ? new ProjectApprovalsResponse(approval.Pending, approval.ChangesRequested)
+                    : new ProjectApprovalsResponse(0, 0),
+                stages.Select(s => new StageResponse(s.Id, s.Name, s.Description, s.DueDate, s.Status.ToString())).ToList());
+        }).ToList();
+    }
+}

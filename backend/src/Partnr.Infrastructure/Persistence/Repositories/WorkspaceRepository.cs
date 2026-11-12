@@ -1,0 +1,27 @@
+using Partnr.Application.Interfaces.Repositories;
+using Partnr.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace Partnr.Infrastructure.Persistence.Repositories;
+
+internal sealed class WorkspaceRepository(ApplicationDbContext dbContext) : IWorkspaceRepository
+{
+    public Task<Workspace?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Workspaces.Include(w => w.Members).FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Workspace>> ListForUserAsync(Guid userId, CancellationToken cancellationToken) =>
+        await dbContext.Workspaces
+            .Include(w => w.Members)
+            .Where(w => w.Members.Any(m => m.UserId == userId))
+            .OrderBy(w => w.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Workspace>> ListForClientAsync(Guid userId, CancellationToken cancellationToken) =>
+        await dbContext.Workspaces
+            .AsNoTracking()
+            .Where(w => dbContext.Clients.Any(c => c.WorkspaceId == w.Id && c.UserId == userId && c.ArchivedAtUtc == null))
+            .OrderBy(w => w.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+    public void Add(Workspace workspace) => dbContext.Workspaces.Add(workspace);
+}

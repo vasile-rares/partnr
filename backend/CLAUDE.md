@@ -4,17 +4,17 @@
 
 **Reference for the structure:** [Clean Architecture in .NET 10](https://codewithmukesh.com/blog/clean-architecture-dotnet/) (codewithmukesh). The backend follows this article: four layers, plain services (no CQRS / MediatR), repositories + `IUnitOfWork`, thin controllers. When adding projects, folders or dependencies, consult it so the structure does not drift.
 
-Solution: `ClientPortal.slnx`.
+Solution: `Partnr.slnx`.
 
 Folders are grouped **by role inside each layer** (not by feature); the namespace always matches the folder.
 
 ```
 src/
-  ClientPortal.Domain/           No NuGet packages.
+  Partnr.Domain/           No NuGet packages.
     Entities/                    Entity (base), Client, Workspace, WorkspaceMember
     Enums/                       WorkspaceRole
     Exceptions/                  DomainException
-  ClientPortal.Application/      Only the DI abstractions package.
+  Partnr.Application/      Only the DI abstractions package.
     Interfaces/Repositories/     IClientRepository, IWorkspaceRepository, IUnitOfWork
     Interfaces/Services/         IAuthService, IClientService, IWorkspaceService, IIdentityService, ICurrentUser
     Services/                    One use-case service per feature, nothing else (all internal, names end in "Service", enforced by an architecture test)
@@ -24,22 +24,22 @@ src/
     Mappings/                    WorkspaceMappings (ToResponse() extension methods), ClientResponseBuilder (clients need the account and invitation data too, so it is a class, not an extension)
     Exceptions/                  AppException and its subclasses
     DependencyInjection.cs       AddApplication()
-  ClientPortal.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
+  Partnr.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
     Persistence/                 ApplicationDbContext, Configurations/, Repositories/, Seeding/, Migrations/
     Authentication/              ApplicationUser, IdentityService, CurrentUser, cookie setup
     Email/                       SmtpEmailSender (MailKit), EmailOptions
     Storage/                     S3FileStorage (AWSSDK.S3, any S3-compatible service), StorageOptions
     DependencyInjection.cs       AddInfrastructure()
-  ClientPortal.Api/              Controllers/ (thin), Extensions/ (ControllerBaseExtensions: file downloads), Middleware/ (exception handler), Program.cs (composition root)
+  Partnr.Api/              Controllers/ (thin), Extensions/ (ControllerBaseExtensions: file downloads), Middleware/ (exception handler), Program.cs (composition root)
 tests/
-  ClientPortal.UnitTests/        Domain/, Application/ (services with fakes, request validation)
-  ClientPortal.IntegrationTests/ Real Postgres via Testcontainers + WebApplicationFactory (needs Docker)
-  ClientPortal.ArchitectureTests/ NetArchTest rules for the dependency rules below
+  Partnr.UnitTests/        Domain/, Application/ (services with fakes, request validation)
+  Partnr.IntegrationTests/ Real Postgres via Testcontainers + WebApplicationFactory (needs Docker)
+  Partnr.ArchitectureTests/ NetArchTest rules for the dependency rules below
 ```
 
 Folders not created yet, to add when their first file appears: `Domain/ValueObjects/`, `Domain/Events/`, `Application/Validators/` (validation is data annotations on DTOs for now), `Infrastructure/Services/` (other non-persistence implementations; email and file storage have their own `Email/` and `Storage/`), `Api/Filters/`, `Api/DTOs/` (only for API-only shapes; use-case DTOs stay in Application). Do not create empty folders.
 
-Integration tests live in a separate project so the fast unit tests can run on their own (`dotnet test tests/ClientPortal.UnitTests`). The architecture tests are fast too and need no database.
+Integration tests live in a separate project so the fast unit tests can run on their own (`dotnet test tests/Partnr.UnitTests`). The architecture tests are fast too and need no database.
 
 ## Dependency rules
 
@@ -50,7 +50,7 @@ Application    -> Domain
 Domain         -> nothing
 ```
 
-- Dependencies point inward only. Domain depends on nothing external. These rules are checked by `tests/ClientPortal.ArchitectureTests` (`LayerDependencyTests`); add a test there when a new rule is agreed.
+- Dependencies point inward only. Domain depends on nothing external. These rules are checked by `tests/Partnr.ArchitectureTests` (`LayerDependencyTests`); add a test there when a new rule is agreed.
 - Application talks to the database only through repository interfaces (`IClientRepository`, one per aggregate, in `Interfaces/Repositories/`) and `IUnitOfWork`. Both are implemented in Infrastructure: `ClientRepository` (reads, `Add`/`Remove`, never saves) and `ApplicationDbContext` (`IUnitOfWork.SaveChangesAsync`). Application has no EF Core reference.
 - Api does not reference types from `Infrastructure.Persistence`; it only calls `AddInfrastructure()` from the composition root.
 
@@ -104,21 +104,21 @@ Use `Clients` as the template. Every step is needed; nothing fails at build time
 4. **Infrastructure**: `DbSet<Project>` in `ApplicationDbContext`, `Persistence/Configurations/ProjectConfiguration.cs`, `Persistence/Repositories/ProjectRepository.cs`, and register `IProjectRepository` in `Infrastructure/DependencyInjection.cs`.
 5. **Migration**: `dotnet ef migrations add <Name> ...` (see Database and migrations), then review the generated file.
 6. **Api**: `Controllers/ProjectsController.cs`, thin, no error handling.
-7. **Tests**: service tests in `tests/ClientPortal.UnitTests/Application/` (fake repository + fake unit of work), entity tests in `Domain/`.
+7. **Tests**: service tests in `tests/Partnr.UnitTests/Application/` (fake repository + fake unit of work), entity tests in `Domain/`.
 8. Run `dotnet build` (0 warnings) and `dotnet test`.
 
 External services (email, OAuth, AI, file storage) follow the same rule as repositories: the interface lives in `Application/Interfaces/Services/`, the implementation next to its kind of service in Infrastructure (`Email/`, `Storage/`, ...), never in `Persistence/`.
 
 ## Database and migrations
 
-- PostgreSQL 17 via `docker-compose.yml` (db `client_portal`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/ClientPortal.Api/appsettings.Development.json`. To use a different Postgres (e.g. one installed locally), override it with user secrets instead of editing that file: `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=...;Password=..." --project src/ClientPortal.Api`.
+- PostgreSQL 17 via `docker-compose.yml` (db `partnr`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/Partnr.Api/appsettings.Development.json`. To use a different Postgres (e.g. one installed locally), override it with user secrets instead of editing that file: `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=...;Password=..." --project src/Partnr.Api`.
 - **Email** goes through `IEmailSender` (Application), implemented by `Infrastructure/Email/SmtpEmailSender` (MailKit) and configured by the `Email` section (`From`, `SmtpHost`, `SmtpPort`, `SmtpUsername`, `SmtpPassword`, `UseTls`), validated at startup. In development the SMTP server is **Mailpit** from `docker-compose.yml` (SMTP on 1025, inbox UI on http://localhost:8025): every email is caught there, none reaches a real inbox. Production only changes the configuration. Integration tests replace the sender with `FakeEmailSender` (`ApiFactory.Emails`); `Email/SmtpEmailSenderTests` checks the real sender against a Mailpit container.
-- **File storage** goes through `IFileStorage` (Application), implemented by `Infrastructure/Storage/S3FileStorage` (AWSSDK.S3) and configured by the `Storage` section (`ServiceUrl`, `Region`, `Bucket`, `AccessKey`, `SecretKey`, `ForcePathStyle`, `CreateBucketIfMissing`), validated at startup. Any S3-compatible service works (AWS S3, R2, B2): production only changes the configuration and makes the bucket ahead of time. In development it is **RustFS** from `docker-compose.yml` (S3 API on http://localhost:9000, console on http://localhost:9001, dev credentials `rustfsadmin`/`rustfsadmin`, bucket `client-portal` created on first use); MinIO no longer publishes images. `DeleteAsync` never throws (it logs), `OpenReadAsync` throws `NotFoundException` for a missing key. Integration tests replace the storage with `InMemoryFileStorage` (`ApiFactory.Files`); `Storage/S3FileStorageTests` checks the real adapter against a RustFS container.
+- **File storage** goes through `IFileStorage` (Application), implemented by `Infrastructure/Storage/S3FileStorage` (AWSSDK.S3) and configured by the `Storage` section (`ServiceUrl`, `Region`, `Bucket`, `AccessKey`, `SecretKey`, `ForcePathStyle`, `CreateBucketIfMissing`), validated at startup. Any S3-compatible service works (AWS S3, R2, B2): production only changes the configuration and makes the bucket ahead of time. In development it is **RustFS** from `docker-compose.yml` (S3 API on http://localhost:9000, console on http://localhost:9001, dev credentials `rustfsadmin`/`rustfsadmin`, bucket `partnr` created on first use); MinIO no longer publishes images. `DeleteAsync` never throws (it logs), `OpenReadAsync` throws `NotFoundException` for a missing key. Integration tests replace the storage with `InMemoryFileStorage` (`ApiFactory.Files`); `Storage/S3FileStorageTests` checks the real adapter against a RustFS container.
 - Migrations are created in Infrastructure, started from Api (commands work in any shell):
 
 ```bash
-dotnet ef migrations add <Name> --project src/ClientPortal.Infrastructure --startup-project src/ClientPortal.Api --output-dir Persistence/Migrations
-dotnet ef database update --project src/ClientPortal.Infrastructure --startup-project src/ClientPortal.Api
+dotnet ef migrations add <Name> --project src/Partnr.Infrastructure --startup-project src/Partnr.Api --output-dir Persistence/Migrations
+dotnet ef database update --project src/Partnr.Infrastructure --startup-project src/Partnr.Api
 ```
 
 ## Common commands
@@ -127,8 +127,8 @@ dotnet ef database update --project src/ClientPortal.Infrastructure --startup-pr
 docker compose up -d                                              # Postgres + Mailpit (http://localhost:8025) + RustFS (S3 on :9000, console :9001)
 dotnet build                                                      # must be 0 warnings
 dotnet test
-dotnet run --project src/ClientPortal.Api --launch-profile http   # http://localhost:5051
-dotnet run --project src/ClientPortal.Api --launch-profile http -- --seed   # test data, then exits
+dotnet run --project src/Partnr.Api --launch-profile http   # http://localhost:5051
+dotnet run --project src/Partnr.Api --launch-profile http -- --seed   # test data, then exits
 ```
 
 - **Client name is optional** (`Client.Name`, `ClientResponse.Name` are nullable): a card can be just an email. UIs show `name ?? email` until the client has an account, whose name replaces it.

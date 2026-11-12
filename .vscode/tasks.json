@@ -7,7 +7,7 @@
       "command": "dotnet",
       "args": [
         "build",
-        "${workspaceFolder}/backend/src/ClientPortal.Api/ClientPortal.Api.csproj",
+        "${workspaceFolder}/backend/src/Partnr.Api/Partnr.Api.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
@@ -35,7 +35,7 @@
       "label": "test",
       "type": "process",
       "command": "dotnet",
-      "args": ["test", "${workspaceFolder}/backend/ClientPortal.slnx"],
+      "args": ["test", "${workspaceFolder}/backend/Partnr.slnx"],
       "group": { "kind": "test", "isDefault": true },
       "problemMatcher": "$msCompile"
     },
@@ -56,9 +56,9 @@
         "database",
         "update",
         "--project",
-        "src/ClientPortal.Infrastructure",
+        "src/Partnr.Infrastructure",
         "--startup-project",
-        "src/ClientPortal.Api"
+        "src/Partnr.Api"
       ],
       "options": { "cwd": "${workspaceFolder}/backend" },
       "problemMatcher": []
@@ -67,7 +67,7 @@
       "label": "db-seed",
       "type": "process",
       "command": "dotnet",
-      "args": ["run", "--project", "src/ClientPortal.Api", "--launch-profile", "http", "--", "--seed"],
+      "args": ["run", "--project", "src/Partnr.Api", "--launch-profile", "http", "--", "--seed"],
       "options": { "cwd": "${workspaceFolder}/backend" },
       "problemMatcher": []
     }

@@ -1,4 +1,4 @@
-# Client Portal — Plan de produs
+# Partnr — Plan de produs
 
 > Document de referință pentru produs (scris în română, la fel ca planul original). Codul, identificatorii, comentariile și mesajele de commit rămân în engleză.
 > Progresul implementării se bifează în secțiunea [Progres](#progres) de la final.

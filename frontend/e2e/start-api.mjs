@@ -1,7 +1,7 @@
 // Starts the .NET API for the Playwright tests (the first `webServer` in playwright.config.ts).
 //
 // Playwright starts its web servers before any global setup, so "compile -> reset the test database -> run the API"
-// lives here. The API gets its own database (`client_portal_e2e`), recreated on every run, and is compiled into
+// lives here. The API gets its own database (`partnr_e2e`), recreated on every run, and is compiled into
 // e2e/.artifacts so it never collides with a dev API that has bin/ locked.
 //
 // This script DROPS a database, so it has three guards before anything destructive happens (the numbered comments).
@@ -13,16 +13,16 @@ import { fileURLToPath } from "node:url";
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const backendDir = path.resolve(frontendDir, "..", "backend");
-const apiProject = path.join(backendDir, "src", "ClientPortal.Api");
-const infrastructureProject = path.join(backendDir, "src", "ClientPortal.Infrastructure");
+const apiProject = path.join(backendDir, "src", "Partnr.Api");
+const infrastructureProject = path.join(backendDir, "src", "Partnr.Infrastructure");
 const artifactsPath = path.join(frontendDir, "e2e", ".artifacts");
-const apiDll = path.join(artifactsPath, "bin", "ClientPortal.Api", "debug", "ClientPortal.Api.dll");
+const apiDll = path.join(artifactsPath, "bin", "Partnr.Api", "debug", "Partnr.Api.dll");
 
-const TEST_DATABASE = "client_portal_e2e";
+const TEST_DATABASE = "partnr_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
 const storageUrl = process.env.E2E_STORAGE_URL ?? "http://localhost:9000";
-const storageBucket = process.env.E2E_STORAGE_BUCKET ?? "client-portal-e2e";
+const storageBucket = process.env.E2E_STORAGE_BUCKET ?? "partnr-e2e";
 
 /** The dev connection string: user secrets first (that is where a local Postgres password lives), then appsettings. */
 function devConnectionString() {

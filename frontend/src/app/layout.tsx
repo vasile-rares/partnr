@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/brand";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -9,8 +10,8 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: {
-    default: "Client Portal",
-    template: "%s | Client Portal",
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
   },
   description: "Manage your projects and keep your clients informed.",
 };

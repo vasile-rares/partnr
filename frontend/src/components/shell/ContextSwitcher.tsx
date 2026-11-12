@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { APP_NAME } from "@/lib/brand";
 import type { ShellContext, ShellWorkspace } from "./types";
 
 type ContextSwitcherProps = {
@@ -23,7 +24,7 @@ type ContextSwitcherProps = {
 };
 
 export function ContextSwitcher({ context, workspaces, clientOf }: ContextSwitcherProps) {
-  const title = context.kind === "none" ? "Client Portal" : context.workspace.name;
+  const title = context.kind === "none" ? APP_NAME : context.workspace.name;
   const subtitle =
     context.kind === "workspace" ? context.workspace.role : context.kind === "portal" ? "Client portal" : "Choose a workspace";
 
