@@ -1,6 +1,7 @@
 using Partnr.Application.Authorization;
 using Partnr.Application.Interfaces.Services;
 using Partnr.Application.Mappings;
+using Partnr.Application.Notifications;
 using Partnr.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -24,6 +25,9 @@ public static class DependencyInjection
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IProjectUpdateService, ProjectUpdateService>();
         services.AddScoped<IProjectFileService, ProjectFileService>();
+        services.AddScoped<INotificationWriter, NotificationWriter>();
+        services.AddScoped<INotificationEmailService, NotificationEmailService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IPortalApprovalService, PortalApprovalService>();
         services.AddScoped<IAuthService, AuthService>();

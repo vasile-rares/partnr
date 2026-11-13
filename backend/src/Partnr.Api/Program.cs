@@ -2,7 +2,9 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Partnr.Api;
 using Partnr.Api.Middleware;
+using Partnr.Api.Realtime;
 using Partnr.Application;
+using Partnr.Application.Interfaces.Services;
 using Partnr.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
@@ -32,6 +34,9 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
         }));
 });
+
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IInboxPublisher, SignalRInboxPublisher>(); // replaces the do-nothing one AddInfrastructure leaves
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -81,6 +86,7 @@ app.UseRateLimiter(); // after authentication, so the limit can follow the signe
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationsHub>(NotificationsHub.Route);
 
 app.Run();
 

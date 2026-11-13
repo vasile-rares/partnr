@@ -17,6 +17,7 @@ public class ApprovalServiceTests
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeNotificationWriter _notifications = new();
     private readonly Workspace _workspace;
     private readonly Project _project;
     private readonly ApprovalService _service;
@@ -34,8 +35,41 @@ public class ApprovalServiceTests
             _deliverables,
             _projects,
             new DeliverableResponseBuilder(_approvals),
+            _notifications,
             new WorkspaceAccess(_workspaces, _currentUser),
             _unitOfWork);
+    }
+
+    [Fact]
+    public async Task Request_TellsTheNotificationWriter_AboutTheNewRound()
+    {
+        var deliverable = AddDeliverable(shared: true);
+
+        await Request(deliverable);
+
+        Assert.Same(Assert.Single(_approvals.Items), Assert.Single(_notifications.Requested));
+    }
+
+    [Fact]
+    public async Task Request_ThatIsRefused_NotifiesNobody()
+    {
+        var deliverable = AddDeliverable(shared: false);
+
+        await Assert.ThrowsAsync<ConflictException>(() => Request(deliverable));
+
+        Assert.Empty(_notifications.Requested);
+    }
+
+    [Fact]
+    public async Task Withdraw_CancelsTheEmailOfThatRound()
+    {
+        var deliverable = AddDeliverable(shared: true);
+        var round = ApprovalRequest.Request(_workspace.Id, _project.Id, deliverable.Id, _me, null);
+        _approvals.Items.Add(round);
+
+        await _service.WithdrawAsync(_workspace.Id, _project.Id, deliverable.Id, round.Id, CancellationToken.None);
+
+        Assert.Equal(round.Id, Assert.Single(_notifications.Withdrawn));
     }
 
     [Fact]

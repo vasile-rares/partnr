@@ -49,6 +49,17 @@ internal static class IdentityServiceCollectionExtensions
                     ? CookieSecurePolicy.SameAsRequest
                     : CookieSecurePolicy.Always;
 
+                // The security stamp validator runs on every request (see above) and asks for the cookie to be re-issued each time.
+                // A request still in flight when someone signs out would then answer after the sign-out with a fresh cookie, and the
+                // browser would keep it: signed in again. So renewal stays what the cookie handler decided from the time left.
+                var validatePrincipal = options.Events.OnValidatePrincipal;
+                options.Events.OnValidatePrincipal = async context =>
+                {
+                    var renewalDue = context.ShouldRenew;
+                    await validatePrincipal(context);
+                    context.ShouldRenew = renewalDue;
+                };
+
                 // This is an API: answer 401 / 403 instead of redirecting to a login page.
                 options.Events.OnRedirectToLogin = context =>
                 {

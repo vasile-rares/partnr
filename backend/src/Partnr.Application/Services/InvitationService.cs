@@ -14,6 +14,7 @@ internal sealed class InvitationService(
     IWorkspaceRepository workspaces,
     IIdentityService identity,
     ICurrentUser currentUser,
+    INotificationWriter notifications,
     IUnitOfWork unitOfWork,
     TimeProvider time) : IInvitationService
 {
@@ -92,6 +93,7 @@ internal sealed class InvitationService(
         var now = Now();
         client.LinkTo(userId, now);
         invitation.Accept(now);
+        await notifications.InvitationAcceptedAsync(workspace, client, invitation, userId, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Using a link sent to the address proves the person owns it.

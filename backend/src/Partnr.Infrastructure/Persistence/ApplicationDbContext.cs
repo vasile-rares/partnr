@@ -30,6 +30,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
 
+    public DbSet<Notification> Notifications => Set<Notification>();
+
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)

@@ -18,6 +18,7 @@ public class PortalApprovalServiceTests
     private readonly FakeApprovalRequestRepository _approvals = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeNotificationWriter _notifications = new();
     private readonly Workspace _studio;
     private readonly Client _client;
     private readonly Project _project;
@@ -45,7 +46,25 @@ public class PortalApprovalServiceTests
         _round = ApprovalRequest.Request(_studio.Id, _project.Id, _deliverable.Id, Guid.NewGuid(), "Please check.");
         _approvals.Items.Add(_round);
 
-        _service = new PortalApprovalService(_projects, _deliverables, _approvals, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+        _service = new PortalApprovalService(_projects, _deliverables, _approvals, _notifications, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+    }
+
+    [Fact]
+    public async Task ADecision_TellsTheNotificationWriter()
+    {
+        await _service.RequestChangesAsync(
+            _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = "Bigger logo." }, CancellationToken.None);
+
+        Assert.Same(_round, Assert.Single(_notifications.Decided));
+    }
+
+    [Fact]
+    public async Task ARefusedDecision_NotifiesNobody()
+    {
+        await Assert.ThrowsAsync<DomainException>(() =>
+            _service.RequestChangesAsync(_project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = " " }, CancellationToken.None));
+
+        Assert.Empty(_notifications.Decided);
     }
 
     [Fact]

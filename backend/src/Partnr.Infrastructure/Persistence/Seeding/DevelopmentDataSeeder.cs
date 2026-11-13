@@ -21,6 +21,7 @@ internal sealed class DevelopmentDataSeeder(
     IProjectFileRepository projectFiles,
     IFileStorage fileStorage,
     IApprovalRequestRepository approvals,
+    INotificationRepository notifications,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -141,7 +142,18 @@ internal sealed class DevelopmentDataSeeder(
         var firstRound = ApprovalRequest.Request(studio.Id, website.Id, mockups.Id, owner.Id, "Please look at the homepage and the booking page.");
         firstRound.RequestChanges(account.Id, "The logo is too small on mobile.");
         approvals.Add(firstRound);
-        approvals.Add(ApprovalRequest.Request(studio.Id, website.Id, mockups.Id, owner.Id, "The logo is bigger now. Ready for a final look?"));
+        var secondRound = ApprovalRequest.Request(studio.Id, website.Id, mockups.Id, owner.Id, "The logo is bigger now. Ready for a final look?");
+        approvals.Add(secondRound);
+
+        // Something in each inbox, already "emailed" so the worker leaves the demo data alone: Elena has an unread request, the owner a read answer.
+        var asked = Notification.ApprovalRequested(account.Id, studio.Id, studio.Name, website.Id, website.Name, mockups.Title, secondRound.Id);
+        asked.MarkEmailSent(DateTime.UtcNow);
+        notifications.Add(asked);
+        var answered = Notification.ApprovalDecided(
+            ApprovalStatus.ChangesRequested, owner.Id, studio.Id, studio.Name, website.Id, website.Name, mockups.Title, firstRound.Id, account.FullName);
+        answered.MarkEmailSent(DateTime.UtcNow);
+        answered.MarkRead(DateTime.UtcNow);
+        notifications.Add(answered);
 
         deliverables.Add(Deliverable.Create(studio.Id, website.Id, development.Id, "Staging site", "Not ready to show yet.", "https://staging.elena-design.example"));
 

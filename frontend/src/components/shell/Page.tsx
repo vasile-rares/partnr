@@ -8,6 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { NotificationsBell } from "@/components/notifications/NotificationsBell";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,9 @@ export function Page({ crumbs, narrow = false, children }: PageFrameProps) {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
+        <div className="page-topbar-actions ml-auto">
+          <NotificationsBell />
+        </div>
       </header>
       <div className={cn("page-content mx-auto w-full px-6 py-8", narrow ? "max-w-3xl" : "max-w-5xl")}>{children}</div>
     </>

@@ -17,6 +17,7 @@ public class DeliverableServiceTests
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeNotificationWriter _notifications = new();
     private readonly Workspace _workspace;
     private readonly Project _project;
     private readonly DeliverableService _service;
@@ -34,8 +35,36 @@ public class DeliverableServiceTests
             _projects,
             _approvals,
             new DeliverableResponseBuilder(_approvals),
+            _notifications,
             new WorkspaceAccess(_workspaces, _currentUser),
             _unitOfWork);
+    }
+
+    [Fact]
+    public async Task Unshare_AndArchive_CancelTheEmailOfTheRoundTheyWithdraw()
+    {
+        var unshared = AddDeliverable();
+        unshared.Share();
+        var first = AddRound(unshared);
+        var archived = AddDeliverable();
+        archived.Share();
+        var second = AddRound(archived);
+
+        await _service.UnshareAsync(_workspace.Id, _project.Id, unshared.Id, CancellationToken.None);
+        await _service.ArchiveAsync(_workspace.Id, _project.Id, archived.Id, CancellationToken.None);
+
+        Assert.Equal(new[] { first.Id, second.Id }, _notifications.Withdrawn);
+    }
+
+    [Fact]
+    public async Task Unshare_WithNoPendingRound_CancelsNothing()
+    {
+        var deliverable = AddDeliverable();
+        deliverable.Share();
+
+        await _service.UnshareAsync(_workspace.Id, _project.Id, deliverable.Id, CancellationToken.None);
+
+        Assert.Empty(_notifications.Withdrawn);
     }
 
     [Fact]

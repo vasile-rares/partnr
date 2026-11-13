@@ -15,6 +15,7 @@ internal sealed class ApprovalService(
     IDeliverableRepository deliverables,
     IProjectRepository projects,
     DeliverableResponseBuilder responses,
+    INotificationWriter notifications,
     WorkspaceAccess access,
     IUnitOfWork unitOfWork) : IApprovalService
 {
@@ -44,7 +45,9 @@ internal sealed class ApprovalService(
             throw new ConflictException("This deliverable already has an approval request waiting for the client.");
         }
 
-        approvals.Add(ApprovalRequest.Request(workspaceId, projectId, deliverable.Id, membership.UserId, request.Note));
+        var round = ApprovalRequest.Request(workspaceId, projectId, deliverable.Id, membership.UserId, request.Note);
+        approvals.Add(round);
+        await notifications.ApprovalRequestedAsync(membership.Workspace.Name, project, deliverable, round, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(deliverable, project, cancellationToken);
@@ -69,6 +72,7 @@ internal sealed class ApprovalService(
         }
 
         approval.Withdraw();
+        await notifications.ApprovalRequestWithdrawnAsync(approval.Id, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(deliverable, project, cancellationToken);

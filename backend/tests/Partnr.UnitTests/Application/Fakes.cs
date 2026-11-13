@@ -266,8 +266,16 @@ internal sealed class FakeEmailSender : IEmailSender
 {
     public List<EmailMessage> Sent { get; } = [];
 
+    /// <summary>Addresses the "SMTP server" refuses, to test that one failure does not stop the others.</summary>
+    public HashSet<string> FailFor { get; } = [];
+
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
     {
+        if (FailFor.Contains(message.To))
+        {
+            throw new InvalidOperationException("SMTP is down.");
+        }
+
         Sent.Add(message);
         return Task.CompletedTask;
     }
@@ -276,6 +284,80 @@ internal sealed class FakeEmailSender : IEmailSender
 internal sealed class FakeAppLinks : IAppLinks
 {
     public string InvitationUrl(string token) => $"https://app.test/invite/{token}";
+
+    public string Url(string path) => $"https://app.test{path}";
+}
+
+internal sealed class FakeNotificationRepository : INotificationRepository
+{
+    public List<Notification> Items { get; } = [];
+
+    public Task<Notification?> GetApprovalRequestedAsync(Guid approvalRequestId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(n =>
+            n.ApprovalRequestId == approvalRequestId
+            && n.Type == NotificationType.ApprovalRequested
+            && n.ObsoleteAtUtc is null));
+
+    private IEnumerable<Notification> Inbox(Guid userId) =>
+        Items.Where(n => n.RecipientUserId == userId && n.ObsoleteAtUtc is null);
+
+    public Task<IReadOnlyList<Notification>> ListInboxAsync(Guid userId, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Notification>>(Inbox(userId).OrderByDescending(n => n.CreatedAtUtc).Take(limit).ToList());
+
+    public Task<int> CountUnreadAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult(Inbox(userId).Count(n => !n.IsRead));
+
+    public Task<Notification?> GetInboxItemAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Inbox(userId).FirstOrDefault(n => n.Id == id));
+
+    public Task<IReadOnlyList<Notification>> ListUnreadAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Notification>>(Inbox(userId).Where(n => !n.IsRead).ToList());
+
+    // The real one also pushes the next attempt forward; here a notification that was handled leaves Pending or gets a later date, which is enough.
+    public Task<IReadOnlyList<Notification>> ClaimDueEmailsAsync(DateTime nowUtc, TimeSpan lease, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Notification>>(Items
+            .Where(n => n.EmailStatus == NotificationEmailStatus.Pending && n.EmailNextAttemptAtUtc <= nowUtc)
+            .OrderBy(n => n.EmailNextAttemptAtUtc)
+            .Take(limit)
+            .ToList());
+
+    public void Add(Notification notification) => Items.Add(notification);
+}
+
+/// <summary>Records what the services asked to be told; the rules of who gets what are tested on the real writer.</summary>
+internal sealed class FakeNotificationWriter : INotificationWriter
+{
+    public List<ApprovalRequest> Requested { get; } = [];
+
+    public List<ApprovalRequest> Decided { get; } = [];
+
+    public List<ClientInvitation> Accepted { get; } = [];
+
+    public List<Guid> Withdrawn { get; } = [];
+
+    public Task ApprovalRequestedAsync(string workspaceName, Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken)
+    {
+        Requested.Add(round);
+        return Task.CompletedTask;
+    }
+
+    public Task ApprovalDecidedAsync(Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken)
+    {
+        Decided.Add(round);
+        return Task.CompletedTask;
+    }
+
+    public Task InvitationAcceptedAsync(Workspace workspace, Client client, ClientInvitation invitation, Guid accountId, CancellationToken cancellationToken)
+    {
+        Accepted.Add(invitation);
+        return Task.CompletedTask;
+    }
+
+    public Task ApprovalRequestWithdrawnAsync(Guid approvalRequestId, CancellationToken cancellationToken)
+    {
+        Withdrawn.Add(approvalRequestId);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class FakeTimeProvider : TimeProvider

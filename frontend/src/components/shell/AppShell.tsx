@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
+import { NotificationsProvider } from "@/components/notifications/NotificationsProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { requireUser } from "@/lib/auth/session";
 import { getPortalWorkspaces } from "@/lib/portal/server";
@@ -19,15 +20,18 @@ export async function AppShell({ context, children }: { context: ShellContext; c
     cookies(),
   ]);
 
+  // The notifications provider is here, not in `Page`: a layout stays mounted while the pages change, so the hub connection survives navigation.
   return (
-    <SidebarProvider defaultOpen={cookieStore.get(SIDEBAR_COOKIE)?.value !== "false"}>
-      <AppSidebar
-        context={context}
-        user={{ fullName: user.fullName, email: user.email }}
-        workspaces={workspaces.map(({ id, name }) => ({ id, name }))}
-        clientOf={clientOf}
-      />
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
+    <NotificationsProvider>
+      <SidebarProvider defaultOpen={cookieStore.get(SIDEBAR_COOKIE)?.value !== "false"}>
+        <AppSidebar
+          context={context}
+          user={{ fullName: user.fullName, email: user.email }}
+          workspaces={workspaces.map(({ id, name }) => ({ id, name }))}
+          clientOf={clientOf}
+        />
+        <SidebarInset>{children}</SidebarInset>
+      </SidebarProvider>
+    </NotificationsProvider>
   );
 }

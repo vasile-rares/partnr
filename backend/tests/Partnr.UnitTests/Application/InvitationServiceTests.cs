@@ -19,6 +19,7 @@ public class InvitationServiceTests
     private readonly FakeCurrentUser _currentUser = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeTimeProvider _time = new();
+    private readonly FakeNotificationWriter _notifications = new();
     private readonly Workspace _workspace;
     private readonly Client _client;
     private readonly ClientInvitation _invitation;
@@ -34,7 +35,22 @@ public class InvitationServiceTests
             _workspace.Id, _client.Id, InvitedEmail, ClientInvitation.HashToken(Token), _owner, _time.Now.UtcDateTime);
         _invitations.Items.Add(_invitation);
 
-        _service = new InvitationService(_invitations, _clients, _workspaces, _identity, _currentUser, _unitOfWork, _time);
+        _service = new InvitationService(_invitations, _clients, _workspaces, _identity, _currentUser, _notifications, _unitOfWork, _time);
+    }
+
+    [Fact]
+    public async Task Accept_TellsTheNotificationWriter_ButARefusedOneDoesNot()
+    {
+        var stranger = _identity.AddAccount("someone.else@example.com", "correct horse");
+        _currentUser.UserId = stranger.Id;
+        await Assert.ThrowsAsync<ForbiddenException>(() => _service.AcceptAsync(Token, CancellationToken.None));
+        Assert.Empty(_notifications.Accepted);
+
+        var account = _identity.AddAccount(InvitedEmail, "correct horse");
+        _currentUser.UserId = account.Id;
+        await _service.AcceptAsync(Token, CancellationToken.None);
+
+        Assert.Same(_invitation, Assert.Single(_notifications.Accepted));
     }
 
     [Fact]

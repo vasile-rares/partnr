@@ -322,7 +322,7 @@ Inspirate din [taskview-community](https://github.com/Gimanh/taskview-community)
 - **Tipuri TypeScript generate din OpenAPI**, în locul tipurilor scrise de mână în `frontend/src/lib/` (de ex. cu `openapi-typescript`). Previne desincronizarea dintre DTO-urile din .NET și frontend.
 - **Un singur sistem de evenimente de domeniu** (livrabil partajat, feedback, aprobare, schimbare de status). Se construiește la Timeline; de el se leagă apoi Notificările, webhook-urile și Automatizările, în loc de patru mecanisme separate.
 - **Webhook-uri semnate** (HMAC al corpului, cu un secret per workspace) și **API public cu tokenuri cu scope-uri limitate**, peste sistemul de evenimente. Baza pentru Automatizări.
-- **Actualizări în timp real prin SSE**, odată cu Notificările (mai simplu decât WebSocket, ajunge pentru acest caz).
+- **Actualizări în timp real**, odată cu Notificările: se fac prin **SignalR** (pasul (c) de la Notificări), nu prin SSE. Hub-ul doar semnalează; datele rămân pe REST. Vezi „Notificări" din [decisions.md](decisions.md).
 - **Time tracking facturabil / nefacturabil**, legat de Plăți (ore × tarif = suma de facturat).
 - **Deploy: imagini Docker separate pentru API, web și migrări** (migrarea rulează o singură dată, înaintea API-ului), ca schema să nu se aplice de două instanțe deodată.
 - **Permisiuni pe proiect** (un membru vede doar anumite proiecte), printr-o schimbare în `WorkspaceAccess`; azi toți membrii văd toți clienții.
@@ -383,7 +383,10 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 1: actualizări pentru freelancer (API și secțiunea „Updates” pe pagina proiectului)
   - [x] Pas 2: actualizările partajate în portalul clientului
 - [x] Feedback și aprobări, într-un singur pas, pe livrabil: clientul aprobă sau cere modificări, cu un mesaj. Aici se încheie și portalul pentru clienți: proiecte, etape, progres, actualizări, livrabile și ce are de făcut clientul („N waiting for you")
-- [ ] Notificări (întâi email, apoi în aplicație)
+- [x] Notificări, în trei pași:
+  - [x] Pas (a): notificări salvate și email (worker în fundal, cu retry) pentru cerere de aprobare, răspunsul clientului și invitație acceptată
+  - [x] Pas (b): clopoțel și inbox în aplicație (citit / necitit), prin REST
+  - [x] Pas (c): push live prin SignalR, peste (b)
 - [x] Fișiere de proiect (upload de fișiere, separate de livrabile), în trei pași:
   - [x] Pas 1: API și stocare S3-compatibilă (RustFS local), fără aprobări
   - [x] Pas 2: secțiunea „Files" pentru freelancer, cu urcare, descărcare, Draft / Shared și arhivare

@@ -4,6 +4,25 @@ const dateTime = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeSty
 /** "14 Oct 2026, 09:00 UTC" */
 export const formatDateTimeUtc = (iso: string): string => `${dateTime.format(new Date(iso))} UTC`;
 
+const MINUTE_MS = 60 * 1000;
+
+/** "Just now", "5 min ago", "3 h ago", "2 days ago", then the date. Reads the clock, so only for what the browser draws after loading. */
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const minutes = Math.floor((now - Date.parse(iso)) / MINUTE_MS);
+  if (minutes < 1) {
+    return "Just now";
+  }
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} h ago`;
+  }
+  const days = Math.floor(hours / 24);
+  return days < 7 ? (days === 1 ? "1 day ago" : `${days} days ago`) : formatDate(iso.slice(0, 10));
+}
+
 /** "820 B", "340 KB", "4.2 MB" */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) {

@@ -321,19 +321,22 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
     private async Task<StudioSession> Studio()
     {
         var http = factory.CreateClient();
-        var registered = await http.PostAsJsonAsync("/api/auth/register", new { email = NewEmail(), password = Password, fullName = "Owner" });
+        var email = NewEmail();
+        var registered = await http.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Owner" });
         registered.EnsureSuccessStatusCode();
         var workspace = await http.PostAsJsonAsync("/api/workspaces", new { name = "Studio" });
         Assert.Equal(HttpStatusCode.Created, workspace.StatusCode);
 
-        return new StudioSession(factory, http, (await workspace.Content.ReadFromJsonAsync<WorkspaceResponse>())!.Id);
+        return new StudioSession(factory, http, (await workspace.Content.ReadFromJsonAsync<WorkspaceResponse>())!.Id, email);
     }
 
-    private sealed class StudioSession(ApiFactory factory, HttpClient http, Guid workspaceId)
+    private sealed class StudioSession(ApiFactory factory, HttpClient http, Guid workspaceId, string email)
     {
         public HttpClient Http { get; } = http;
 
         public Guid WorkspaceId { get; } = workspaceId;
+
+        public string Email { get; } = email;
 
         public async Task<ClientSession> AddClient(string name, string? notes = null)
         {
@@ -350,7 +353,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
             var accepted = await clientHttp.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = name, password = Password });
             accepted.EnsureSuccessStatusCode();
 
-            return new ClientSession(clientHttp, client.Id);
+            return new ClientSession(clientHttp, client.Id, email);
         }
 
         public async Task<ProjectResponse> AddProject(ClientSession client, string name, string? description = null)
@@ -418,5 +421,5 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         }
     }
 
-    private sealed record ClientSession(HttpClient Http, Guid ClientId);
+    private sealed record ClientSession(HttpClient Http, Guid ClientId, string Email);
 }

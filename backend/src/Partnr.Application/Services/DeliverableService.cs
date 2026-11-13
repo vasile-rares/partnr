@@ -14,6 +14,7 @@ internal sealed class DeliverableService(
     IProjectRepository projects,
     IApprovalRequestRepository approvals,
     DeliverableResponseBuilder responses,
+    INotificationWriter notifications,
     WorkspaceAccess access,
     IUnitOfWork unitOfWork) : IDeliverableService
 {
@@ -167,8 +168,17 @@ internal sealed class DeliverableService(
     }
 
     // The client stops seeing the deliverable, so a request waiting for them cannot stay open.
-    private async Task WithdrawPendingAsync(Deliverable deliverable, CancellationToken cancellationToken) =>
-        (await approvals.GetPendingAsync(deliverable.Id, cancellationToken))?.Withdraw();
+    private async Task WithdrawPendingAsync(Deliverable deliverable, CancellationToken cancellationToken)
+    {
+        var pending = await approvals.GetPendingAsync(deliverable.Id, cancellationToken);
+        if (pending is null)
+        {
+            return;
+        }
+
+        pending.Withdraw();
+        await notifications.ApprovalRequestWithdrawnAsync(pending.Id, cancellationToken);
+    }
 
     private async Task<Project> RequireProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken) =>
         await projects.GetByIdAsync(workspaceId, projectId, cancellationToken)

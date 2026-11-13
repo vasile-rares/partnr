@@ -16,5 +16,7 @@ public sealed class AppOptions
 internal sealed class AppLinks(Microsoft.Extensions.Options.IOptions<AppOptions> options) : IAppLinks
 {
     public string InvitationUrl(string token) =>
-        $"{options.Value.FrontendUrl.TrimEnd('/')}/invite/{Uri.EscapeDataString(token)}";
+        Url($"/invite/{Uri.EscapeDataString(token)}");
+
+    public string Url(string path) => $"{options.Value.FrontendUrl.TrimEnd('/')}{path}";
 }

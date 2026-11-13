@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Partnr.Application.DTOs.Auth;
 using Partnr.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -233,6 +234,23 @@ public sealed class AuthTests(ApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Unauthorized, workspaces.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, me.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnAuthenticatedRequest_DoesNotReissueTheSessionCookie_SoALateResponseCannotReviveASignedOutSession()
+    {
+        // A request still in flight when someone signs out answers after the sign-out. If that answer carried a fresh cookie, the browser would keep it.
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var registered = await Register(client, NewEmail());
+        var session = Assert.Single(registered.Headers.GetValues("Set-Cookie"), c => c.StartsWith(".AspNetCore.Identity.Application=")).Split(';')[0];
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        request.Headers.Add("Cookie", session);
+        var me = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        var setCookies = me.Headers.TryGetValues("Set-Cookie", out var values) ? values : [];
+        Assert.DoesNotContain(setCookies, c => c.StartsWith(".AspNetCore.Identity.Application="));
     }
 
     private static async Task<string?> ReadDetail(HttpResponseMessage response)

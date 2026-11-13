@@ -14,6 +14,7 @@ internal sealed class PortalApprovalService(
     IProjectRepository projects,
     IDeliverableRepository deliverables,
     IApprovalRequestRepository approvals,
+    INotificationWriter notifications,
     WorkspaceAccess access,
     IUnitOfWork unitOfWork) : IPortalApprovalService
 {
@@ -61,6 +62,7 @@ internal sealed class PortalApprovalService(
         }
 
         decide(round, userId);
+        await notifications.ApprovalDecidedAsync(project, deliverable, round, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var stageName = deliverable.StageId is { } stageId ? project.Stages.FirstOrDefault(s => s.Id == stageId)?.Name : null;
