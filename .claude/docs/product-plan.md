@@ -388,6 +388,9 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas (b): clopoțel și inbox în aplicație (citit / necitit), prin REST
   - [x] Pas (c): push live prin SignalR, peste (b)
 - [x] Resetarea parolei (după MVP): link pe email, o folosire, 1 oră, celelalte sesiuni ies
+- [x] Mesaje (după MVP), un fir pe proiect, în doi pași (fără email pentru mesajele necitite):
+  - [x] Pas (a): backend (mesaje, citit pe om, editare / ștergere 10 minute, cele două uși, semnal live)
+  - [x] Pas (b): pagina „Messages" la freelancer și în portal, live
 - [x] Fișiere de proiect (upload de fișiere, separate de livrabile), în trei pași:
   - [x] Pas 1: API și stocare S3-compatibilă (RustFS local), fără aprobări
   - [x] Pas 2: secțiunea „Files" pentru freelancer, cu urcare, descărcare, Draft / Shared și arhivare

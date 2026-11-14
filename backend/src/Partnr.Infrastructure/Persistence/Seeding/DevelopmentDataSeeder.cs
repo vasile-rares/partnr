@@ -22,6 +22,8 @@ internal sealed class DevelopmentDataSeeder(
     IFileStorage fileStorage,
     IApprovalRequestRepository approvals,
     INotificationRepository notifications,
+    IMessageRepository messages,
+    IConversationReadRepository conversationReads,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -155,6 +157,8 @@ internal sealed class DevelopmentDataSeeder(
         answered.MarkRead(DateTime.UtcNow);
         notifications.Add(answered);
 
+        AddConversation(studio.Id, website.Id, owner.Id, member.Id, account.Id);
+
         deliverables.Add(Deliverable.Create(studio.Id, website.Id, development.Id, "Staging site", "Not ready to show yet.", "https://staging.elena-design.example"));
 
         var designDone = ProjectUpdate.Create(studio.Id, website.Id, "Design approved", "All page layouts are signed off. Development starts this week.");
@@ -211,6 +215,34 @@ internal sealed class DevelopmentDataSeeder(
             "Also: {Client} is a client of Studio Pop (same password); the pending invitation is {Link}.",
             DevelopmentSeed.ClientEmail,
             links.InvitationUrl(DevelopmentSeed.PendingInvitationToken));
+    }
+
+    // A conversation that already went on for a couple of days, with one corrected and one deleted message. Read marks differ per
+    // person: Elena has Ana's last message unread, Ana has Elena's last one, and Mihai never opened it (5 unread).
+    private void AddConversation(Guid workspaceId, Guid projectId, Guid ana, Guid mihai, Guid elena)
+    {
+        var start = DateTime.UtcNow.AddDays(-2);
+        Message Write(Guid author, string body, TimeSpan after)
+        {
+            var message = Message.Write(workspaceId, projectId, author, body, start + after);
+            messages.Add(message);
+            return message;
+        }
+
+        Write(ana, "Hi Elena! The homepage mockups are in the Deliverables tab. Desktop and mobile are both there.", TimeSpan.Zero);
+        var question = Write(elena, "Thanks! Is the booking page in there too?", TimeSpan.FromHours(2));
+        Write(mihai, "Not yet, I am finishing it today. You'll have it by tomorrow morning.", TimeSpan.FromHours(3));
+
+        var typo = Write(ana, "We also moved the logo higer on mobile.", TimeSpan.FromHours(20));
+        typo.Edit(ana, "We also moved the logo higher on mobile.", typo.CreatedAtUtc.AddMinutes(1));
+        var wrongThread = Write(elena, "Oops, this was meant for someone else.", TimeSpan.FromHours(22));
+        wrongThread.Delete(elena, wrongThread.CreatedAtUtc.AddMinutes(2));
+
+        var reply = Write(elena, "The logo looks much better now.\nCan we try a darker blue for the buttons?", TimeSpan.FromHours(24));
+        Write(ana, "Sure, I'll send two options this afternoon.", TimeSpan.FromHours(25));
+
+        conversationReads.Add(ConversationRead.Start(elena, projectId, reply.CreatedAtUtc));
+        conversationReads.Add(ConversationRead.Start(ana, projectId, typo.CreatedAtUtc));
     }
 
     // The bytes go to the object storage (docker compose up -d starts it), the row to the database with everything else.

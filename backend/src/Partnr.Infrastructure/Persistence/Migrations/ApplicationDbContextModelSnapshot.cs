@@ -251,6 +251,30 @@ namespace Partnr.Infrastructure.Persistence.Migrations
                     b.ToTable("client_invitations", (string)null);
                 });
 
+            modelBuilder.Entity("Partnr.Domain.Entities.ConversationRead", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastReadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("UserId", "ProjectId")
+                        .IsUnique();
+
+                    b.ToTable("conversation_reads", (string)null);
+                });
+
             modelBuilder.Entity("Partnr.Domain.Entities.Deliverable", b =>
                 {
                     b.Property<Guid>("Id")
@@ -299,6 +323,45 @@ namespace Partnr.Infrastructure.Persistence.Migrations
                     b.HasIndex("WorkspaceId", "ProjectId");
 
                     b.ToTable("deliverables", (string)null);
+                });
+
+            modelBuilder.Entity("Partnr.Domain.Entities.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EditedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.HasIndex("WorkspaceId");
+
+                    b.HasIndex("ProjectId", "CreatedAtUtc");
+
+                    b.ToTable("messages", (string)null);
                 });
 
             modelBuilder.Entity("Partnr.Domain.Entities.Notification", b =>
@@ -812,6 +875,21 @@ namespace Partnr.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Partnr.Domain.Entities.ConversationRead", b =>
+                {
+                    b.HasOne("Partnr.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Partnr.Infrastructure.Authentication.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Partnr.Domain.Entities.Deliverable", b =>
                 {
                     b.HasOne("Partnr.Domain.Entities.Project", null)
@@ -824,6 +902,27 @@ namespace Partnr.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("StageId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Partnr.Domain.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Partnr.Domain.Entities.Message", b =>
+                {
+                    b.HasOne("Partnr.Infrastructure.Authentication.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Partnr.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("Partnr.Domain.Entities.Workspace", null)
                         .WithMany()

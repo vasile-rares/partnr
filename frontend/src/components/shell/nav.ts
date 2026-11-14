@@ -16,6 +16,8 @@ export type NavItem = {
   href?: string;
   /** Active only on this exact path, not on the pages below it. */
   exact?: boolean;
+  /** An API route answering `{ unread }`: the item shows that number, kept current by the hub. */
+  unreadFrom?: string;
 };
 
 export type NavGroup = {
@@ -37,7 +39,12 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
     {
       label: "Collaborate",
       items: [
-        { label: "Messages", icon: MessageSquareIcon },
+        {
+          label: "Messages",
+          icon: MessageSquareIcon,
+          href: `${base}/messages`,
+          unreadFrom: `/api/workspaces/${workspaceId}/conversations/unread-count`,
+        },
         { label: "Meetings", icon: VideoIcon },
       ],
     },
@@ -59,7 +66,12 @@ export function portalNav(workspaceId: string): NavGroup[] {
       items: [
         { label: "Home", icon: HouseIcon, href: base, exact: true },
         { label: "Projects", icon: FolderKanbanIcon, href: `${base}/projects` },
-        { label: "Messages", icon: MessageSquareIcon },
+        {
+          label: "Messages",
+          icon: MessageSquareIcon,
+          href: `${base}/messages`,
+          unreadFrom: `/api/portal/workspaces/${workspaceId}/conversations/unread-count`,
+        },
       ],
     },
   ];

@@ -44,7 +44,9 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<IInboxPublisher, SignalRInboxPublisher>(); // replaces the do-nothing one AddInfrastructure leaves
+// These replace the do-nothing ones AddInfrastructure leaves.
+builder.Services.AddSingleton<IInboxPublisher, SignalRInboxPublisher>();
+builder.Services.AddSingleton<IConversationPublisher, SignalRConversationPublisher>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

@@ -5,6 +5,7 @@ using Partnr.Application.DTOs.Clients;
 using Partnr.Application.DTOs.Deliverables;
 using Partnr.Application.DTOs.ProjectUpdates;
 using Partnr.Application.DTOs.Invitations;
+using Partnr.Application.DTOs.Messages;
 using Partnr.Application.DTOs.Projects;
 using Partnr.Application.DTOs.Workspaces;
 using Partnr.Infrastructure;
@@ -65,7 +66,19 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         var member = await SignIn(DevelopmentSeed.MemberEmail);
         var asMember = await member.GetFromJsonAsync<WorkspaceResponse>($"/api/workspaces/{studio.Id}");
         Assert.Equal("Member", asMember!.Role);
+
+        // The website's conversation: one deleted and one edited message, and each person a different unread count.
+        var conversation = await owner.GetFromJsonAsync<ConversationResponse>($"/api/workspaces/{studio.Id}/conversations/{website.Id}");
+        Assert.Equal(7, conversation!.Messages.Count);
+        Assert.Single(conversation.Messages, m => m.IsDeleted);
+        Assert.Single(conversation.Messages, m => m.EditedAtUtc is not null && !m.IsDeleted);
+        Assert.Equal(1, await Unread(owner, $"/api/workspaces/{studio.Id}/conversations/unread-count"));
+        Assert.Equal(5, await Unread(member, $"/api/workspaces/{studio.Id}/conversations/unread-count"));
+        Assert.Equal(1, await Unread(await SignIn(DevelopmentSeed.ClientEmail), $"/api/portal/workspaces/{studio.Id}/conversations/unread-count"));
     }
+
+    private static async Task<int> Unread(HttpClient http, string url) =>
+        (await http.GetFromJsonAsync<UnreadMessagesResponse>(url))!.Unread;
 
     private async Task<HttpClient> SignIn(string email)
     {

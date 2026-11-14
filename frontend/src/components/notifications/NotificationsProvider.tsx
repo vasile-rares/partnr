@@ -17,7 +17,11 @@ type NotificationsState = {
   /** "gone": it was taken back in the meantime (404). "failed": the answer was lost, the item is not marked. */
   markRead: (item: NotificationItem) => Promise<"ok" | "gone" | "failed">;
   markAllRead: () => Promise<void>;
+  /** Called with a project's id when its conversation changed, or with null when anything may have (the connection came back). */
+  subscribeToConversations: (listener: ConversationListener) => () => void;
 };
+
+type ConversationListener = (projectId: string | null) => void;
 
 const NotificationsContext = createContext<NotificationsState | null>(null);
 
@@ -44,6 +48,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<NotificationItem[] | null>(null);
   const [failed, setFailed] = useState(false);
   const listOpen = useRef(false);
+  const conversationListeners = useRef(new Set<ConversationListener>());
 
   const loadList = useCallback(async () => {
     const result = await getJson<Notifications>("/api/notifications");
@@ -87,8 +92,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .withAutomaticReconnect({ nextRetryDelayInMilliseconds: (context) => retryDelay(context.previousRetryCount) })
       .configureLogging(LogLevel.None) // a failed start is retried below, and dev's double mount would log a harmless "stopped"
       .build();
+    const conversationsChanged = (projectId: string | null) => conversationListeners.current.forEach((listener) => listener(projectId));
     connection.on("inboxChanged", () => active && refreshNow());
-    connection.onreconnected(() => active && refreshNow());
+    connection.on("conversationChanged", (projectId: string) => active && conversationsChanged(projectId));
+    connection.onreconnected(() => {
+      if (active) {
+        refreshNow();
+        conversationsChanged(null);
+      }
+    });
 
     // Automatic reconnection only covers a connection that was up; the first connection is retried here.
     const connect = async (attempt: number): Promise<void> => {
@@ -102,6 +114,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
       if (active) {
         refreshNow();
+        conversationsChanged(null); // whatever happened before the connection was up was never sent
       }
     };
 
@@ -139,10 +152,28 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const subscribeToConversations = useCallback((listener: ConversationListener) => {
+    const listeners = conversationListeners.current;
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
+
   const value = useMemo(
-    () => ({ unread, items, failed, setListOpen, loadList, markRead, markAllRead }),
-    [unread, items, failed, setListOpen, loadList, markRead, markAllRead],
+    () => ({ unread, items, failed, setListOpen, loadList, markRead, markAllRead, subscribeToConversations }),
+    [unread, items, failed, setListOpen, loadList, markRead, markAllRead, subscribeToConversations],
   );
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
+}
+
+/** Runs `onChange` when a conversation changes (with its project's id) or when anything may have (null). */
+export function useConversationChanges(onChange: ConversationListener) {
+  const { subscribeToConversations } = useNotifications();
+  const latest = useRef(onChange);
+  useEffect(() => {
+    latest.current = onChange;
+  });
+  useEffect(() => subscribeToConversations((projectId) => latest.current(projectId)), [subscribeToConversations]);
 }

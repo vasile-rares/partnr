@@ -26,6 +26,7 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Connection string 'Postgres' is not configured.");
 
         services.TryAddSingleton<IInboxPublisher, NoopInboxPublisher>();
+        services.TryAddSingleton<IConversationPublisher, NoopConversationPublisher>();
         services.AddSingleton<InboxPushInterceptor>();
         services.AddDbContext<ApplicationDbContext>((sp, options) => options
             .UseNpgsql(connectionString)
@@ -41,6 +42,8 @@ public static class DependencyInjection
         services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IConversationReadRepository, ConversationReadRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();

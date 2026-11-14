@@ -14,4 +14,7 @@ public sealed class NotificationsHub : Hub
     public const string Route = "/api/hubs/notifications";
 
     public const string InboxChanged = "inboxChanged";
+
+    /// <summary>Carries the project's id, so an open conversation knows it is the one to reload.</summary>
+    public const string ConversationChanged = "conversationChanged";
 }

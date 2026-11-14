@@ -16,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { UnreadMessagesBadge } from "@/components/messages/UnreadMessagesBadge";
 import { ContextSwitcher } from "./ContextSwitcher";
 import { NavUser } from "./NavUser";
 import { isActivePath, portalNav, workspaceNav, type NavGroup, type NavItem } from "./nav";
@@ -137,6 +138,7 @@ function NavEntry({ item, active }: { item: NavItem; active: boolean }) {
         <Icon aria-hidden />
         <span>{item.label}</span>
       </SidebarMenuButton>
+      {item.unreadFrom ? <UnreadMessagesBadge source={item.unreadFrom} /> : null}
     </SidebarMenuItem>
   );
 }
