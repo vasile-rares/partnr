@@ -33,6 +33,14 @@ builder.Services.AddRateLimiter(options =>
             SegmentsPerWindow = 6,
             QueueLimit = 0,
         }));
+    options.AddPolicy(RateLimitPolicies.PasswordReset, _ => RateLimitPartition.GetFixedWindowLimiter(
+        RateLimitPolicies.PasswordReset,
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = RateLimitPolicies.PasswordResetsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        }));
 });
 
 builder.Services.AddSignalR();

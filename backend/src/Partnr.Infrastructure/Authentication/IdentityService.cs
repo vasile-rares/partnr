@@ -97,6 +97,41 @@ internal sealed class IdentityService(
         return ToResponse(user);
     }
 
+    public async Task<bool> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            return false;
+        }
+
+        var errors = new List<string>();
+        foreach (var validator in userManager.PasswordValidators)
+        {
+            var check = await validator.ValidateAsync(userManager, user, newPassword);
+            errors.AddRange(check.Errors.Select(e => e.Description));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationFailedException(string.Join(" ", errors));
+        }
+
+        // Proving the email is enough to unlock the account too.
+        user.PasswordHash = userManager.PasswordHasher.HashPassword(user, newPassword);
+        user.AccessFailedCount = 0;
+        user.LockoutEnd = null;
+
+        // Saves the user; the new stamp makes every other session's cookie fail its next check.
+        var result = await userManager.UpdateSecurityStampAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Could not reset the password of account '{userId}': {string.Join(" ", result.Errors.Select(e => e.Description))}");
+        }
+
+        return true;
+    }
+
     public async Task SignInAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())

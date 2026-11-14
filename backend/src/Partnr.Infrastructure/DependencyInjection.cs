@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectFileRepository, ProjectFileRepository>();
         services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();
@@ -56,6 +57,9 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<BackgroundEmailQueue>();
+        services.AddSingleton<IBackgroundEmailQueue>(sp => sp.GetRequiredService<BackgroundEmailQueue>());
+        services.AddHostedService(sp => sp.GetRequiredService<BackgroundEmailQueue>());
 
         services.AddOptions<NotificationOptions>()
             .Bind(configuration.GetSection(NotificationOptions.SectionName))

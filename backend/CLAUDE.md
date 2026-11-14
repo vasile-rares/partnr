@@ -78,7 +78,7 @@ Domain         -> nothing
 - Identity's cookie handler would redirect to a login page; it is overridden to answer 401 / 403 (an API has no login page).
 - CORS must keep `AllowCredentials()` or the browser will not send the cookie from `localhost:3000`.
 - Roles are not global. They will belong to workspace memberships (next step), so `ApplicationDbContext` extends `IdentityUserContext` (no role tables).
-- Email confirmation and password reset are not built yet; they come with the email service (Invitations step).
+- **Password reset** (`PasswordResetService`, `PasswordResetToken`, table `password_reset_tokens`): `POST /api/auth/forgot-password` always answers 204 and emails only an existing account, through `IBackgroundEmailQueue` (in memory, so the response time does not show whether an email went out); the link carries a `SecureToken` (only its hash is stored, as for invitations), works once, for an hour, and a newer link cancels it; one email a minute per account and a global rate limit (`RateLimitPolicies.PasswordReset`; per address is pointless while the web app's proxy hides the visitor's address). `GET /api/auth/reset-password/{token}` checks a link (404 not ours, 409 used / replaced / expired); `POST /api/auth/reset-password` sets the password through `IIdentityService.ResetPasswordAsync` (same password rules, lockout cleared, security stamp changed, so every other session is signed out) and signs this one in. Email confirmation is not built.
 
 ## Authorization (workspaces)
 

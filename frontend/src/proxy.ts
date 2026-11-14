@@ -21,5 +21,5 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Everything except the public pages (sign-in, sign-up and invitation links, which are opened before an account exists),
   // the API rewrite, Next internals and static files (anything with a dot).
-  matcher: ["/((?!login$|register$|invite/|api/|_next/|.*\\..*).*)"],
+  matcher: ["/((?!login$|register$|forgot-password$|reset-password/|invite/|api/|_next/|.*\\..*).*)"],
 };

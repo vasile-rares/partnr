@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IPortalApprovalService, PortalApprovalService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<WorkspaceAccess>();
         services.AddScoped<IWorkspaceService, WorkspaceService>();
 

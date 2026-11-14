@@ -1,6 +1,4 @@
-using System.Buffers.Text;
-using System.Security.Cryptography;
-using System.Text;
+using Partnr.Domain.Common;
 using Partnr.Domain.Enums;
 using Partnr.Domain.Exceptions;
 
@@ -85,20 +83,11 @@ public sealed class ClientInvitation : Entity
         return new ClientInvitation(workspaceId, clientId, Client.NormalizeEmail(email), tokenHash, invitedByUserId, nowUtc);
     }
 
-    /// <summary>A longer token cannot be one of ours: reject it early.</summary>
-    public const int TokenMaxLength = 100;
+    public const int TokenMaxLength = SecureToken.MaxLength;
 
-    /// <summary>256 random bits, URL-safe. The token goes in the email, only its hash is stored.</summary>
-    public static (string Token, string Hash) NewToken()
-    {
-        var token = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
+    public static (string Token, string Hash) NewToken() => SecureToken.New();
 
-        return (token, HashToken(token));
-    }
-
-    /// <summary>SHA-256 in hex: the one definition of what a link has to match.</summary>
-    public static string HashToken(string token) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+    public static string HashToken(string token) => SecureToken.Hash(token);
 
     public InvitationStatus StatusAt(DateTime nowUtc)
     {

@@ -387,6 +387,7 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas (a): notificări salvate și email (worker în fundal, cu retry) pentru cerere de aprobare, răspunsul clientului și invitație acceptată
   - [x] Pas (b): clopoțel și inbox în aplicație (citit / necitit), prin REST
   - [x] Pas (c): push live prin SignalR, peste (b)
+- [x] Resetarea parolei (după MVP): link pe email, o folosire, 1 oră, celelalte sesiuni ies
 - [x] Fișiere de proiect (upload de fișiere, separate de livrabile), în trei pași:
   - [x] Pas 1: API și stocare S3-compatibilă (RustFS local), fără aprobări
   - [x] Pas 2: secțiunea „Files" pentru freelancer, cu urcare, descărcare, Draft / Shared și arhivare

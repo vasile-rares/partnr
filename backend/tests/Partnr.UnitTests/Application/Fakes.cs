@@ -458,4 +458,43 @@ internal sealed class FakeIdentityService : IIdentityService
         SignedOut = true;
         return Task.CompletedTask;
     }
+
+    public Dictionary<Guid, string> ResetPasswords { get; } = [];
+
+    public Task<bool> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken cancellationToken)
+    {
+        if (RejectNewPasswords)
+        {
+            throw new ValidationFailedException("Passwords must be at least 8 characters.");
+        }
+
+        if (Accounts.All(a => a.Id != userId))
+        {
+            return Task.FromResult(false);
+        }
+
+        _passwords[userId] = newPassword;
+        ResetPasswords[userId] = newPassword;
+        return Task.FromResult(true);
+    }
+}
+
+internal sealed class FakePasswordResetTokenRepository : IPasswordResetTokenRepository
+{
+    public List<PasswordResetToken> Items { get; } = [];
+
+    public Task<PasswordResetToken?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(t => t.TokenHash == tokenHash));
+
+    public Task<PasswordResetToken?> GetOpenForUserAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(t => t.UserId == userId && t.IsOpen));
+
+    public void Add(PasswordResetToken token) => Items.Add(token);
+}
+
+internal sealed class FakeBackgroundEmailQueue : IBackgroundEmailQueue
+{
+    public List<EmailMessage> Queued { get; } = [];
+
+    public void Enqueue(EmailMessage message) => Queued.Add(message);
 }

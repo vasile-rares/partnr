@@ -22,6 +22,12 @@ public interface IIdentityService
     /// <summary>Null when the account no longer exists.</summary>
     Task<CurrentUserResponse?> UpdateProfileAsync(Guid id, string fullName, string? phone, string? company, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Sets a new password without the old one (the caller proved the email), clears a lockout and changes the security stamp,
+    /// which signs out every other session. False when the account no longer exists; a password the rules refuse throws.
+    /// </summary>
+    Task<bool> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken cancellationToken);
+
     Task SignInAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>Null for an unknown email, a wrong password or a locked-out account.</summary>
