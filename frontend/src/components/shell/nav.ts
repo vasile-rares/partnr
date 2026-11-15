@@ -51,7 +51,7 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
     {
       label: "Plan",
       items: [
-        { label: "Calendar", icon: CalendarIcon },
+        { label: "Calendar", icon: CalendarIcon, href: `${base}/calendar` },
         { label: "Tasks", icon: ListChecksIcon },
       ],
     },
@@ -66,6 +66,7 @@ export function portalNav(workspaceId: string): NavGroup[] {
       items: [
         { label: "Home", icon: HouseIcon, href: base, exact: true },
         { label: "Projects", icon: FolderKanbanIcon, href: `${base}/projects` },
+        { label: "Calendar", icon: CalendarIcon, href: `${base}/calendar` },
         {
           label: "Messages",
           icon: MessageSquareIcon,

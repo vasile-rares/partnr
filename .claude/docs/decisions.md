@@ -199,6 +199,19 @@
 - **Paginare:** ultimele 50, cele mai vechi primele în pagină; `?before=` aduce cele dinainte (ordinea după oră, id-ul UUID v7 departajează).
 - **Live:** după scriere, editare sau ștergere, `IConversationPublisher` trimite prin același hub `conversationChanged` cu **doar id-ul proiectului** tuturor celor care pot citi conversația; marcarea ca citit îl trimite doar celui care a citit (celelalte taburi ale lui). Mesajele nu intră în clopoțel.
 
+## Calendar și întâlniri
+
+- **Pași:** (a) pagina Calendar, fără Google (făcut); (b+c) Meetings cu Google, **un singur pas**, fiindcă invitația și reminder-ul pleacă prin Google, deci fără Google conectat nu se poate crea nicio întâlnire. „Meetings" rămâne „Soon" până atunci.
+- **Pasul (a):** `/w/{id}/calendar` și `/portal/{id}/calendar`, aceeași vedere (`CalendarView`, `src/components/calendar/`), fără endpoint propriu: se construiește din `getProjects` (freelancer) și din `getPortalProject` pe fiecare proiect (client, ca pe Home, fiindcă etapele sunt doar acolo). Logica e pură, în `lib/calendar/calendar.ts`, testată fără browser. **Evenimente:** data de final a proiectului și data fiecărei etape nefinalizate; nimic din proiectele Completed, nicio etapă Done, nicio dată de start. Clientul vede doar ce vede și în rest (portalul nu primește proiecte Planning sau arhivate).
+- **Grila e făcută de noi**, cu `date-fns` / `Date` în UTC, nu cu o bibliotecă de calendar: sunt date întregi, fără ore, iar `react-day-picker` e pentru alegerea unei date, nu pentru evenimente. Se reia la Meetings, când apar orele, dacă apare nevoia de vedere pe săptămână / zi sau drag & drop. Luni e prima zi. Pe ecran îngust grila e înlocuită de o listă pe zile (`calendar-agenda`). Luna e în adresă (`?month=2026-11`, o valoare greșită cade pe luna curentă) și se schimbă cu linkuri, deci o încarcă serverul.
+- **Meetings (b+c), stabilit și nefăcut:**
+  - Google Calendar **într-o singură direcție** (aplicația → Google), cu link Meet; nu citim nimic din Google, deci **fără webhook-uri** (compromis: o întâlnire mutată direct în Google nu se vede la noi). Permisiunea cerută: `calendar.events`.
+  - **Contul Google e al fiecărui utilizator**, opțional, tokenul salvat criptat. Aplicația Google rămâne în modul Testing (max. 100 de utilizatori, token de 7 zile) până aproape de lansare, când se cere verificarea.
+  - **Clientul e obligatoriu** la o întâlnire, proiectul opțional. **Fără Draft**: clientul e invitat de Google la creare și o vede și în portal.
+  - **Invitația și reminder-ele sunt ale Google**, nu ale sistemului de notificări (clientul primește reminder-ele din setările lui Google). Edit schimbă evenimentul, Cancel îl șterge (clientul e anunțat de Google), întâlnirea rămâne în istoric „Cancelled".
+  - **Sincronizarea se face în fundal cu retry**, ca emailurile: întâlnirea se salvează întâi, apare „Not synced" dacă Google nu răspunde și „Reconnect Google" dacă tokenul e revocat. Accesul la Google trece printr-o interfață din Application, ca testele e2e să folosească una falsă.
+  - Ora se **salvează în UTC** și fiecare o vede în fusul browserului lui, cu numele fusului.
+
 ## Interfață
 
 Refacerea UI se face pe pași, planul complet e în [ui-redesign.md](ui-redesign.md).

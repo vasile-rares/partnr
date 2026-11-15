@@ -405,6 +405,9 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 6: dashboard-ul freelancerului
   - [x] Pas 7: Home-ul clientului
   - [x] Pas 8 (backend): aprobările în sumarul proiectului
+- [ ] Calendar și întâlniri (după MVP), în doi pași (deciziile în [decisions.md](decisions.md)):
+  - [x] Pas (a): pagina Calendar cu deadline-urile proiectelor și etapelor, la freelancer și în portal, fără Google
+  - [ ] Pas (b+c): Meetings cu Google Calendar și Meet (un sens, cont per utilizator, invitație și reminder prin Google)
 
 ## Decizii luate
 
