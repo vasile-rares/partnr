@@ -327,6 +327,11 @@ Inspirate din [taskview-community](https://github.com/Gimanh/taskview-community)
 - **Deploy: imagini Docker separate pentru API, web și migrări** (migrarea rulează o singură dată, înaintea API-ului), ca schema să nu se aplice de două instanțe deodată.
 - **Permisiuni pe proiect** (un membru vede doar anumite proiecte), printr-o schimbare în `WorkspaceAccess`; azi toți membrii văd toți clienții.
 - **MCP server** peste API-ul public, pentru partea de AI (de ex. „ce are de făcut clientul X?"). Cere întâi API public stabil și tokenuri.
+- **Schema pentru integrări externe** (GitHub, Apple etc.; nimic decis, se reia când începe a doua integrare reală, nu înainte). Ce am stabilit la revizuirea bazei de date:
+  - **Autentificarea nu e o integrare de date.** „Sign in with GitHub / Apple / Google" folosește `user_logins` din Identity (există deja, goală); nu intră în `google_connections`.
+  - **`google_connections` e legată de Google** (un rând per cont). La a doua integrare de date se generalizează într-un tabel cu `Provider`, contul extern, credențialele criptate, `Scopes`, `Status`, ultima eroare, unic pe `(proprietar, Provider)`. Decizia principală: **per cont sau per workspace** (Google Calendar e per cont; GitHub, Stripe, Slack sunt de regulă per workspace). Recomandare: două tabele (`user_integrations`, `workspace_integrations`), fiindcă regulile de acces diferă (persoana decide pe cele personale, Owner-ul pe cele de workspace). Nu toate sunt OAuth (Apple Calendar înseamnă CalDAV cu parolă specifică aplicației), deci credențialele nu presupun un refresh token.
+  - **`meetings` are coloane specifice Google** (`GoogleEventId`, `MeetUrl`, starea sincronizării). La un al doilea furnizor de calendar sau video: `MeetUrl` devine `JoinUrl`, iar sincronizarea trece într-un tabel separat (de ex. `meeting_external_events`: `MeetingId`, `Provider`, `ExternalId`, `JoinUrl`, `SyncStatus`, `Attempts`, `NextSyncAtUtc`, `Version`). Rezolvă și amestecul dintre datele întâlnirii și coada de sincronizare.
+  - Până atunci codul Google rămâne în spatele porturilor (`IGoogleOAuthClient`, `IGoogleCalendarClient`), ca generalizarea să fie o redenumire, nu o rescriere. Mai multe în „Calendar și întâlniri" din [decisions.md](decisions.md).
 
 ### Dorite după MVP
 
