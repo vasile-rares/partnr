@@ -45,7 +45,7 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
           href: `${base}/messages`,
           unreadFrom: `/api/workspaces/${workspaceId}/conversations/unread-count`,
         },
-        { label: "Meetings", icon: VideoIcon },
+        { label: "Meetings", icon: VideoIcon, href: `${base}/meetings` },
       ],
     },
     {
@@ -67,6 +67,7 @@ export function portalNav(workspaceId: string): NavGroup[] {
         { label: "Home", icon: HouseIcon, href: base, exact: true },
         { label: "Projects", icon: FolderKanbanIcon, href: `${base}/projects` },
         { label: "Calendar", icon: CalendarIcon, href: `${base}/calendar` },
+        { label: "Meetings", icon: VideoIcon, href: `${base}/meetings` },
         {
           label: "Messages",
           icon: MessageSquareIcon,

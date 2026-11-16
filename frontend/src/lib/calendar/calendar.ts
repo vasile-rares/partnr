@@ -11,30 +11,47 @@ export type CalendarSource = {
   clientName: string | null;
 };
 
+/** A call with a client. The freelancer's and the client's meetings both fit. */
+export type CalendarMeeting = {
+  id: string;
+  title: string;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  status: "Scheduled" | "Cancelled";
+  clientName: string | null;
+};
+
 export type CalendarEvent = {
   key: string;
-  /** "YYYY-MM-DD", a day with no time or zone. */
+  /** "YYYY-MM-DD", a day with no time or zone. For a meeting it is the UTC day, which the browser replaces by the reader's own. */
   date: string;
   title: string;
-  kind: "project" | "stage";
-  projectId: string;
+  kind: "project" | "stage" | "meeting";
+  /** Null for a meeting, which is not about one project. */
+  projectId: string | null;
   projectName: string;
   clientName: string | null;
   late: boolean;
+  /** Only meetings have a time of day. */
+  startsAtUtc: string | null;
+  endsAtUtc: string | null;
 };
 
 /** A "YYYY-MM" month. */
 export type Month = string;
 
-/** Open work with a date: the project's end and every unfinished stage. A completed project has nothing left to plan. */
-export function buildEvents(sources: CalendarSource[], today: string): CalendarEvent[] {
+/**
+ * Open work with a date: the project's end and every unfinished stage (a completed project has nothing left to plan), and the
+ * meetings that were not called off, the ones that already took place included.
+ */
+export function buildEvents(sources: CalendarSource[], today: string, meetings: CalendarMeeting[] = []): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
   for (const source of sources) {
     if (source.status === "Completed") {
       continue;
     }
-    const base = { projectId: source.id, projectName: source.name, clientName: source.clientName };
+    const base = { projectId: source.id, projectName: source.name, clientName: source.clientName, startsAtUtc: null, endsAtUtc: null };
 
     if (source.dueDate) {
       events.push({ ...base, key: source.id, date: source.dueDate, title: source.name, kind: "project", late: source.dueDate < today });
@@ -46,7 +63,32 @@ export function buildEvents(sources: CalendarSource[], today: string): CalendarE
     }
   }
 
-  return events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+  for (const meeting of meetings) {
+    if (meeting.status === "Cancelled") {
+      continue;
+    }
+    events.push({
+      key: meeting.id,
+      date: meeting.startsAtUtc.slice(0, 10),
+      title: meeting.title,
+      kind: "meeting",
+      projectId: null,
+      projectName: "",
+      clientName: meeting.clientName,
+      late: false,
+      startsAtUtc: meeting.startsAtUtc,
+      endsAtUtc: meeting.endsAtUtc,
+    });
+  }
+
+  // On one day the meetings come first, by the hour; the deadlines follow.
+  return events.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      (a.kind === "meeting" ? 0 : 1) - (b.kind === "meeting" ? 0 : 1) ||
+      (a.startsAtUtc ?? "").localeCompare(b.startsAtUtc ?? "") ||
+      a.title.localeCompare(b.title),
+  );
 }
 
 export const todayUtc = (): string => new Date().toISOString().slice(0, 10);
@@ -85,11 +127,12 @@ const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numer
 /** "November 2026" */
 export const monthLabel = (month: Month): string => monthName.format(new Date(`${month}-01T00:00:00Z`));
 
-/** The events by day, for a grid to look up. */
-export function eventsByDay(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
+/** The events by day, for a grid to look up. `dayOf` says which day an event belongs to (a meeting's depends on the reader's time zone). */
+export function eventsByDay(events: CalendarEvent[], dayOf: (event: CalendarEvent) => string = (event) => event.date): Map<string, CalendarEvent[]> {
   const byDay = new Map<string, CalendarEvent[]>();
   for (const event of events) {
-    byDay.set(event.date, [...(byDay.get(event.date) ?? []), event]);
+    const day = dayOf(event);
+    byDay.set(day, [...(byDay.get(day) ?? []), event]);
   }
   return byDay;
 }

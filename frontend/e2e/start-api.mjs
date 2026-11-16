@@ -99,6 +99,9 @@ const env = {
   ASPNETCORE_URLS: `http://localhost:${apiPort}`,
   // Links in emails must open the frontend that the tests run against (see playwright.config.ts), not the dev one on :3000.
   App__FrontendUrl: process.env.E2E_FRONTEND_URL ?? "http://localhost:3100",
+  // No Google account is needed: a stand-in walks the same flows (Development only, the API refuses it anywhere else).
+  Google__Fake: "true",
+  Google__RedirectUri: `${process.env.E2E_FRONTEND_URL ?? "http://localhost:3100"}/api/integrations/google/callback`,
 };
 
 function dotnet(args, { cwd = backendDir } = {}) {

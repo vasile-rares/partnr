@@ -24,6 +24,7 @@ internal sealed class DevelopmentDataSeeder(
     INotificationRepository notifications,
     IMessageRepository messages,
     IConversationReadRepository conversationReads,
+    IMeetingRepository meetings,
     IAppLinks links,
     IUnitOfWork unitOfWork,
     ILogger<DevelopmentDataSeeder> logger)
@@ -158,6 +159,7 @@ internal sealed class DevelopmentDataSeeder(
         notifications.Add(answered);
 
         AddConversation(studio.Id, website.Id, owner.Id, member.Id, account.Id);
+        AddMeetings(studio.Id, linked.Id, website.Id, owner.Id);
 
         deliverables.Add(Deliverable.Create(studio.Id, website.Id, development.Id, "Staging site", "Not ready to show yet.", "https://staging.elena-design.example"));
 
@@ -215,6 +217,29 @@ internal sealed class DevelopmentDataSeeder(
             "Also: {Client} is a client of Studio Pop (same password); the pending invitation is {Link}.",
             DevelopmentSeed.ClientEmail,
             links.InvitationUrl(DevelopmentSeed.PendingInvitationToken));
+    }
+
+    // Three meetings with Elena, already "sent" to Google (there is no Google behind the demo data): one coming up with a Meet link, one
+    // called off, and one that took place two days ago, which Schedule would refuse today, so it is made as of the day it was planned.
+    private void AddMeetings(Guid workspaceId, Guid clientId, Guid projectId, Guid organizerId)
+    {
+        var now = DateTime.UtcNow;
+        var tomorrow = now.Date.AddDays(1).AddHours(10);
+
+        Meeting Plan(Guid? project, string title, string? note, DateTime start, TimeSpan length, DateTime plannedAt, string meetUrl)
+        {
+            var meeting = Meeting.Schedule(workspaceId, clientId, organizerId, project, title, note, start, start + length, plannedAt);
+            meeting.RecordSynced(meeting.Version, meeting.EventId, meetUrl, plannedAt);
+            meetings.Add(meeting);
+
+            return meeting;
+        }
+
+        Plan(projectId, "Design review", "Walk through the homepage mockups together.", tomorrow, TimeSpan.FromMinutes(45), now, "https://meet.google.com/abc-defg-hij");
+        var calledOff = Plan(null, "Branding chat", null, now.Date.AddDays(3).AddHours(14), TimeSpan.FromMinutes(30), now, "https://meet.google.com/klm-nopq-rst");
+        calledOff.Cancel(now);
+        calledOff.RecordSynced(calledOff.Version, null, null, now);
+        Plan(projectId, "Kick-off call", "Goals, audience and the pages we need.", now.Date.AddDays(-2).AddHours(10), TimeSpan.FromHours(1), now.AddDays(-5), "https://meet.google.com/uvw-xyza-bcd");
     }
 
     // A conversation that already went on for a couple of days, with one corrected and one deleted message. Read marks differ per

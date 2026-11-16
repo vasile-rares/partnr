@@ -32,6 +32,11 @@ public static class DependencyInjection
         services.AddScoped<ConversationThreads>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IPortalMessageService, PortalMessageService>();
+        services.AddScoped<IGoogleConnectionService, GoogleConnectionService>();
+        services.AddScoped<MeetingResponseBuilder>();
+        services.AddScoped<IMeetingService, MeetingService>();
+        services.AddScoped<IPortalMeetingService, PortalMeetingService>();
+        services.AddScoped<IMeetingSyncService, MeetingSyncService>();
         services.AddScoped<IPortalService, PortalService>();
         services.AddScoped<IPortalApprovalService, PortalApprovalService>();
         services.AddScoped<IAuthService, AuthService>();

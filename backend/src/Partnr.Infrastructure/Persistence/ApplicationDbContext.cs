@@ -38,6 +38,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<ConversationRead> ConversationReads => Set<ConversationRead>();
 
+    public DbSet<GoogleConnection> GoogleConnections => Set<GoogleConnection>();
+
+    public DbSet<Meeting> Meetings => Set<Meeting>();
+
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
@@ -45,6 +49,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         try
         {
             return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("This was changed a moment ago by someone else. Reload and try again.");
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: UniqueViolationSqlState })
         {

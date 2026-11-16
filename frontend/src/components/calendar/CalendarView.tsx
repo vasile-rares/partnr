@@ -1,5 +1,9 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+"use client";
+
+import { ChevronLeftIcon, ChevronRightIcon, VideoIcon } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
+import { useInBrowser, useTimeZone } from "@/components/meetings/useInBrowser";
 import { buttonVariants } from "@/components/ui/button";
 import {
   eventsByDay,
@@ -11,6 +15,7 @@ import {
   type Month,
 } from "@/lib/calendar/calendar";
 import { formatDate } from "@/lib/format";
+import { clockOf, dayOf, localDateOf } from "@/lib/meetings/time";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -23,12 +28,19 @@ type CalendarViewProps = {
   basePath: string;
   /** Where a project's page is: the event's link goes to `${projectsPath}/{projectId}`. */
   projectsPath: string;
+  /** Where the meetings are listed: a meeting's link goes there. */
+  meetingsPath: string;
 };
 
-export function CalendarView({ events, month, today, basePath, projectsPath }: CalendarViewProps) {
-  const byDay = eventsByDay(events);
+// A client component only because a meeting belongs to the day it is on for the reader, which the server cannot know: the server
+// puts it on its UTC day and the browser moves it, once it has taken over (see `useInBrowser`). A deadline is a day with no zone.
+export function CalendarView({ events, month, today, basePath, projectsPath, meetingsPath }: CalendarViewProps) {
+  const inBrowser = useInBrowser();
+  const day = (event: CalendarEvent) => (inBrowser && event.startsAtUtc ? localDateOf(event.startsAtUtc) : event.date);
+  const byDay = useMemo(() => eventsByDay(events, day), [events, inBrowser]); // eslint-disable-line react-hooks/exhaustive-deps
   const monthHref = (target: Month) => (target === monthOf(today) ? basePath : `${basePath}?month=${target}`);
-  const inMonth = events.filter((event) => monthOf(event.date) === month);
+  const inMonth = events.filter((event) => monthOf(day(event)) === month);
+  const hrefOf = (event: CalendarEvent) => (event.kind === "meeting" ? meetingsPath : `${projectsPath}/${event.projectId}`);
 
   return (
     <section aria-label="Calendar" className="calendar flex flex-col gap-4">
@@ -59,16 +71,16 @@ export function CalendarView({ events, month, today, basePath, projectsPath }: C
 
       <div className="calendar-grid hidden overflow-hidden rounded-lg border md:block">
         <div className="calendar-weekdays grid grid-cols-7 border-b bg-muted/40 text-xs font-medium text-muted-foreground">
-          {WEEKDAYS.map((day) => (
-            <div key={day} className="px-2 py-1.5">
-              {day}
+          {WEEKDAYS.map((weekday) => (
+            <div key={weekday} className="px-2 py-1.5">
+              {weekday}
             </div>
           ))}
         </div>
         {monthWeeks(month).map((week) => (
           <div key={week[0]} className="calendar-week grid grid-cols-7 divide-x border-b last:border-b-0">
             {week.map((date) => {
-              const dayEvents = byDay.get(date) ?? [];
+              const dayEvents = inTimeOrder(byDay.get(date) ?? []);
               const outside = monthOf(date) !== month;
               return (
                 <div
@@ -88,7 +100,7 @@ export function CalendarView({ events, month, today, basePath, projectsPath }: C
                   <ul className="calendar-day-events flex flex-col gap-1">
                     {dayEvents.map((event) => (
                       <li key={event.key}>
-                        <EventLink event={event} projectsPath={projectsPath} className="truncate px-1.5 py-0.5 text-xs" />
+                        <EventLink event={event} href={hrefOf(event)} className="truncate px-1.5 py-0.5 text-xs" />
                       </li>
                     ))}
                   </ul>
@@ -104,14 +116,14 @@ export function CalendarView({ events, month, today, basePath, projectsPath }: C
           <p className="text-sm text-muted-foreground">Nothing is due in {monthLabel(month)}.</p>
         ) : (
           <ul className="calendar-agenda-list flex flex-col divide-y rounded-lg border">
-            {inMonth.map((event) => (
-              <li key={event.key} className="calendar-agenda-item flex items-center justify-between gap-3 p-3">
-                <EventLink event={event} projectsPath={projectsPath} className="min-w-0 truncate px-2 py-1 text-sm" />
-                <time dateTime={event.date} className={cn("shrink-0 text-xs", event.late ? "text-destructive" : "text-muted-foreground")}>
-                  {formatDate(event.date)}
-                </time>
-              </li>
-            ))}
+            {[...inMonth]
+              .sort((a, b) => day(a).localeCompare(day(b)))
+              .map((event) => (
+                <li key={event.key} className="calendar-agenda-item flex items-center justify-between gap-3 p-3">
+                  <EventLink event={event} href={hrefOf(event)} className="min-w-0 truncate px-2 py-1 text-sm" />
+                  <EventWhen event={event} day={day(event)} />
+                </li>
+              ))}
           </ul>
         )}
       </div>
@@ -119,24 +131,48 @@ export function CalendarView({ events, month, today, basePath, projectsPath }: C
   );
 }
 
-function EventLink({ event, projectsPath, className }: { event: CalendarEvent; projectsPath: string; className: string }) {
-  const context = event.kind === "stage" ? `Stage of ${event.projectName}` : "Project deadline";
+// Meetings by the hour, then the deadlines.
+const inTimeOrder = (events: CalendarEvent[]): CalendarEvent[] =>
+  [...events].sort((a, b) => (a.startsAtUtc ? 0 : 1) - (b.startsAtUtc ? 0 : 1) || (a.startsAtUtc ?? "").localeCompare(b.startsAtUtc ?? ""));
+
+function EventWhen({ event, day }: { event: CalendarEvent; day: string }) {
+  const timeZone = useTimeZone();
+
+  return (
+    <time dateTime={event.startsAtUtc ?? event.date} className={cn("shrink-0 text-xs", event.late ? "text-destructive" : "text-muted-foreground")}>
+      {event.startsAtUtc ? `${dayOf(event.startsAtUtc, timeZone)} · ${clockOf(event.startsAtUtc, timeZone)}` : formatDate(day)}
+    </time>
+  );
+}
+
+function EventLink({ event, href, className }: { event: CalendarEvent; href: string; className: string }) {
+  const timeZone = useTimeZone();
+  const meeting = event.kind === "meeting";
+  const context = meeting ? "Meeting" : event.kind === "stage" ? `Stage of ${event.projectName}` : "Project deadline";
 
   return (
     <Link
-      href={`${projectsPath}/${event.projectId}`}
+      href={href}
       title={[context, event.clientName].filter(Boolean).join(" · ")}
       className={cn(
         "calendar-event block rounded-md font-medium hover:underline",
         event.late
           ? "bg-destructive/15 text-destructive"
-          : event.kind === "project"
-            ? "bg-primary/15 text-primary"
-            : "bg-muted text-foreground",
+          : meeting
+            ? "border-l-2 border-primary bg-secondary text-secondary-foreground"
+            : event.kind === "project"
+              ? "bg-primary/15 text-primary"
+              : "bg-muted text-foreground",
         className,
       )}
     >
       <span className="sr-only">{context}: </span>
+      {meeting && event.startsAtUtc ? (
+        <>
+          <VideoIcon aria-hidden className="mr-1 inline size-3" />
+          <span className="tabular-nums">{clockOf(event.startsAtUtc, timeZone)}</span>{" "}
+        </>
+      ) : null}
       {event.title}
       {event.late ? <span className="sr-only"> (overdue)</span> : null}
     </Link>

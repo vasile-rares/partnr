@@ -5,6 +5,7 @@ using Partnr.Application.Interfaces.Repositories;
 using Partnr.Application.Interfaces.Services;
 using Partnr.Infrastructure.Authentication;
 using Partnr.Infrastructure.Email;
+using Partnr.Infrastructure.Google;
 using Partnr.Infrastructure.Notifications;
 using Partnr.Infrastructure.Persistence;
 using Partnr.Infrastructure.Persistence.Repositories;
@@ -44,6 +45,8 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConversationReadRepository, ConversationReadRepository>();
+        services.AddScoped<IGoogleConnectionRepository, GoogleConnectionRepository>();
+        services.AddScoped<IMeetingRepository, MeetingRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
         services.AddHttpContextAccessor();
@@ -69,6 +72,24 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddHostedService<NotificationEmailWorker>();
+
+        services.AddOptions<GoogleOptions>()
+            .Bind(configuration.GetSection(GoogleOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<GoogleOptions>, GoogleOptionsValidator>();
+        services.AddSingleton<ISecretProtector, SecretProtector>();
+        if (configuration.GetSection(GoogleOptions.SectionName).GetValue<bool>(nameof(GoogleOptions.Fake)))
+        {
+            services.AddSingleton<IGoogleOAuthClient, FakeGoogleOAuthClient>();
+            services.AddSingleton<IGoogleCalendarClient, FakeGoogleCalendarClient>();
+        }
+        else
+        {
+            services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
+            services.AddHttpClient<IGoogleCalendarClient, GoogleCalendarClient>(client => client.Timeout = TimeSpan.FromSeconds(30));
+        }
+        services.AddHostedService<MeetingSyncWorker>();
 
         services.AddOptions<StorageOptions>()
             .Bind(configuration.GetSection(StorageOptions.SectionName))

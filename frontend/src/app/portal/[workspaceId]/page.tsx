@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalActiveProjects } from "@/components/portal/PortalActiveProjects";
 import { PortalLatestUpdates } from "@/components/portal/PortalLatestUpdates";
+import { PortalNextMeeting } from "@/components/portal/PortalNextMeeting";
 import { PortalWaitingForYou } from "@/components/portal/PortalWaitingForYou";
 import { Page } from "@/components/shell/Page";
 import { requireUser } from "@/lib/auth/session";
+import { getPortalMeetings } from "@/lib/meetings/server";
+import { nowIso, splitMeetings } from "@/lib/meetings/time";
 import { getPortalProject, getPortalProjects, getPortalWorkspace } from "@/lib/portal/server";
 import type { PortalProject } from "@/lib/portal/types";
 
@@ -43,6 +46,7 @@ export default async function PortalHomePage({ params }: PageProps<"/portal/[wor
     .flatMap((project) => project.updates.map((update) => ({ ...update, projectId: project.id, projectName: project.name })))
     .sort((a, b) => b.sharedAtUtc.localeCompare(a.sharedAtUtc))
     .slice(0, LATEST_UPDATES);
+  const nextMeeting = splitMeetings(await getPortalMeetings(workspace.id), nowIso()).upcoming[0] ?? null;
   const firstName = user.fullName.trim().split(/\s+/)[0];
 
   return (
@@ -52,17 +56,20 @@ export default async function PortalHomePage({ params }: PageProps<"/portal/[wor
         Welcome back, {firstName}. Here&apos;s where things stand with {workspace.name}.
       </p>
 
-      {projects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nothing has been shared with you yet. Projects show up here as soon as they are ready.
-        </p>
-      ) : (
-        <div className="portal-home flex flex-col gap-10">
-          <PortalWaitingForYou workspaceId={workspace.id} workspaceName={workspace.name} items={waiting} />
-          <PortalActiveProjects workspaceId={workspace.id} projects={running} />
-          <PortalLatestUpdates workspaceId={workspace.id} updates={updates} />
-        </div>
-      )}
+      <div className="portal-home flex flex-col gap-10">
+        <PortalNextMeeting workspaceId={workspace.id} meeting={nextMeeting} />
+        {projects.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nothing has been shared with you yet. Projects show up here as soon as they are ready.
+          </p>
+        ) : (
+          <>
+            <PortalWaitingForYou workspaceId={workspace.id} workspaceName={workspace.name} items={waiting} />
+            <PortalActiveProjects workspaceId={workspace.id} projects={running} />
+            <PortalLatestUpdates workspaceId={workspace.id} updates={updates} />
+          </>
+        )}
+      </div>
     </Page>
   );
 }

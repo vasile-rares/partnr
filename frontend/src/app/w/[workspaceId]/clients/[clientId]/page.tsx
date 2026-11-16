@@ -1,5 +1,6 @@
 import { CalendarIcon, MailIcon, PencilIcon, PhoneIcon } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InfoTip } from "@/components/actions/InfoTip";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
@@ -7,6 +8,8 @@ import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { ClientNotesCard } from "@/components/clients/ClientNotesCard";
 import { ClientPortalCard } from "@/components/clients/ClientPortalCard";
+import { MeetingList } from "@/components/meetings/MeetingList";
+import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { ProjectsTable } from "@/components/projects/ProjectsTable";
 import { Page } from "@/components/shell/Page";
@@ -18,6 +21,9 @@ import { requireUser } from "@/lib/auth/session";
 import { getClient } from "@/lib/clients/server";
 import { displayName } from "@/lib/clients/types";
 import { formatDate } from "@/lib/format";
+import { getGoogleConnection } from "@/lib/google/server";
+import { getMeetings } from "@/lib/meetings/server";
+import { nowIso, splitMeetings } from "@/lib/meetings/time";
 import { getProjects } from "@/lib/projects/server";
 import { getWorkspace } from "@/lib/workspaces/server";
 
@@ -42,7 +48,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
     notFound();
   }
   // Archived projects too, marked as such: this page is the client's whole history.
-  const projects = await getProjects(workspace.id, { includeArchived: true, clientId: client.id });
+  const [projects, meetings, google] = await Promise.all([
+    getProjects(workspace.id, { includeArchived: true, clientId: client.id }),
+    getMeetings(workspace.id, client.id),
+    getGoogleConnection(),
+  ]);
+  const now = nowIso();
+  const { upcoming } = splitMeetings(meetings, now);
+  const people = [{ id: client.id, displayName: displayName(client) }];
+  const meetingProjects = projects.filter((project) => project.archivedAtUtc === null).map((p) => ({ id: p.id, name: p.name, clientId: client.id }));
   const archived = client.archivedAtUtc !== null;
   // Their email is the title until they have a name; then it is a line of its own.
   const showEmail = client.name !== null;
@@ -122,6 +136,38 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
             ) : (
               <ProjectsTable workspaceId={workspace.id} projects={projects} showClient={false} />
             )}
+
+            <div className="client-meetings mt-10">
+              <div className="client-meetings-header mb-4 flex flex-wrap items-center justify-between gap-4">
+                <h2 id="meetings-title" className="font-heading text-xl font-semibold">
+                  Upcoming meetings
+                </h2>
+                {archived ? null : (
+                  <NewMeetingDialog
+                    workspaceId={workspace.id}
+                    clients={people}
+                    projects={meetingProjects}
+                    google={google}
+                    clientId={client.id}
+                    variant="outline"
+                  />
+                )}
+              </div>
+              <MeetingList
+                workspaceId={workspace.id}
+                meetings={upcoming}
+                clients={people}
+                projects={meetingProjects}
+                now={now}
+                empty="No meetings coming up with this client."
+                showClient={false}
+              />
+              <p className="mt-3 text-sm">
+                <Link href={`/w/${workspace.id}/meetings`} className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                  All meetings
+                </Link>
+              </p>
+            </div>
           </section>
           <aside aria-label="Client summary" className="client-summary order-first flex flex-col gap-4 lg:order-0">
             <ClientPortalCard workspaceId={workspace.id} client={client} />

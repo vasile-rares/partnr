@@ -19,6 +19,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public InMemoryFileStorage Files { get; } = new();
 
+    public FakeGoogleOAuthClient Google { get; } = new();
+
+    public FakeGoogleCalendarClient Calendar { get; } = new();
+
     public async Task InitializeAsync()
     {
         await postgres.StartAsync();
@@ -47,10 +51,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         // Tests run the email service themselves, so what they see does not depend on a timer.
         builder.UseSetting("Notifications:EmailWorkerEnabled", "false");
+        builder.UseSetting("Google:SyncWorkerEnabled", "false");
         builder.ConfigureServices(services =>
         {
             services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
             services.Replace(ServiceDescriptor.Singleton<IFileStorage>(Files));
+            services.Replace(ServiceDescriptor.Singleton<IGoogleOAuthClient>(Google));
+            services.Replace(ServiceDescriptor.Singleton<IGoogleCalendarClient>(Calendar));
         });
     }
 }

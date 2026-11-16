@@ -405,9 +405,16 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] Pas 6: dashboard-ul freelancerului
   - [x] Pas 7: Home-ul clientului
   - [x] Pas 8 (backend): aprobările în sumarul proiectului
-- [ ] Calendar și întâlniri (după MVP), în doi pași (deciziile în [decisions.md](decisions.md)):
+- [x] Calendar și întâlniri (după MVP), în doi pași (deciziile în [decisions.md](decisions.md)):
   - [x] Pas (a): pagina Calendar cu deadline-urile proiectelor și etapelor, la freelancer și în portal, fără Google
-  - [ ] Pas (b+c): Meetings cu Google Calendar și Meet (un sens, cont per utilizator, invitație și reminder prin Google)
+  - [x] Pas (b+c): Meetings cu Google Calendar și Meet (un sens, cont per utilizator, invitație și reminder prin Google), în patru sub-pași:
+    - [x] 1. Conectarea Google în backend (OAuth, token criptat, stare, deconectare)
+    - [x] 2. Întâlnirea în backend (entitate, API pentru firmă și pentru portal, reguli), fără Google
+    - [x] 3. Sincronizarea cu Google (worker cu retry, link Meet, invitația clientului); testată doar cu un Google fals
+    - [x] 4. Interfața, în trei părți:
+      - [x] 4a. „Connect Google" în cont (card, mesajul după întoarcerea de la Google, Google fals pentru e2e)
+      - [x] 4b. Pagina Meetings a freelancerului (listă Upcoming / Past, dialog New / Edit, Cancel, Retry sync, buton pe fișa clientului)
+      - [x] 4c. Portalul (pagina Meetings, „Next meeting" pe Home), întâlniri în Calendar, date de test
 
 ## Decizii luate
 

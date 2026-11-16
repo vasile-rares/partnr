@@ -22,7 +22,8 @@
     <EmbeddedResource Include="DevelopmentSeed.cs;Persistence/Seeding/DevelopmentDataSeeder.cs" LogicalName="SeedSource/%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <PropertyGroup>
-  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Partnr.IntegrationTests" />
+  </ItemGroup>
 
 </Project>
