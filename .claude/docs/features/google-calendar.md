@@ -1,0 +1,22 @@
+# Google Calendar connection
+
+Step 1 of Meetings ([meetings.md](meetings.md)).
+
+## API
+
+- `GoogleConnection`, table `google_connections`, one per account: the person's own permission to use their Google Calendar, so no workspace in the route (`/api/integrations/google`: `GET` status, `POST connect` answers `{ url }` for Google's consent page, `GET callback` where Google sends the browser back, `DELETE`).
+- `GoogleConnectionService` + the `IGoogleOAuthClient` port (Infrastructure `Google/GoogleOAuthClient`, plain `HttpClient`, no Google SDK) + `ISecretProtector`.
+- The callback goes through the web app's `/api/*` rewrite (the redirect URI is `http://localhost:3000/api/integrations/google/callback`) so the session cookie comes along, and always ends in a 302 to `/account?google=connected|denied|permission|error`: expected failures are a `GoogleConnectOutcome`, never an exception.
+- **The state is `ISecretProtector.Protect` of `userId|expiry`** (10 minutes): bound to the account, so a link made for someone else cannot connect their Google to this account.
+- The scope is `calendar.events` (plus `openid email` to show which account); the person can untick it on Google's screen, which is `MissingPermission`.
+- Only the **refresh token** is kept, encrypted (`SecretProtector`: AES-256-GCM, key from `Google:EncryptionKey`, the purpose is authenticated data) and never returned by the API; disconnecting revokes it at Google (best effort) and deletes the row.
+- The Google features are off while `Google:ClientId` / `ClientSecret` are empty (`Available: false`, `POST connect` answers 409), and the options check at startup rejects a bad key or redirect only when they are set.
+- **Set up locally**: create an OAuth client (type "Web application") in Google Cloud with that redirect URI and the `calendar.events` scope, then `dotnet user-secrets set "Google:ClientId" "..." --project src/Partnr.Api` and the same for `Google:ClientSecret`; the dev `EncryptionKey` is in `appsettings.Development.json` (make a real one with `openssl rand -base64 32` for production).
+- **Tests**: integration tests replace the Google client with `FakeGoogleOAuthClient` (`ApiFactory.Google`). **`Google:Fake=true`** swaps both Google clients for stand-ins (`Infrastructure/Google/FakeGoogle.cs`): the consent screen is skipped (the browser goes straight to the callback with `code=fake-ok`; `fake-no-calendar` is an unticked calendar), every event gets a Meet link, and a meeting titled with `[google-down]` fails. It is for the browser tests (`e2e/start-api.mjs` sets it) and **the options check refuses it outside Development**.
+
+## Web app
+
+- `/account`, `GoogleCalendarCard` and `GoogleResultMessage` in `src/components/account/`, data in `src/lib/google/`: shown only to someone who works in a workspace (a client-only account does not see it).
+- "Connect Google Calendar" posts to `/api/integrations/google/connect` and sends the browser to the address it answers; Google sends it back through `/api/integrations/google/callback` (the rewrite carries it, so the session cookie comes along) and the API ends on `/account?google=connected|denied|permission|error`, which the page turns into a status or an alert (an unknown value is ignored).
+- The card shows Not connected / Connected as {email} / "Needs attention" with "Reconnect Google Calendar" (the API's `NeedsReconnect`), and Disconnect asks first. It says "not set up on this server" while the API has no Google credentials (`available: false`).
+- In e2e tests the API runs with `Google__Fake=true` (set in `e2e/start-api.mjs`, Development only): the "consent" page is skipped and the browser goes straight back to the callback with `code=fake-ok`; `code=fake-no-calendar` stands for an unticked calendar, a meeting whose title contains `[google-down]` fails to sync, and a forged return needs no Google at all. Tests that fake a return get a real `state` from `page.request.post("/api/integrations/google/connect")`.

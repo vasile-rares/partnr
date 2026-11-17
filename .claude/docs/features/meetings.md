@@ -1,0 +1,38 @@
+# Meetings and their sync to Google Calendar
+
+Needs a Google connection first: [google-calendar.md](google-calendar.md).
+
+## API: meetings
+
+- `Meeting`, table `meetings`, `MeetingService`, `PortalMeetingService`; sent to Google by the sync below.
+- `/api/workspaces/{id}/meetings` (`POST`, `GET ?includeCancelled=&clientId=&projectId=` soonest first, `GET {id}`, `PUT {id}`, `POST {id}/cancel`; members, no owner-only action) and the client's read-only `GET /api/portal/workspaces/{id}/meetings`.
+- A meeting has a client (required, never changed), an optional project (of that client, not archived, 409 otherwise) and an **organiser**, the member who created it, fixed for good: any member may edit or cancel it, but its Google event will live in the organiser's calendar.
+- **Creating needs the creator's own Google connection to be `Connected`** (409 "Connect your Google account first"); editing and cancelling do not, so a lapsed account cannot lock a meeting. There is no draft.
+- The request carries `DateTimeOffset startsAt` / `endsAt` (stored as UTC); a meeting lasts 5 minutes to 8 hours, and a new or moved one has to start in the future (400), while title, note and project can still be fixed while it runs.
+- A cancelled meeting and one that already ended are history: update and cancel answer 409, and `Cancel` keeps the row. An archived client or project blocks scheduling and editing (409).
+- The client sees only meetings of its own linked, non-archived card (an archived card closes the whole firm's portal door, 404, like for projects), cancelled ones included for 30 days, with the project named **only when the client can open it** (`ListSharedWithClientAsync`: a Planning project is never named); no organiser, no client card (`PortalMeetingResponse`).
+- Foreign keys are `Restrict`, as everywhere: a meeting is history.
+
+## API: sync
+
+- `MeetingSyncService`, `MeetingSyncWorker`, `IGoogleCalendarClient` implemented by Infrastructure `Google/GoogleCalendarClient`, plain `HttpClient` like the OAuth client.
+- **The meeting row is the queue**: `SyncStatus` (`Pending`, `Synced`, `Failed`, `NeedsReconnect`), `SyncAttempts`, `NextSyncAtUtc`, `Version`, `GoogleEventId`, `MeetUrl`. Every change (schedule, update, cancel) bumps `Version` and makes the meeting `Pending` and due now, so the sync always brings Google to what the meeting says *now*, whatever happened in between.
+- `MeetingSyncWorker` (a `BackgroundService`, every `Google:SyncPollSeconds` = 5 s, `Google:SyncWorkerEnabled`, off while `Google:ClientId` is empty and in the integration tests, which call `IMeetingSyncService.SyncDueAsync` themselves) claims due rows with one `UPDATE … RETURNING … FOR UPDATE SKIP LOCKED` that also pushes their next try 5 minutes out (like the notification emails), so two workers never take the same meeting; the claim returns untracked snapshots and the service **loads the meeting again before it writes the result**.
+- The result is applied for the version that was sent: if a member changed the meeting meanwhile, the event is kept but the meeting goes round again (`RecordSynced` / `RecordSyncFailure`). `Version` is also an EF concurrency token (`DbUpdateConcurrencyException` becomes a 409 in `ApplicationDbContext`), so two saves at once cannot undo each other.
+- **The Google event id is the meeting's id** (`Meeting.EventId`, 32 hex digits, which Google accepts), so a try whose answer was lost cannot create a second event: the insert answers 409 and the client updates it instead.
+- A new event is made with a Meet link (`conferenceData.createRequest`), the client as guest and `sendUpdates=all`, so **Google emails the client the invitation and every change or cancellation**; reminders are the calendar's own (`useDefault`).
+- An event the organiser deleted in Google (404 / 410) is never brought back and counts as done; a meeting cancelled before it ever reached Google needs no call.
+- **Failures**: `GoogleCalendarException` (down, busy, 5xx, network, 403 for rate limits) backs off 1, 5, 15 and 60 minutes, then `Failed` on the 5th try (or at once when the meeting is over); `GoogleAccessRevokedException` (token refresh `invalid_grant`, 401, 403 `insufficientPermissions`) or a missing / unreadable connection makes the meeting `NeedsReconnect` with no retry and the connection `NeedsReconnect`. `POST …/meetings/{id}/retry-sync` queues a `Failed` meeting again (409 otherwise, or when it is over).
+- **Disconnecting Google** parks the organiser's open `Pending` / `Failed` meetings as `NeedsReconnect` and leaves the `Synced` ones (their events stay in Google); **connecting again** puts the `NeedsReconnect` ones that have not ended back in the queue.
+- The responses carry `syncStatus` and `meetUrl` (the portal only `meetUrl`, and not for a cancelled meeting).
+- **Tests**: the integration tests use `ApiFactory.Calendar` (`FakeGoogleCalendarClient`, failures and delays set per refresh token) and `SyncAll()`; `GoogleCalendarClientTests` checks the real client's requests against a fake HTTP handler.
+
+## Web app
+
+- `app/w/[workspaceId]/meetings/` for the freelancer, `app/portal/[workspaceId]/meetings/` for the client; components in `src/components/meetings/` and `src/components/portal/`, data in `src/lib/meetings/`, pure rules in `time.ts`.
+- The freelancer's page is `ProjectTabs` with **Upcoming** (scheduled and not over) and **Past** (over, or cancelled), each a `MeetingList`: title, a Cancelled badge, the time in the reader's own zone (`MeetingTime`), the client, the project and the length, the notes, then **Join** (the Meet link, in a new tab), **Retry sync** and Edit / Cancel icon buttons (Cancel asks first; a meeting that is over or cancelled has no actions).
+- A meeting that is not in step with Google shows a badge while it has not happened: "Sending to Google…" (the list asks the server again every 4 s while one is waiting, so the Meet link turns up on its own), "Couldn't reach Google" with Retry sync, or "Reconnect Google" (a link to `/account`).
+- `NewMeetingDialog` (the Meetings page, and the client's page with the client preselected and its upcoming meetings listed under the projects) opens `MeetingForm`: client (fixed when editing), optional project of that client, title, **date picked on a calendar, start time and length** (15 min – 2 h; the end is worked out and the browser's time zone named) and notes; a start in the past is refused in the form and by the API. Without a connected Google the button is a link to `/account`, and `GoogleCalendarNotice` explains why.
+- **Times**: the API keeps UTC; `useInBrowser` / `useTimeZone` draw UTC while the server renders and during hydration, then the reader's own zone, so nothing mismatches (`nowIso()` / `isPast()` in `time.ts` keep the clock out of components, which the lint rules require).
+- The client's side: **Meetings** in the portal menu (`PortalMeetingList`: Upcoming with Join, Past with Cancelled), a **Next meeting** card on Home (`PortalNextMeeting`), and a project the client cannot open is never named.
+- In e2e tests the browser runs in `Europe/Bucharest` (`test.use({ timezoneId })`), a meeting is made through `POST /api/workspaces/{id}/meetings` and waited for with `expect.poll` until `syncStatus` is `Synced` (the API's background sync runs every 5 s against the fake Google), and its row is `getByRole("main").getByRole("listitem").filter({ hasText })`.

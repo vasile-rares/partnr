@@ -1,0 +1,19 @@
+# Deliverables and approvals
+
+## API
+
+- Deliverables (`/api/workspaces/{id}/projects/{projectId}/deliverables`, `?includeArchived=true`) are their own aggregate (`Deliverable`, `IDeliverableRepository`), tied to a project and optionally to one of its stages (deleting the stage only clears the link, `ON DELETE SET NULL`). The link must be `https` (checked in the entity).
+- `Draft` / `Shared` is set by hand; the client sees only `Shared`, non-archived ones, inside `GET /api/portal/projects/{id}` (`deliverables`, `PortalDeliverableResponse`; `IDeliverableRepository.ListSharedAsync` runs only after the project itself was found as shared with the client, so a draft or archived project hides its deliverables too).
+- Members create, edit, share and delete a draft (a shared one answers 409); **archiving and restoring is owner-only**, archiving also sets the status back to `Draft`. An archived deliverable and every deliverable of an archived project are read-only (409). A stage or deliverable of another project is a 404.
+- **Approvals** are rounds (`ApprovalRequest`, `IApprovalRequestRepository`, never removed): a member asks for one on a `Shared` deliverable (`POST .../deliverables/{id}/approvals` with an optional `note`, 409 on a draft, an archived deliverable or while one is `Pending`; `.../approvals/{approvalId}/withdraw` takes it back), and a partial unique index allows only one `Pending` round per deliverable.
+- `DeliverableResponse` carries `approvalStatus` (`None`, `Pending`, `Approved`, `ChangesRequested`: the latest round that was not withdrawn) and every round newest first in `approvals`, built by `DeliverableResponseBuilder`.
+- An open round **freezes the deliverable's details** (update answers 409); `unshare` and `archive` **withdraw** it; a deliverable with any round in its history **cannot be deleted** (409, archive it).
+- The client answers through `POST /api/portal/projects/{projectId}/deliverables/{deliverableId}/approvals/{approvalId}/approve|request-changes` (`PortalApprovalService`; body `message`, optional on approve, **required** on request-changes; the answer is the updated `PortalDeliverableResponse`). It goes through the same door as reading the project (`GetSharedWithClientAsync`), so a draft or archived project, someone else's project, an unshared or archived deliverable and an unknown round are all 404, and a round that is no longer open (answered or withdrawn) is a 409; a decision is final.
+- The portal's `PortalDeliverableResponse` carries `approval` (`status`, the open round as `pending` with its note, and the decided rounds as `history` newest first; **withdrawn rounds never show**, and no ids or accounts), and projects carry `awaitingApproval` (the list and the single project), counting only pending rounds on deliverables the client can see (`IApprovalRequestRepository.CountPendingForClientAsync`).
+- The freelancer's `ProjectResponse` carries `approvals` (`pending`, `changesRequested`, both counted by deliverable from its latest round that was not withdrawn, shared and non-archived deliverables only), filled for the whole list in one query by `ProjectResponseBuilder` (`IApprovalRequestRepository.CountForProjectsAsync`).
+
+## Web app
+
+- The "Deliverables" section on the project page (`src/components/deliverables/`, data in `src/lib/deliverables/`). `getDeliverables()` loads archived ones too; the owner restores them from the same list.
+- Each row also shows where its approval stands (`ApprovalSummary`: the status badge, the client's message, and every round in a `<details>`) and the "Request approval" (`ApprovalRequestForm`, optional note) / "Withdraw request" buttons; while a request is open Edit is replaced by Withdraw, and a deliverable with approvals has no Delete.
+- The client's side of an approval (`PortalApprovalPanel`) is in [portal.md](portal.md).
