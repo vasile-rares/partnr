@@ -1,5 +1,5 @@
 import { GoogleCalendarNotice } from "@/components/meetings/GoogleCalendarNotice";
-import { MeetingList } from "@/components/meetings/MeetingList";
+import { FirmMeetingList } from "@/components/meetings/FirmMeetingList";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { ProjectTabs } from "@/components/projects/ProjectTabs";
 import { Page } from "@/components/shell/Page";
@@ -24,7 +24,7 @@ export async function FirmMeetingsView({ workspace }: { workspace: Workspace }) 
   const people = clients.map((client) => ({ id: client.id, displayName: displayName(client) }));
   const options = projects.map((project) => ({ id: project.id, name: project.name, clientId: project.client.id }));
   const list = (items: typeof meetings, empty: string) => (
-    <MeetingList
+    <FirmMeetingList
       workspaceId={workspace.id}
       meetings={items}
       clients={people}

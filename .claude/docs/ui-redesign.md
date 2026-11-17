@@ -1,5 +1,7 @@
 # Refacerea UI: sidebar, taburi, dashboard
 
+> **Document istoric.** Scris când clientul avea rute și componente separate (`/portal/...`, `Portal*`). Azi clientul folosește aceleași rute `/w/{id}/...`, iar componentele lui sunt `Client*` în folderele feature-urilor (vezi `decisions.md`, „Portal unificat”, și `features/app-shell.md`). Numele și adresele de mai jos nu mai corespund codului.
+
 ## Context
 
 Acum aplicația are un `AppHeader` sus și pagini lungi. Pe pagina proiectului, etapele, livrabilele, actualizările, fișierele, formularul și arhivarea stau una sub alta, iar în portal e la fel. Vrem o structură inspirată din Clienter și TaskView, fără să le copiem:

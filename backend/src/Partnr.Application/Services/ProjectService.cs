@@ -1,6 +1,6 @@
 using Partnr.Application.Authorization;
 using Partnr.Application.DTOs;
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 using Partnr.Application.DTOs.Projects;
 using Partnr.Application.Exceptions;
 using Partnr.Application.Interfaces.Repositories;
@@ -16,7 +16,7 @@ internal sealed class ProjectService(
     ProjectAccess projectAccess,
     IClientRepository clients,
     ProjectResponseBuilder responses,
-    PortalProjectResponseBuilder clientView,
+    ClientProjectResponseBuilder clientView,
     WorkspaceAccess access,
     ClientAccess clientAccess,
     CallerAccess callers,
@@ -44,7 +44,7 @@ internal sealed class ProjectService(
         return await responses.BuildAsync(project, cancellationToken);
     }
 
-    public async Task<RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>> ListAsync(
+    public async Task<RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<ClientProjectSummaryResponse>>> ListAsync(
         Guid workspaceId,
         bool includeArchived,
         Guid? clientId,
@@ -55,17 +55,17 @@ internal sealed class ProjectService(
         {
             var shared = await clientAccess.ListProjectsAsync(caller.UserId, workspaceId, cancellationToken);
 
-            return RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>.ForClient(
+            return RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<ClientProjectSummaryResponse>>.ForClient(
                 await clientView.SummariesAsync(shared, caller.Workspace, cancellationToken));
         }
 
         var list = await projects.ListAsync(workspaceId, includeArchived, clientId, cancellationToken);
 
-        return RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>.ForMember(
+        return RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<ClientProjectSummaryResponse>>.ForMember(
             await responses.BuildAsync(workspaceId, list, cancellationToken));
     }
 
-    public async Task<RoleResponse<ProjectResponse, PortalProjectResponse>> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
+    public async Task<RoleResponse<ProjectResponse, ClientProjectResponse>> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
     {
         var caller = await callers.RequireAsync(workspaceId, cancellationToken);
         if (caller.IsClient)
@@ -73,13 +73,13 @@ internal sealed class ProjectService(
             var shared = await clientAccess.FindProjectInWorkspaceAsync(caller.UserId, workspaceId, id, cancellationToken)
                 ?? throw new NotFoundException($"The project with id '{id}' was not found.");
 
-            return RoleResponse<ProjectResponse, PortalProjectResponse>.ForClient(
+            return RoleResponse<ProjectResponse, ClientProjectResponse>.ForClient(
                 await clientView.BuildAsync(shared, caller.Workspace, cancellationToken));
         }
 
         var project = await projectAccess.RequireProjectAsync(workspaceId, id, cancellationToken);
 
-        return RoleResponse<ProjectResponse, PortalProjectResponse>.ForMember(await responses.BuildAsync(project, cancellationToken));
+        return RoleResponse<ProjectResponse, ClientProjectResponse>.ForMember(await responses.BuildAsync(project, cancellationToken));
     }
 
     public async Task<ProjectResponse> UpdateAsync(

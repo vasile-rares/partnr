@@ -83,7 +83,7 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         Assert.All(meetings!, m => Assert.Equal(("Synced", "Elena Client"), (m.SyncStatus, m.Client.DisplayName)));
         Assert.Equal(["Scheduled", "Scheduled", "Cancelled"], meetings!.Select(m => m.Status));
         Assert.Equal(2, (await owner.GetFromJsonAsync<MeetingResponse[]>($"/api/workspaces/{studio.Id}/meetings"))!.Length);
-        var asClient = await (await SignIn(DevelopmentSeed.ClientEmail)).GetFromJsonAsync<PortalMeetingResponse[]>($"/api/workspaces/{studio.Id}/meetings");
+        var asClient = await (await SignIn(DevelopmentSeed.ClientEmail)).GetFromJsonAsync<ClientMeetingResponse[]>($"/api/workspaces/{studio.Id}/meetings");
         Assert.Equal(["Kick-off call", "Design review", "Branding chat"], asClient!.Select(m => m.Title));
         Assert.Equal("https://meet.google.com/abc-defg-hij", asClient![1].MeetUrl);
         Assert.Null(asClient![2].MeetUrl); // called off: nothing to join

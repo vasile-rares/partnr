@@ -45,7 +45,7 @@ public sealed class Project : Entity
 
     public bool IsArchived => ArchivedAtUtc is not null;
 
-    /// <summary>The portal's SQL filter in ProjectRepository.SharedWithClient must say the same.</summary>
+    /// <summary>The client's SQL filter in ProjectRepository.SharedWithClient must say the same.</summary>
     public bool IsOpenToClient([NotNullWhen(true)] Client? client) =>
         !IsArchived
         && Status != ProjectStatus.Planning

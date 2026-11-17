@@ -8,7 +8,7 @@ import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { ClientNotesCard } from "@/components/clients/ClientNotesCard";
 import { ClientPortalCard } from "@/components/clients/ClientPortalCard";
-import { MeetingList } from "@/components/meetings/MeetingList";
+import { FirmMeetingList } from "@/components/meetings/FirmMeetingList";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { ProjectsTable } from "@/components/projects/ProjectsTable";
@@ -153,7 +153,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
                   />
                 )}
               </div>
-              <MeetingList
+              <FirmMeetingList
                 workspaceId={workspace.id}
                 meetings={upcoming}
                 clients={people}

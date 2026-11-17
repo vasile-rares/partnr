@@ -1,8 +1,8 @@
 import { PencilIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DeliverableList } from "@/components/deliverables/DeliverableList";
-import { FileList } from "@/components/files/FileList";
+import { FirmDeliverableList } from "@/components/deliverables/FirmDeliverableList";
+import { FirmFileList } from "@/components/files/FirmFileList";
 import { ArchiveProjectButton } from "@/components/projects/ArchiveProjectButton";
 import { ProjectApprovalsCard } from "@/components/projects/ProjectApprovalsCard";
 import { ProjectForm } from "@/components/projects/ProjectForm";
@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { UpdateList } from "@/components/updates/UpdateList";
+import { FirmUpdateList } from "@/components/updates/FirmUpdateList";
 import { getDeliverables } from "@/lib/deliverables/server";
 import { getProjectFiles } from "@/lib/files/server";
 import { getProject } from "@/lib/projects/server";
@@ -89,7 +89,7 @@ export async function FirmProjectView({ workspace, projectId }: { workspace: Wor
             overview: (
               <div className="project-overview grid items-start gap-8 lg:grid-cols-[minmax(0,32rem)_20rem]">
                 <div>
-                  <UpdateList workspaceId={workspace.id} project={project} updates={updates} isOwner={isOwner} />
+                  <FirmUpdateList workspaceId={workspace.id} project={project} updates={updates} isOwner={isOwner} />
                 </div>
                 <aside aria-label="Project summary" className="project-summary order-first flex flex-col gap-4 lg:order-none">
                   <ProjectApprovalsCard approvals={project.approvals} />
@@ -98,8 +98,8 @@ export async function FirmProjectView({ workspace, projectId }: { workspace: Wor
             ),
             deliverables: (
               <div className="project-deliverables-files grid items-start gap-x-10 xl:grid-cols-2">
-                <DeliverableList workspaceId={workspace.id} project={project} deliverables={deliverables} isOwner={isOwner} />
-                <FileList workspaceId={workspace.id} project={project} files={files} isOwner={isOwner} />
+                <FirmDeliverableList workspaceId={workspace.id} project={project} deliverables={deliverables} isOwner={isOwner} />
+                <FirmFileList workspaceId={workspace.id} project={project} files={files} isOwner={isOwner} />
               </div>
             ),
           }}

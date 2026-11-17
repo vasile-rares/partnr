@@ -8,7 +8,7 @@ public interface IMeetingService
     Task<MeetingResponse> CreateAsync(Guid workspaceId, CreateMeetingRequest request, CancellationToken cancellationToken);
 
     /// <summary>Open to a client too, who gets their own meetings in their own shape; the filters are the firm's and a client's are ignored.</summary>
-    Task<RoleResponse<IReadOnlyList<MeetingResponse>, IReadOnlyList<PortalMeetingResponse>>> ListAsync(
+    Task<RoleResponse<IReadOnlyList<MeetingResponse>, IReadOnlyList<ClientMeetingResponse>>> ListAsync(
         Guid workspaceId,
         bool includeCancelled,
         Guid? clientId,

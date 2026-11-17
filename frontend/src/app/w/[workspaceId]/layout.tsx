@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
-import { getPortalProjects } from "@/lib/portal/server";
-import { getProjects } from "@/lib/projects/server";
+import { getClientProjectSummaries, getProjects } from "@/lib/projects/server";
 import { getOpenWorkspace } from "@/lib/workspaces/server";
 
 const SIDEBAR_PROJECTS = 5;
@@ -14,7 +13,7 @@ export default async function WorkspaceLayout({ children, params }: LayoutProps<
 
   // A client who opens a workspace page gets their own menu, with the projects shared with them.
   if (workspace.role === "Client") {
-    const shared = await getPortalProjects(workspace.id);
+    const shared = await getClientProjectSummaries(workspace.id);
 
     return (
       <AppShell

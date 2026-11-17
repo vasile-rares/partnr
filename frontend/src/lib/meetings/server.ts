@@ -2,7 +2,7 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { serverFetch } from "@/lib/api/server";
-import type { Meeting, PortalMeeting } from "@/lib/meetings/types";
+import type { Meeting, ClientMeeting } from "@/lib/meetings/types";
 import { isUuid } from "@/lib/uuid";
 
 // The workspace id must already be checked (via `getWorkspace` / `getOpenWorkspace`), which also rejects ids that are not UUIDs.
@@ -25,7 +25,7 @@ export async function getMeetings(workspaceId: string, clientId?: string): Promi
   return (await response.json()) as Meeting[];
 }
 
-export async function getPortalMeetings(workspaceId: string): Promise<PortalMeeting[]> {
+export async function getClientMeetings(workspaceId: string): Promise<ClientMeeting[]> {
   // The same route as the firm's: a client gets their own meetings, in their own shape.
   const response = await serverFetch(`/api/workspaces/${workspaceId}/meetings`);
 
@@ -36,5 +36,5 @@ export async function getPortalMeetings(workspaceId: string): Promise<PortalMeet
     throw new Error(`Could not load the meetings (HTTP ${response.status}).`);
   }
 
-  return (await response.json()) as PortalMeeting[];
+  return (await response.json()) as ClientMeeting[];
 }

@@ -19,7 +19,7 @@ public sealed record MeetingResponse(
     string? MeetUrl);
 
 /// <summary>What the client sees: no client card, no organiser, nothing about the sync. The project shows only when the client can open it too.</summary>
-public sealed record PortalMeetingResponse(
+public sealed record ClientMeetingResponse(
     Guid Id,
     MeetingProjectResponse? Project,
     string Title,

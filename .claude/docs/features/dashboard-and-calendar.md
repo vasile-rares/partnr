@@ -11,7 +11,7 @@ Neither has an endpoint of its own: both are built from the lists the API alread
 ## Calendar
 
 - `app/w/[workspaceId]/calendar/` for both sides (`FirmCalendarView` for a member, `ClientCalendarView` for a client, chosen by the workspace's role), both on `CalendarView` in `src/components/calendar/`, rules in `src/lib/calendar/calendar.ts`, pure and tested without a browser in `e2e/calendar.spec.ts` and `e2e/meetings.spec.ts`.
-- A month grid (Monday first; a day list on narrow screens) of project deadlines, unfinished stages and **meetings that were not called off**, built from `getProjects` / `getPortalProject(workspaceId, id)` / `getMeetings` / `getPortalMeetings`.
+- A month grid (Monday first; a day list on narrow screens) of project deadlines, unfinished stages and **meetings that were not called off**, built from `getProjects` / `getClientProjects(workspaceId)` / `getMeetings` / `getClientMeetings`.
 - The month is in the address (`?month=2026-11`), changed with plain links.
 - `CalendarView` is a client component only because a meeting belongs to the day it is on **for the reader**: the server puts it on its UTC day and the browser moves it to the local one once it has taken over (`useInBrowser`); a deadline is a day with no zone.
 - A meeting pill shows a video icon and the hour and links to the Meetings page.

@@ -1,13 +1,13 @@
-import { PortalMeetingList } from "@/components/portal/PortalMeetingList";
+import { ClientMeetingList } from "@/components/meetings/ClientMeetingList";
 import { ProjectTabs } from "@/components/projects/ProjectTabs";
 import { Page } from "@/components/shell/Page";
-import { getPortalMeetings } from "@/lib/meetings/server";
+import { getClientMeetings } from "@/lib/meetings/server";
 import { nowIso, splitMeetings } from "@/lib/meetings/time";
 import type { ClientWorkspace } from "@/lib/workspaces/types";
 
 /** The Meetings page as a client sees it: their calls with this firm, to join or to look back on. */
 export async function ClientMeetingsView({ workspace }: { workspace: ClientWorkspace }) {
-  const { upcoming, past } = splitMeetings(await getPortalMeetings(workspace.id), nowIso());
+  const { upcoming, past } = splitMeetings(await getClientMeetings(workspace.id), nowIso());
 
   return (
     <Page crumbs={[{ label: "Home", href: `/w/${workspace.id}` }, { label: "Meetings" }]} narrow>
@@ -21,14 +21,14 @@ export async function ClientMeetingsView({ workspace }: { workspace: ClientWorks
         ]}
         panels={{
           upcoming: (
-            <PortalMeetingList
+            <ClientMeetingList
               workspaceId={workspace.id}
               meetings={upcoming}
               joinable
               empty={`No meetings are planned with ${workspace.name} yet. They show up here, and in your email, once one is scheduled.`}
             />
           ),
-          past: <PortalMeetingList workspaceId={workspace.id} meetings={past} empty="Meetings that took place, or were cancelled, show up here." />,
+          past: <ClientMeetingList workspaceId={workspace.id} meetings={past} empty="Meetings that took place, or were cancelled, show up here." />,
         }}
       />
     </Page>

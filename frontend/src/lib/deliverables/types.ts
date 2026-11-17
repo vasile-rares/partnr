@@ -37,3 +37,29 @@ export type Deliverable = {
   /** Set when archived: hidden from the client, and read-only until restored. */
   archivedAtUtc: string | null;
 };
+
+/** What the client was asked, and what they answered. Rounds the freelancer withdrew never reach them. */
+export type ClientApproval = {
+  status: ApprovalStatus;
+  /** The round waiting for an answer, if any. */
+  pending: { id: string; note: string | null; requestedAtUtc: string } | null;
+  /** Answered rounds, newest first. */
+  history: {
+    decision: "Approved" | "ChangesRequested";
+    note: string | null;
+    message: string | null;
+    requestedAtUtc: string;
+    decidedAtUtc: string;
+  }[];
+};
+
+/** Only shared ones reach the client, so there is no status here. Newest first. */
+export type ClientDeliverable = {
+  id: string;
+  title: string;
+  description: string | null;
+  /** Always an https address (the API refuses anything else). */
+  url: string;
+  stageName: string | null;
+  approval: ClientApproval;
+};

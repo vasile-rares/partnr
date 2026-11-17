@@ -1,5 +1,5 @@
 using Partnr.Application.Authorization;
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 using Partnr.Application.DTOs.Projects;
 using Partnr.Application.Exceptions;
 using Partnr.Application.Mappings;
@@ -40,7 +40,7 @@ public class ProjectServiceForClientsTests
                 _clients,
                 new ClientResponseBuilder(new FakeIdentityService(), new FakeClientInvitationRepository(), new FakeTimeProvider()),
                 _approvals),
-            new PortalProjectResponseBuilder(_deliverables, _updates, _files, _approvals),
+            new ClientProjectResponseBuilder(_deliverables, _updates, _files, _approvals),
             access,
             clientAccess,
             new CallerAccess(access, clientAccess),
@@ -376,13 +376,13 @@ public class ProjectServiceForClientsTests
         await Assert.ThrowsAsync<UnauthorizedException>(() => GetProjectAsync(Guid.NewGuid(), CancellationToken.None));
 
     // The client's list and project, from the one ProjectService, in the studio the test set up.
-    private async Task<IReadOnlyList<PortalProjectSummaryResponse>> ListProjectsAsync(CancellationToken cancellationToken) =>
+    private async Task<IReadOnlyList<ClientProjectSummaryResponse>> ListProjectsAsync(CancellationToken cancellationToken) =>
         (await _projectService.ListAsync(_studioId, false, null, cancellationToken)).Client!;
 
     private async Task<Partnr.Application.DTOs.ProjectFiles.FileDownload> DownloadFileAsync(Guid projectId, Guid fileId, CancellationToken cancellationToken) =>
         await _fileService.DownloadAsync(_studioId, projectId, fileId, cancellationToken);
 
-    private async Task<PortalProjectResponse> GetProjectAsync(Guid id, CancellationToken cancellationToken) =>
+    private async Task<ClientProjectResponse> GetProjectAsync(Guid id, CancellationToken cancellationToken) =>
         (await _projectService.GetByIdAsync(_studioId, id, cancellationToken)).Client!;
 
     [Fact]

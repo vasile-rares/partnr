@@ -21,7 +21,7 @@ export type Meeting = {
 };
 
 /** What the client sees: no client card, no organiser, nothing about the sync. */
-export type PortalMeeting = {
+export type ClientMeeting = {
   id: string;
   /** Only a project the client can open is named. */
   project: { id: string; name: string } | null;

@@ -1,6 +1,6 @@
 using Partnr.Application.DTOs.Approvals;
 using Partnr.Application.DTOs.Deliverables;
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 
 namespace Partnr.Application.Interfaces.Services;
 
@@ -25,7 +25,7 @@ public interface IApprovalService
         Guid approvalId,
         CancellationToken cancellationToken);
 
-    Task<PortalDeliverableResponse> ApproveAsync(
+    Task<ClientDeliverableResponse> ApproveAsync(
         Guid workspaceId,
         Guid projectId,
         Guid deliverableId,
@@ -33,7 +33,7 @@ public interface IApprovalService
         ApproveRequest request,
         CancellationToken cancellationToken);
 
-    Task<PortalDeliverableResponse> RequestChangesAsync(
+    Task<ClientDeliverableResponse> RequestChangesAsync(
         Guid workspaceId,
         Guid projectId,
         Guid deliverableId,

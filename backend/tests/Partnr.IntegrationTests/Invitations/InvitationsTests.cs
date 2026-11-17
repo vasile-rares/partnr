@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 using Partnr.Application.DTOs.Auth;
 using Partnr.Application.DTOs.Clients;
 using Partnr.Application.DTOs.Invitations;
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 using Partnr.Application.DTOs.Workspaces;
 using Partnr.Domain.Enums;
 using Partnr.Infrastructure.Persistence;

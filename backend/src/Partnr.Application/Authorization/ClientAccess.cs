@@ -4,7 +4,7 @@ using Partnr.Domain.Entities;
 
 namespace Partnr.Application.Authorization;
 
-/// <summary>The one place that decides what a client account may open: the portal's counterpart of <see cref="WorkspaceAccess"/>.</summary>
+/// <summary>The one place that decides what a client account may open: the client's counterpart of <see cref="WorkspaceAccess"/>.</summary>
 internal sealed class ClientAccess(IProjectRepository projects, IWorkspaceRepository workspaces)
 {
     /// <summary>Null when the project is unknown, not shared yet, archived or someone else's.</summary>

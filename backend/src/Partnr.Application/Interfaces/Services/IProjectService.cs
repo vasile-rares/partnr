@@ -1,5 +1,5 @@
 using Partnr.Application.DTOs;
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 using Partnr.Application.DTOs.Projects;
 
 namespace Partnr.Application.Interfaces.Services;
@@ -9,14 +9,14 @@ public interface IProjectService
     Task<ProjectResponse> CreateAsync(Guid workspaceId, CreateProjectRequest request, CancellationToken cancellationToken);
 
     /// <summary>Open to a client too: they get the projects shared with them, in their own shape; the filters are the firm's and ignored for them.</summary>
-    Task<RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>> ListAsync(
+    Task<RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<ClientProjectSummaryResponse>>> ListAsync(
         Guid workspaceId,
         bool includeArchived,
         Guid? clientId,
         CancellationToken cancellationToken);
 
     /// <summary>Open to a client too, for a project shared with them in this firm; a draft, an archived project, someone else's and an unknown id all answer the same NotFound.</summary>
-    Task<RoleResponse<ProjectResponse, PortalProjectResponse>> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
+    Task<RoleResponse<ProjectResponse, ClientProjectResponse>> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken);
 
     Task<ProjectResponse> UpdateAsync(Guid workspaceId, Guid id, UpdateProjectRequest request, CancellationToken cancellationToken);
 

@@ -154,7 +154,7 @@ public class MeetingServiceForClientsTests
         await Assert.ThrowsAsync<NotFoundException>(() => _service.RetrySyncAsync(_studio.Id, meeting.Id, CancellationToken.None));
     }
 
-    private async Task<IReadOnlyList<PortalMeetingResponse>> ListAsync(Guid? workspaceId = null) =>
+    private async Task<IReadOnlyList<ClientMeetingResponse>> ListAsync(Guid? workspaceId = null) =>
         (await _service.ListAsync(workspaceId ?? _studio.Id, false, null, null, CancellationToken.None)).Client!;
 
     // `skipChecks` writes a meeting that is already in the past, which Schedule would refuse: it goes through a clock set back.

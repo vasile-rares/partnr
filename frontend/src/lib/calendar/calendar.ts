@@ -1,6 +1,6 @@
 import type { ProjectStatus, Stage } from "@/lib/projects/types";
 
-/** What the calendar needs of a project: the freelancer's `Project` and the portal's `PortalProject` both fit. */
+/** What the calendar needs of a project: the freelancer's `Project` and the portal's `ClientProject` both fit. */
 export type CalendarSource = {
   id: string;
   name: string;

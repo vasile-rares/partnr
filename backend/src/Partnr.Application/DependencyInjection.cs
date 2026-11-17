@@ -20,7 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IClientInvitationService, ClientInvitationService>();
         services.AddScoped<IInvitationService, InvitationService>();
         services.AddScoped<ProjectResponseBuilder>();
-        services.AddScoped<PortalProjectResponseBuilder>();
+        services.AddScoped<ClientProjectResponseBuilder>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<DeliverableResponseBuilder>();
         services.AddScoped<IDeliverableService, DeliverableService>();

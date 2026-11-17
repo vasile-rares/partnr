@@ -1,7 +1,7 @@
 using Partnr.Application.Authorization;
 using Partnr.Application.DTOs.Approvals;
 using Partnr.Application.DTOs.Deliverables;
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 using Partnr.Application.Exceptions;
 using Partnr.Application.Interfaces.Repositories;
 using Partnr.Application.Interfaces.Services;
@@ -78,7 +78,7 @@ internal sealed class ApprovalService(
         return await responses.BuildAsync(deliverable, project, cancellationToken);
     }
 
-    public Task<PortalDeliverableResponse> ApproveAsync(
+    public Task<ClientDeliverableResponse> ApproveAsync(
         Guid workspaceId,
         Guid projectId,
         Guid deliverableId,
@@ -87,7 +87,7 @@ internal sealed class ApprovalService(
         CancellationToken cancellationToken) =>
         DecideAsync(workspaceId, projectId, deliverableId, approvalId, (round, userId) => round.Approve(userId, request.Message), cancellationToken);
 
-    public Task<PortalDeliverableResponse> RequestChangesAsync(
+    public Task<ClientDeliverableResponse> RequestChangesAsync(
         Guid workspaceId,
         Guid projectId,
         Guid deliverableId,
@@ -96,7 +96,7 @@ internal sealed class ApprovalService(
         CancellationToken cancellationToken) =>
         DecideAsync(workspaceId, projectId, deliverableId, approvalId, (round, userId) => round.RequestChanges(userId, request.Message), cancellationToken);
 
-    private async Task<PortalDeliverableResponse> DecideAsync(
+    private async Task<ClientDeliverableResponse> DecideAsync(
         Guid workspaceId,
         Guid projectId,
         Guid deliverableId,
@@ -135,7 +135,7 @@ internal sealed class ApprovalService(
         var stageName = deliverable.StageId is { } stageId ? project.Stages.FirstOrDefault(s => s.Id == stageId)?.Name : null;
         var rounds = await approvals.ListForDeliverableAsync(project.WorkspaceId, project.Id, deliverable.Id, cancellationToken);
 
-        return deliverable.ToPortalResponse(stageName, rounds);
+        return deliverable.ToClientResponse(stageName, rounds);
     }
 
     private async Task<Deliverable> RequireDeliverableAsync(

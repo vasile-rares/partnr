@@ -1,3 +1,7 @@
+import type { ClientDeliverable } from "@/lib/deliverables/types";
+import type { ClientFile } from "@/lib/files/types";
+import type { ClientUpdate } from "@/lib/updates/types";
+
 /** Set by the workspace, never automatically. Planning is a draft the client does not see yet. */
 export type ProjectStatus = "Planning" | "Active" | "OnHold" | "Completed";
 
@@ -50,4 +54,26 @@ export type Project = {
   progress: Progress;
   approvals: ProjectApprovals;
   stages: Stage[];
+};
+
+/** What a client sees of a project in a list: no client card, no notes, never Planning. */
+export type ClientProjectSummary = {
+  id: string;
+  workspace: { id: string; name: string };
+  name: string;
+  status: ProjectStatus;
+  dueDate: string | null;
+  progress: Progress;
+  /** How many deliverables wait for this client's answer. */
+  awaitingApproval: number;
+};
+
+/** One project as the client's account gets it: only what was shared with them. */
+export type ClientProject = ClientProjectSummary & {
+  description: string | null;
+  startDate: string | null;
+  stages: Stage[];
+  deliverables: ClientDeliverable[];
+  updates: ClientUpdate[];
+  files: ClientFile[];
 };

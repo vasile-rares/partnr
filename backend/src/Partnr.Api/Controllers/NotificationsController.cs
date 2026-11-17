@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Partnr.Api.Controllers;
 
-/// <summary>The signed-in account's own notifications, so no workspace in the route (like /api/portal).</summary>
+/// <summary>The signed-in account's own notifications, so no workspace in the route.</summary>
 [ApiController]
 [Route("api/notifications")]
 public sealed class NotificationsController(INotificationService service) : ControllerBase

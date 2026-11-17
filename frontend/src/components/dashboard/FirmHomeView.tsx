@@ -1,4 +1,4 @@
-import { ActiveProjects } from "@/components/dashboard/ActiveProjects";
+import { FirmActiveProjects } from "@/components/dashboard/FirmActiveProjects";
 import { ComingUp } from "@/components/dashboard/ComingUp";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
@@ -36,7 +36,7 @@ export async function FirmHomeView({ workspace }: { workspace: Workspace }) {
             <>
               <NeedsAttention workspaceId={workspace.id} projects={needingAttention(projects)} />
               <ComingUp workspaceId={workspace.id} deadlines={upcomingDeadlines(projects)} />
-              <ActiveProjects workspaceId={workspace.id} projects={running} />
+              <FirmActiveProjects workspaceId={workspace.id} projects={running} />
             </>
           )}
         </div>

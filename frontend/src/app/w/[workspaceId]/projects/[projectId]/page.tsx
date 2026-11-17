@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { ClientProjectView } from "@/components/projects/ClientProjectView";
 import { FirmProjectView } from "@/components/projects/FirmProjectView";
 import { requireUser } from "@/lib/auth/session";
-import { getPortalProject } from "@/lib/portal/server";
-import { getProject } from "@/lib/projects/server";
+import { getClientProject, getProject } from "@/lib/projects/server";
 import { getOpenWorkspace } from "@/lib/workspaces/server";
 
 export async function generateMetadata({ params }: PageProps<"/w/[workspaceId]/projects/[projectId]">): Promise<Metadata> {
@@ -13,7 +12,7 @@ export async function generateMetadata({ params }: PageProps<"/w/[workspaceId]/p
   if (!workspace) {
     return { title: "Not found" };
   }
-  const project = workspace.role === "Client" ? await getPortalProject(workspace.id, projectId) : await getProject(workspace.id, projectId);
+  const project = workspace.role === "Client" ? await getClientProject(workspace.id, projectId) : await getProject(workspace.id, projectId);
 
   return { title: project ? project.name : "Not found" };
 }

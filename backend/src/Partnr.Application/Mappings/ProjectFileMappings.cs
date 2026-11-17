@@ -1,4 +1,4 @@
-using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.ClientView;
 using Partnr.Application.DTOs.ProjectFiles;
 using Partnr.Domain.Entities;
 
@@ -19,6 +19,6 @@ internal static class ProjectFileMappings
             file.CreatedAtUtc,
             file.ArchivedAtUtc);
 
-    public static PortalProjectFileResponse ToPortalResponse(this ProjectFile file) =>
+    public static ClientProjectFileResponse ToClientResponse(this ProjectFile file) =>
         new(file.Id, file.Name, file.Description, file.FileName, file.SizeBytes);
 }

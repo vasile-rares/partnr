@@ -38,7 +38,7 @@ public class ProjectServiceTests
             new ProjectAccess(_projects),
             _clients,
             new ProjectResponseBuilder(_clients, clientResponses, new FakeApprovalRequestRepository()),
-            new PortalProjectResponseBuilder(
+            new ClientProjectResponseBuilder(
                 new FakeDeliverableRepository(),
                 new FakeProjectUpdateRepository(),
                 new FakeProjectFileRepository(),

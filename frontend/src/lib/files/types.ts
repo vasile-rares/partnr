@@ -19,3 +19,13 @@ export type ProjectFile = {
   /** Set when archived: hidden from the client, and read-only until restored. */
   archivedAtUtc: string | null;
 };
+
+/** Only shared ones reach the client. Newest first; downloaded through `/api/workspaces/{id}/projects/{projectId}/files/{fileId}/download`. */
+export type ClientFile = {
+  id: string;
+  name: string;
+  description: string | null;
+  /** The file's own name, which the download is saved as. */
+  fileName: string;
+  sizeBytes: number;
+};

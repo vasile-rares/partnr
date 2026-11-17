@@ -14,3 +14,13 @@ export type ProjectUpdate = {
   /** Set when archived: hidden from the client, and read-only until restored. */
   archivedAtUtc: string | null;
 };
+
+/** Only shared ones reach the client. Most recently shared first; no author on purpose. */
+export type ClientUpdate = {
+  id: string;
+  title: string;
+  /** Plain text with line breaks. */
+  body: string | null;
+  /** The date the client sees. */
+  sharedAtUtc: string;
+};

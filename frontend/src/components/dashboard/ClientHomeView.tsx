@@ -1,23 +1,18 @@
-import { PortalActiveProjects } from "@/components/portal/PortalActiveProjects";
-import { PortalLatestUpdates } from "@/components/portal/PortalLatestUpdates";
-import { PortalNextMeeting } from "@/components/portal/PortalNextMeeting";
-import { PortalWaitingForYou } from "@/components/portal/PortalWaitingForYou";
+import { ClientActiveProjects } from "@/components/dashboard/ClientActiveProjects";
+import { ClientLatestUpdates } from "@/components/dashboard/ClientLatestUpdates";
+import { ClientNextMeeting } from "@/components/dashboard/ClientNextMeeting";
+import { ClientWaitingForYou } from "@/components/dashboard/ClientWaitingForYou";
 import { Page } from "@/components/shell/Page";
-import { getPortalMeetings } from "@/lib/meetings/server";
+import { getClientMeetings } from "@/lib/meetings/server";
 import { nowIso, splitMeetings } from "@/lib/meetings/time";
-import { getPortalProject, getPortalProjects } from "@/lib/portal/server";
-import type { PortalProject } from "@/lib/portal/types";
+import { getClientProjects } from "@/lib/projects/server";
 import type { ClientWorkspace } from "@/lib/workspaces/types";
 
 const LATEST_UPDATES = 5;
 
 /** The workspace's Home as a client sees it: what waits for them, what runs, the latest news and the next meeting. */
 export async function ClientHomeView({ workspace, firstName }: { workspace: ClientWorkspace; firstName: string }) {
-  const summaries = await getPortalProjects(workspace.id);
-  // A client has few projects with one firm, so the details of each are loaded side by side instead of adding an endpoint.
-  const projects = (await Promise.all(summaries.map((summary) => getPortalProject(workspace.id, summary.id)))).filter(
-    (project): project is PortalProject => project !== null,
-  );
+  const projects = await getClientProjects(workspace.id);
 
   const waiting = projects.flatMap((project) =>
     project.deliverables
@@ -35,7 +30,7 @@ export async function ClientHomeView({ workspace, firstName }: { workspace: Clie
     .flatMap((project) => project.updates.map((update) => ({ ...update, projectId: project.id, projectName: project.name })))
     .sort((a, b) => b.sharedAtUtc.localeCompare(a.sharedAtUtc))
     .slice(0, LATEST_UPDATES);
-  const nextMeeting = splitMeetings(await getPortalMeetings(workspace.id), nowIso()).upcoming[0] ?? null;
+  const nextMeeting = splitMeetings(await getClientMeetings(workspace.id), nowIso()).upcoming[0] ?? null;
 
   return (
     <Page crumbs={[{ label: "Home" }]} narrow>
@@ -44,17 +39,17 @@ export async function ClientHomeView({ workspace, firstName }: { workspace: Clie
         Welcome back, {firstName}. Here&apos;s where things stand with {workspace.name}.
       </p>
 
-      <div className="portal-home flex flex-col gap-10">
-        <PortalNextMeeting workspaceId={workspace.id} meeting={nextMeeting} />
+      <div className="client-home flex flex-col gap-10">
+        <ClientNextMeeting workspaceId={workspace.id} meeting={nextMeeting} />
         {projects.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nothing has been shared with you yet. Projects show up here as soon as they are ready.
           </p>
         ) : (
           <>
-            <PortalWaitingForYou workspaceId={workspace.id} workspaceName={workspace.name} items={waiting} />
-            <PortalActiveProjects workspaceId={workspace.id} projects={running} />
-            <PortalLatestUpdates workspaceId={workspace.id} updates={updates} />
+            <ClientWaitingForYou workspaceId={workspace.id} workspaceName={workspace.name} items={waiting} />
+            <ClientActiveProjects workspaceId={workspace.id} projects={running} />
+            <ClientLatestUpdates workspaceId={workspace.id} updates={updates} />
           </>
         )}
       </div>
