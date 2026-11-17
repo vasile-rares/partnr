@@ -1,5 +1,4 @@
 import { ExternalLinkIcon } from "lucide-react";
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalFileList } from "@/components/files/PortalFileList";
 import { PortalApprovalPanel } from "@/components/portal/PortalApprovalPanel";
@@ -11,31 +10,18 @@ import { Page } from "@/components/shell/Page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { PortalUpdateList } from "@/components/updates/PortalUpdateList";
-import { requireUser } from "@/lib/auth/session";
-import { orderByDate } from "@/lib/projects/timeline";
 import { formatDate } from "@/lib/format";
 import { getPortalProject } from "@/lib/portal/server";
 import { summarize } from "@/lib/portal/summary";
-
-type Params = PageProps<"/portal/[workspaceId]/projects/[projectId]">["params"];
+import { orderByDate } from "@/lib/projects/timeline";
+import type { ClientWorkspace } from "@/lib/workspaces/types";
 
 const LATEST_UPDATES = 3;
 
-// The firm in the URL has to be the project's own: a project opened under another firm's address is not found.
-async function findProject(params: Params) {
-  const { workspaceId, projectId } = await params;
-  const project = await getPortalProject(projectId);
-  return project?.workspace.id === workspaceId ? project : null;
-}
-
-export async function generateMetadata({ params }: PageProps<"/portal/[workspaceId]/projects/[projectId]">): Promise<Metadata> {
-  const project = await findProject(params);
-  return { title: project ? project.name : "Not found" };
-}
-
-export default async function PortalProjectPage({ params }: PageProps<"/portal/[workspaceId]/projects/[projectId]">) {
-  await requireUser();
-  const project = await findProject(params);
+/** One project as a client sees it: where it stands, what was shared with them and what waits for their answer. */
+export async function ClientProjectView({ workspace, projectId }: { workspace: ClientWorkspace; projectId: string }) {
+  // The route names the firm, and the API only answers for a project of that firm: under another firm's address it is not found.
+  const project = await getPortalProject(workspace.id, projectId);
   if (!project) {
     notFound();
   }
@@ -52,7 +38,7 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
   }
 
   return (
-    <Page crumbs={[{ label: "Projects", href: `/portal/${project.workspace.id}/projects` }, { label: project.name }]} narrow>
+    <Page crumbs={[{ label: "Projects", href: `/w/${project.workspace.id}/projects` }, { label: project.name }]} narrow>
       <div className="portal-project-header mb-2 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl font-semibold">{project.name}</h1>
         <ProjectStatusBadge status={project.status} />
@@ -157,14 +143,19 @@ export default async function PortalProjectPage({ params }: PageProps<"/portal/[
                     {deliverable.stageName ? (
                       <p className="mt-2 text-sm text-muted-foreground">Stage: {deliverable.stageName}</p>
                     ) : null}
-                    <PortalApprovalPanel projectId={project.id} deliverable={deliverable} workspaceName={project.workspace.name} />
+                    <PortalApprovalPanel
+                      workspaceId={project.workspace.id}
+                      projectId={project.id}
+                      deliverable={deliverable}
+                      workspaceName={project.workspace.name}
+                    />
                   </li>
                 ))}
               </ul>
             </section>
           ),
           updates: <PortalUpdateList updates={project.updates} workspaceName={project.workspace.name} />,
-          files: <PortalFileList projectId={project.id} files={project.files} />,
+          files: <PortalFileList workspaceId={project.workspace.id} projectId={project.id} files={project.files} />,
         }}
       />
     </Page>

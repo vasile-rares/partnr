@@ -3,33 +3,12 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { serverFetch } from "@/lib/api/server";
-import type { PortalProject, PortalProjectSummary, PortalWorkspace } from "@/lib/portal/types";
+import type { PortalProject, PortalProjectSummary } from "@/lib/portal/types";
 import { isUuid } from "@/lib/uuid";
 
-export const getPortalWorkspaces = cache(async (): Promise<PortalWorkspace[]> => {
-  const response = await serverFetch("/api/portal/workspaces");
-
-  if (response.status === 401) {
-    redirect("/login");
-  }
-  if (!response.ok) {
-    throw new Error(`Could not load your portal (HTTP ${response.status}).`);
-  }
-
-  return (await response.json()) as PortalWorkspace[];
-});
-
-/** One of the workspaces the signed-in person is a client of, or null (an unknown id and someone else's look the same). */
-export const getPortalWorkspace = cache(async (workspaceId: string): Promise<PortalWorkspace | null> => {
-  if (!isUuid(workspaceId)) {
-    return null;
-  }
-
-  return (await getPortalWorkspaces()).find((workspace) => workspace.id === workspaceId) ?? null;
-});
-
-export const getPortalProjects = cache(async (): Promise<PortalProjectSummary[]> => {
-  const response = await serverFetch("/api/portal/projects");
+/** The projects this firm shared with the signed-in client, in the client's shape. The workspace id must already be checked. */
+export const getPortalProjects = cache(async (workspaceId: string): Promise<PortalProjectSummary[]> => {
+  const response = await serverFetch(`/api/workspaces/${workspaceId}/projects`);
 
   if (response.status === 401) {
     redirect("/login");
@@ -42,13 +21,13 @@ export const getPortalProjects = cache(async (): Promise<PortalProjectSummary[]>
 });
 
 /** One shared project, or null when there is none like it for this client (a draft and someone else's look the same). */
-export const getPortalProject = cache(async (projectId: string): Promise<PortalProject | null> => {
+export const getPortalProject = cache(async (workspaceId: string, projectId: string): Promise<PortalProject | null> => {
   // The id comes straight from the URL, so it is checked before it goes into a URL to the API.
   if (!isUuid(projectId)) {
     return null;
   }
 
-  const response = await serverFetch(`/api/portal/projects/${projectId}`);
+  const response = await serverFetch(`/api/workspaces/${workspaceId}/projects/${projectId}`);
 
   if (response.status === 404) {
     return null;

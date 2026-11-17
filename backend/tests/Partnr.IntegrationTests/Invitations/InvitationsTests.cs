@@ -266,28 +266,27 @@ public sealed partial class InvitationsTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task Portal_ListsTheWorkspaceOfAClientWhoAccepted_ButTheClientIsNotAMember()
+    public async Task Workspaces_ListTheWorkspaceOfAClientWhoAccepted_WithTheRoleClient_ButTheyAreNotAMember()
     {
         var (studio, workspaceId, client) = await StudioWithClient();
         var token = await Invite(studio, workspaceId, client);
         var elena = factory.CreateClient();
         await elena.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = "Elena", password = Password });
 
-        var portal = await elena.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
-        var asMember = await elena.GetAsync($"/api/workspaces/{workspaceId}");
+        var list = await elena.GetFromJsonAsync<WorkspaceResponse[]>("/api/workspaces");
+        var one = await elena.GetFromJsonAsync<WorkspaceResponse>($"/api/workspaces/{workspaceId}");
+        var rename = await elena.PatchAsJsonAsync($"/api/workspaces/{workspaceId}", new { name = "Mine now" });
         var theirClients = await elena.GetAsync($"/api/workspaces/{workspaceId}/clients");
-        var memberships = await elena.GetFromJsonAsync<WorkspaceResponse[]>("/api/workspaces");
 
-        var shown = Assert.Single(portal!);
-        Assert.Equal(workspaceId, shown.Id);
-        Assert.Equal("Studio", shown.Name);
-        Assert.Equal(HttpStatusCode.NotFound, asMember.StatusCode);
+        var shown = Assert.Single(list!);
+        Assert.Equal((workspaceId, "Studio", "Client"), (shown.Id, shown.Name, shown.Role));
+        Assert.Equal("Client", one!.Role);
+        Assert.Equal(HttpStatusCode.NotFound, rename.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, theirClients.StatusCode);
-        Assert.Empty(memberships!);
     }
 
     [Fact]
-    public async Task Portal_ArchivingTheClientTakesTheAccessAway_AndRestoringGivesItBack()
+    public async Task Workspaces_ArchivingTheClientTakesTheAccessAway_AndRestoringGivesItBack()
     {
         var (studio, workspaceId, client) = await StudioWithClient();
         var token = await Invite(studio, workspaceId, client);
@@ -295,23 +294,25 @@ public sealed partial class InvitationsTests(ApiFactory factory)
         await elena.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = "Elena", password = Password });
 
         await studio.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/archive", null);
-        var whileArchived = await elena.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
+        var whileArchived = await elena.GetFromJsonAsync<WorkspaceResponse[]>("/api/workspaces");
+        var opened = await elena.GetAsync($"/api/workspaces/{workspaceId}");
         await studio.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/restore", null);
-        var afterRestore = await elena.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
+        var afterRestore = await elena.GetFromJsonAsync<WorkspaceResponse[]>("/api/workspaces");
 
         Assert.Empty(whileArchived!);
+        Assert.Equal(HttpStatusCode.NotFound, opened.StatusCode);
         Assert.Equal(workspaceId, Assert.Single(afterRestore!).Id);
     }
 
     [Fact]
-    public async Task Portal_IsEmptyForSomeoneWhoIsNotAClient_AndNeedsSignIn()
+    public async Task Workspaces_AreEmptyForSomeoneWhoIsNotAClient_AndNeedSignIn()
     {
         var (stranger, _, _) = await SignedInWithEmail();
         var (studio, workspaceId, client) = await StudioWithClient();
         await Invite(studio, workspaceId, client); // invited, but nobody accepted
 
-        var list = await stranger.GetFromJsonAsync<PortalWorkspaceResponse[]>("/api/portal/workspaces");
-        var anonymous = await factory.CreateClient().GetAsync("/api/portal/workspaces");
+        var list = await stranger.GetFromJsonAsync<WorkspaceResponse[]>("/api/workspaces");
+        var anonymous = await factory.CreateClient().GetAsync("/api/workspaces");
 
         Assert.Empty(list!);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);

@@ -13,20 +13,20 @@ internal sealed class WorkspaceAccess(IWorkspaceRepository workspaces, ICurrentU
 {
     public Guid RequireUserId() => currentUser.UserId ?? throw new UnauthorizedException("Not signed in.");
 
-    public async Task<WorkspaceMembership> RequireMemberAsync(Guid workspaceId, CancellationToken cancellationToken)
+    /// <summary>Null when the workspace does not exist or the caller is not a member of it.</summary>
+    public async Task<WorkspaceMembership?> FindMemberAsync(Guid workspaceId, CancellationToken cancellationToken)
     {
         var userId = RequireUserId();
         var workspace = await workspaces.GetByIdAsync(workspaceId, cancellationToken);
-
-        // Same answer for "does not exist" and "not yours", so ids cannot be probed.
         var role = workspace?.RoleOf(userId);
-        if (workspace is null || role is null)
-        {
-            throw new NotFoundException($"The workspace with id '{workspaceId}' was not found.");
-        }
 
-        return new WorkspaceMembership(workspace, userId, role.Value);
+        return workspace is null || role is null ? null : new WorkspaceMembership(workspace, userId, role.Value);
     }
+
+    // Same answer for "does not exist" and "not yours", so ids cannot be probed.
+    public async Task<WorkspaceMembership> RequireMemberAsync(Guid workspaceId, CancellationToken cancellationToken) =>
+        await FindMemberAsync(workspaceId, cancellationToken)
+            ?? throw new NotFoundException($"The workspace with id '{workspaceId}' was not found.");
 
     public async Task<WorkspaceMembership> RequireOwnerAsync(Guid workspaceId, CancellationToken cancellationToken)
     {

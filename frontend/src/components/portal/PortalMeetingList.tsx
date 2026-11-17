@@ -34,7 +34,7 @@ export function PortalMeetingList({ workspaceId, meetings, empty, joinable = fal
             <p className="mt-1 text-sm text-muted-foreground">
               {meeting.project ? (
                 <>
-                  <Link href={`/portal/${workspaceId}/projects/${meeting.project.id}`} className="hover:text-foreground hover:underline">
+                  <Link href={`/w/${workspaceId}/projects/${meeting.project.id}`} className="hover:text-foreground hover:underline">
                     {meeting.project.name}
                   </Link>
                   {" · "}

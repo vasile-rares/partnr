@@ -18,7 +18,9 @@ public class WorkspaceServiceTests
     public WorkspaceServiceTests()
     {
         _currentUser = new FakeCurrentUser(_me);
-        _service = new WorkspaceService(_workspaces, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(new FakeProjectRepository(), _workspaces);
+        _service = new WorkspaceService(_workspaces, access, clientAccess, new CallerAccess(access, clientAccess), _unitOfWork);
     }
 
     [Fact]
@@ -123,5 +125,34 @@ public class WorkspaceServiceTests
             _service.RenameAsync(workspace.Id, new RenameWorkspaceRequest { Name = "Hijacked" }, CancellationToken.None));
 
         Assert.Equal("Studio", workspace.Name);
+    }
+
+    [Fact]
+    public async Task Get_ForAClientOfTheWorkspace_AnswersWithTheRoleClient_ButTheyCannotRenameIt()
+    {
+        var studio = Workspace.Create("Studio Pop", Guid.NewGuid());
+        _workspaces.Items.Add(studio);
+        _workspaces.ClientOf[_me] = [studio.Id];
+
+        var response = await _service.GetAsync(studio.Id, CancellationToken.None);
+
+        Assert.Equal("Client", response.Role);
+        Assert.Equal("Studio Pop", response.Name);
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _service.RenameAsync(studio.Id, new RenameWorkspaceRequest { Name = "Mine now" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ListMine_ShowsTheWorkspacesIWorkInFirst_ThenTheOnesIAmAClientOf_WithTheRoleClient()
+    {
+        var mine = Workspace.Create("My studio", _me);
+        var theirs = Workspace.Create("Their studio", Guid.NewGuid());
+        var other = Workspace.Create("Not mine", Guid.NewGuid());
+        _workspaces.Items.AddRange([theirs, other, mine]);
+        _workspaces.ClientOf[_me] = [theirs.Id];
+
+        var list = await _service.ListMineAsync(CancellationToken.None);
+
+        Assert.Equal([("My studio", "Owner"), ("Their studio", "Client")], list.Select(w => (w.Name, w.Role)));
     }
 }

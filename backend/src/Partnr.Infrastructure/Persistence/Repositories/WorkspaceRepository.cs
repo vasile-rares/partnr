@@ -19,6 +19,7 @@ internal sealed class WorkspaceRepository(ApplicationDbContext dbContext) : IWor
     public async Task<IReadOnlyList<Workspace>> ListForClientAsync(Guid userId, CancellationToken cancellationToken) =>
         await dbContext.Workspaces
             .AsNoTracking()
+            .Include(w => w.Members)
             .Where(w => dbContext.Clients.Any(c => c.WorkspaceId == w.Id && c.UserId == userId && c.ArchivedAtUtc == null))
             .OrderBy(w => w.CreatedAtUtc)
             .ToListAsync(cancellationToken);

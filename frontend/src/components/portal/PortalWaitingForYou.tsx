@@ -32,7 +32,7 @@ export function PortalWaitingForYou({
         {items.map((item) => (
           <li key={item.id} className="portal-waiting-item">
             <Link
-              href={`/portal/${workspaceId}/projects/${item.projectId}?tab=deliverables`}
+              href={`/w/${workspaceId}/projects/${item.projectId}?tab=deliverables`}
               className="portal-waiting-link flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
             >
               <div className="min-w-0">

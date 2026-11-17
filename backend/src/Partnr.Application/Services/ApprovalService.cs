@@ -1,6 +1,7 @@
 using Partnr.Application.Authorization;
 using Partnr.Application.DTOs.Approvals;
 using Partnr.Application.DTOs.Deliverables;
+using Partnr.Application.DTOs.Portal;
 using Partnr.Application.Exceptions;
 using Partnr.Application.Interfaces.Repositories;
 using Partnr.Application.Interfaces.Services;
@@ -13,10 +14,12 @@ namespace Partnr.Application.Services;
 internal sealed class ApprovalService(
     IApprovalRequestRepository approvals,
     IDeliverableRepository deliverables,
-    IProjectRepository projects,
+    ProjectAccess projectAccess,
     DeliverableResponseBuilder responses,
     INotificationWriter notifications,
     WorkspaceAccess access,
+    ClientAccess clientAccess,
+    CallerAccess callers,
     IUnitOfWork unitOfWork) : IApprovalService
 {
     public async Task<DeliverableResponse> RequestAsync(
@@ -27,13 +30,10 @@ internal sealed class ApprovalService(
         CancellationToken cancellationToken)
     {
         var membership = await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, deliverableId, cancellationToken);
 
-        if (deliverable.IsArchived)
-        {
-            throw new ConflictException("This deliverable is archived. Restore it before making changes.");
-        }
+        ProjectContentRules.EnsureNotArchived(deliverable.IsArchived, "deliverable");
 
         if (deliverable.Status != DeliverableStatus.Shared)
         {
@@ -61,7 +61,7 @@ internal sealed class ApprovalService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, deliverableId, cancellationToken);
         var approval = await approvals.GetByIdAsync(workspaceId, projectId, deliverableId, approvalId, cancellationToken)
             ?? throw new NotFoundException($"The approval request with id '{approvalId}' was not found.");
@@ -78,17 +78,64 @@ internal sealed class ApprovalService(
         return await responses.BuildAsync(deliverable, project, cancellationToken);
     }
 
-    private async Task<Project> RequireEditableProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken)
-    {
-        var project = await projects.GetByIdAsync(workspaceId, projectId, cancellationToken)
-            ?? throw new NotFoundException($"The project with id '{projectId}' was not found.");
+    public Task<PortalDeliverableResponse> ApproveAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        ApproveRequest request,
+        CancellationToken cancellationToken) =>
+        DecideAsync(workspaceId, projectId, deliverableId, approvalId, (round, userId) => round.Approve(userId, request.Message), cancellationToken);
 
-        if (project.IsArchived)
+    public Task<PortalDeliverableResponse> RequestChangesAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        RequestChangesRequest request,
+        CancellationToken cancellationToken) =>
+        DecideAsync(workspaceId, projectId, deliverableId, approvalId, (round, userId) => round.RequestChanges(userId, request.Message), cancellationToken);
+
+    private async Task<PortalDeliverableResponse> DecideAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        Action<ApprovalRequest, Guid> decide,
+        CancellationToken cancellationToken)
+    {
+        // Only the client decides: a member of the firm asking for it is told the project is not there, like anyone else without the door.
+        var caller = await callers.RequireAsync(workspaceId, cancellationToken);
+        var project = caller.IsClient
+            ? await clientAccess.FindProjectInWorkspaceAsync(caller.UserId, workspaceId, projectId, cancellationToken)
+            : null;
+        if (project is null)
         {
-            throw new ConflictException("This project is archived. Restore it before making changes.");
+            throw new NotFoundException($"The project with id '{projectId}' was not found.");
         }
 
-        return project;
+        var deliverable = await deliverables.GetByIdAsync(project.WorkspaceId, project.Id, deliverableId, cancellationToken);
+        if (deliverable is null || deliverable.Status != DeliverableStatus.Shared || deliverable.IsArchived)
+        {
+            throw new NotFoundException($"The deliverable with id '{deliverableId}' was not found.");
+        }
+
+        var round = await approvals.GetByIdAsync(project.WorkspaceId, project.Id, deliverable.Id, approvalId, cancellationToken)
+            ?? throw new NotFoundException($"The approval request with id '{approvalId}' was not found.");
+
+        if (!round.IsPending)
+        {
+            throw new ConflictException("This request is no longer open.");
+        }
+
+        decide(round, caller.UserId);
+        await notifications.ApprovalDecidedAsync(project, deliverable, round, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var stageName = deliverable.StageId is { } stageId ? project.Stages.FirstOrDefault(s => s.Id == stageId)?.Name : null;
+        var rounds = await approvals.ListForDeliverableAsync(project.WorkspaceId, project.Id, deliverable.Id, cancellationToken);
+
+        return deliverable.ToPortalResponse(stageName, rounds);
     }
 
     private async Task<Deliverable> RequireDeliverableAsync(

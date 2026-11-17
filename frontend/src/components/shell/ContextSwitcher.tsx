@@ -26,7 +26,7 @@ type ContextSwitcherProps = {
 export function ContextSwitcher({ context, workspaces, clientOf }: ContextSwitcherProps) {
   const title = context.kind === "none" ? APP_NAME : context.workspace.name;
   const subtitle =
-    context.kind === "workspace" ? context.workspace.role : context.kind === "portal" ? "Client portal" : "Choose a workspace";
+    context.kind === "workspace" ? context.workspace.role : context.kind === "client" ? "Client portal" : "Choose a workspace";
 
   return (
     <SidebarMenu>
@@ -69,9 +69,9 @@ export function ContextSwitcher({ context, workspaces, clientOf }: ContextSwitch
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Client of</DropdownMenuLabel>
                   {clientOf.map((workspace) => (
-                    <DropdownMenuItem key={workspace.id} render={<Link href={`/portal/${workspace.id}`} />}>
+                    <DropdownMenuItem key={workspace.id} render={<Link href={`/w/${workspace.id}`} />}>
                       <span className="truncate">{workspace.name}</span>
-                      {context.kind === "portal" && context.workspace.id === workspace.id ? (
+                      {context.kind === "client" && context.workspace.id === workspace.id ? (
                         <CheckIcon className="ml-auto" aria-label="Current portal" />
                       ) : null}
                     </DropdownMenuItem>

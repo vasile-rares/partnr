@@ -5,7 +5,7 @@ import { serverFetch } from "@/lib/api/server";
 import type { Meeting, PortalMeeting } from "@/lib/meetings/types";
 import { isUuid } from "@/lib/uuid";
 
-// The workspace id must already be checked (via `getWorkspace` / `getPortalWorkspace`), which also rejects ids that are not UUIDs.
+// The workspace id must already be checked (via `getWorkspace` / `getOpenWorkspace`), which also rejects ids that are not UUIDs.
 
 /** Cancelled ones too: they are history, shown under "Past". */
 export async function getMeetings(workspaceId: string, clientId?: string): Promise<Meeting[]> {
@@ -26,7 +26,8 @@ export async function getMeetings(workspaceId: string, clientId?: string): Promi
 }
 
 export async function getPortalMeetings(workspaceId: string): Promise<PortalMeeting[]> {
-  const response = await serverFetch(`/api/portal/workspaces/${workspaceId}/meetings`);
+  // The same route as the firm's: a client gets their own meetings, in their own shape.
+  const response = await serverFetch(`/api/workspaces/${workspaceId}/meetings`);
 
   if (response.status === 401) {
     redirect("/login");

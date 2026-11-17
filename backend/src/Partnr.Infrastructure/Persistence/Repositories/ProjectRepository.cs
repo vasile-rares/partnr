@@ -38,7 +38,7 @@ internal sealed class ProjectRepository(ApplicationDbContext dbContext) : IProje
     public Task<Project?> GetSharedWithClientAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
         SharedWithClient(userId).AsNoTracking().Include(p => p.Stages).FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-    // The one definition of "a client may see this project", for the list and for a single project alike.
+    // The SQL twin of Project.IsOpenToClient (ClientVisibilityRuleTests keeps them equal), for the list and for a single project alike.
     private IQueryable<Project> SharedWithClient(Guid userId) =>
         dbContext.Projects.Where(p => p.ArchivedAtUtc == null
             && p.Status != ProjectStatus.Planning

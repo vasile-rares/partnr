@@ -11,9 +11,11 @@ namespace Partnr.Application.Services;
 
 internal sealed class ProjectFileService(
     IProjectFileRepository files,
-    IProjectRepository projects,
+    ProjectAccess projectAccess,
     IFileStorage storage,
     WorkspaceAccess access,
+    ClientAccess clientAccess,
+    CallerAccess callers,
     IUnitOfWork unitOfWork) : IProjectFileService
 {
     public async Task<ProjectFileResponse> CreateAsync(
@@ -24,8 +26,7 @@ internal sealed class ProjectFileService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
 
         var file = ProjectFile.Create(workspaceId, projectId, request.Name, request.Description, upload.FileName, upload.Length);
 
@@ -53,7 +54,7 @@ internal sealed class ProjectFileService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        await RequireProjectAsync(workspaceId, projectId, cancellationToken);
+        await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
 
         var list = await files.ListAsync(workspaceId, projectId, includeArchived, cancellationToken);
 
@@ -63,7 +64,7 @@ internal sealed class ProjectFileService(
     public async Task<ProjectFileResponse> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        await RequireProjectAsync(workspaceId, projectId, cancellationToken);
+        await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
         var file = await RequireFileAsync(workspaceId, projectId, id, cancellationToken);
 
         return file.ToResponse();
@@ -71,13 +72,24 @@ internal sealed class ProjectFileService(
 
     public async Task<FileDownload> DownloadAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
-        await access.RequireMemberAsync(workspaceId, cancellationToken);
-        await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        var file = await RequireFileAsync(workspaceId, projectId, id, cancellationToken);
+        var caller = await callers.RequireAsync(workspaceId, cancellationToken);
+        if (caller.IsClient)
+        {
+            // Through the same door as reading the project, and only a file that was shared and is not archived.
+            _ = await clientAccess.FindProjectInWorkspaceAsync(caller.UserId, workspaceId, projectId, cancellationToken)
+                ?? throw new NotFoundException($"The project with id '{projectId}' was not found.");
+            var shared = await files.GetByIdAsync(workspaceId, projectId, id, cancellationToken);
+            if (shared is null || shared.Status != ProjectFileStatus.Shared || shared.IsArchived)
+            {
+                throw new NotFoundException($"The file with id '{id}' was not found.");
+            }
 
-        var content = await storage.OpenReadAsync(file.StorageKey, cancellationToken);
+            return await OpenAsync(shared, cancellationToken);
+        }
 
-        return new FileDownload(file.FileName, file.ContentType, file.SizeBytes, content);
+        await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
+
+        return await OpenAsync(await RequireFileAsync(workspaceId, projectId, id, cancellationToken), cancellationToken);
     }
 
     public Task<ProjectFileResponse> UpdateAsync(
@@ -120,12 +132,9 @@ internal sealed class ProjectFileService(
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
         var file = await RequireEditableProjectAndFileAsync(workspaceId, projectId, id, cancellationToken);
-        EnsureNotArchived(file);
+        ProjectContentRules.EnsureNotArchived(file.IsArchived, "file");
 
-        if (file.Status != ProjectFileStatus.Draft)
-        {
-            throw new ConflictException("Only a draft can be deleted. Move it back to Draft, or archive it.");
-        }
+        ProjectContentRules.EnsureDeletable(file.Status == ProjectFileStatus.Draft);
 
         files.Remove(file);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -133,6 +142,9 @@ internal sealed class ProjectFileService(
         // After the commit: if this fails the file is only an orphaned object, never a row pointing at nothing.
         await storage.DeleteAsync(file.StorageKey, CancellationToken.None);
     }
+
+    private async Task<FileDownload> OpenAsync(ProjectFile file, CancellationToken cancellationToken) =>
+        new(file.FileName, file.ContentType, file.SizeBytes, await storage.OpenReadAsync(file.StorageKey, cancellationToken));
 
     // Every member-level change has the same shape: find both, refuse if either is archived, change, save once.
     private async Task<ProjectFileResponse> ChangeAsync(
@@ -144,7 +156,7 @@ internal sealed class ProjectFileService(
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
         var file = await RequireEditableProjectAndFileAsync(workspaceId, projectId, id, cancellationToken);
-        EnsureNotArchived(file);
+        ProjectContentRules.EnsureNotArchived(file.IsArchived, "file");
 
         change(file);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -158,33 +170,12 @@ internal sealed class ProjectFileService(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
 
         return await RequireFileAsync(workspaceId, projectId, id, cancellationToken);
     }
 
-    private async Task<Project> RequireProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken) =>
-        await projects.GetByIdAsync(workspaceId, projectId, cancellationToken)
-            ?? throw new NotFoundException($"The project with id '{projectId}' was not found.");
-
     private async Task<ProjectFile> RequireFileAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken) =>
         await files.GetByIdAsync(workspaceId, projectId, id, cancellationToken)
             ?? throw new NotFoundException($"The file with id '{id}' was not found.");
-
-    private static void EnsureProjectNotArchived(Project project)
-    {
-        if (project.IsArchived)
-        {
-            throw new ConflictException("This project is archived. Restore it before making changes.");
-        }
-    }
-
-    private static void EnsureNotArchived(ProjectFile file)
-    {
-        if (file.IsArchived)
-        {
-            throw new ConflictException("This file is archived. Restore it before making changes.");
-        }
-    }
 }

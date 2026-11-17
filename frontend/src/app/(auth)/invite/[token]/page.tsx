@@ -32,7 +32,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
       return (
         <Message title="Invitation already used">
           This invitation from {workspaceName} was already accepted.
-          <Link href="/portal" className={buttonVariants({ size: "lg", className: "mt-6 w-full" })}>
+          <Link href="/" className={buttonVariants({ size: "lg", className: "mt-6 w-full" })}>
             Go to your portal
           </Link>
         </Message>

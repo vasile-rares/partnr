@@ -11,7 +11,7 @@ namespace Partnr.Application.Services;
 
 internal sealed class DeliverableService(
     IDeliverableRepository deliverables,
-    IProjectRepository projects,
+    ProjectAccess projectAccess,
     IApprovalRequestRepository approvals,
     DeliverableResponseBuilder responses,
     INotificationWriter notifications,
@@ -25,8 +25,7 @@ internal sealed class DeliverableService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         RequireStage(project, request.StageId);
 
         var deliverable = Deliverable.Create(workspaceId, projectId, request.StageId, request.Title, request.Description, request.Url);
@@ -43,7 +42,7 @@ internal sealed class DeliverableService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
+        var project = await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
 
         var list = await deliverables.ListAsync(workspaceId, projectId, includeArchived, cancellationToken);
 
@@ -53,7 +52,7 @@ internal sealed class DeliverableService(
     public async Task<DeliverableResponse> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
+        var project = await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
 
         return await responses.BuildAsync(deliverable, project, cancellationToken);
@@ -101,8 +100,7 @@ internal sealed class DeliverableService(
     public async Task<DeliverableResponse> ArchiveAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireOwnerAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
 
         await WithdrawPendingAsync(deliverable, cancellationToken);
@@ -115,8 +113,7 @@ internal sealed class DeliverableService(
     public async Task<DeliverableResponse> RestoreAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireOwnerAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
 
         deliverable.Restore();
@@ -128,15 +125,11 @@ internal sealed class DeliverableService(
     public async Task DeleteAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
-        EnsureNotArchived(deliverable);
+        ProjectContentRules.EnsureNotArchived(deliverable.IsArchived, "deliverable");
 
-        if (deliverable.Status != DeliverableStatus.Draft)
-        {
-            throw new ConflictException("Only a draft can be deleted. Move it back to Draft, or archive it.");
-        }
+        ProjectContentRules.EnsureDeletable(deliverable.Status == DeliverableStatus.Draft);
 
         if (await approvals.AnyAsync(deliverable.Id, cancellationToken))
         {
@@ -156,10 +149,9 @@ internal sealed class DeliverableService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
         var deliverable = await RequireDeliverableAsync(workspaceId, projectId, id, cancellationToken);
-        EnsureNotArchived(deliverable);
+        ProjectContentRules.EnsureNotArchived(deliverable.IsArchived, "deliverable");
 
         await change(deliverable, project);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -180,10 +172,6 @@ internal sealed class DeliverableService(
         await notifications.ApprovalRequestWithdrawnAsync(pending.Id, cancellationToken);
     }
 
-    private async Task<Project> RequireProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken) =>
-        await projects.GetByIdAsync(workspaceId, projectId, cancellationToken)
-            ?? throw new NotFoundException($"The project with id '{projectId}' was not found.");
-
     private async Task<Deliverable> RequireDeliverableAsync(
         Guid workspaceId,
         Guid projectId,
@@ -198,22 +186,6 @@ internal sealed class DeliverableService(
         if (stageId is { } id && !project.HasStage(id))
         {
             throw new NotFoundException($"The stage with id '{id}' was not found.");
-        }
-    }
-
-    private static void EnsureProjectNotArchived(Project project)
-    {
-        if (project.IsArchived)
-        {
-            throw new ConflictException("This project is archived. Restore it before making changes.");
-        }
-    }
-
-    private static void EnsureNotArchived(Deliverable deliverable)
-    {
-        if (deliverable.IsArchived)
-        {
-            throw new ConflictException("This deliverable is archived. Restore it before making changes.");
         }
     }
 }

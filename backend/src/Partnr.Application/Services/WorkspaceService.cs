@@ -11,6 +11,8 @@ namespace Partnr.Application.Services;
 internal sealed class WorkspaceService(
     IWorkspaceRepository workspaces,
     WorkspaceAccess access,
+    ClientAccess clientAccess,
+    CallerAccess callers,
     IUnitOfWork unitOfWork) : IWorkspaceService
 {
     public async Task<WorkspaceResponse> CreateAsync(CreateWorkspaceRequest request, CancellationToken cancellationToken)
@@ -26,15 +28,17 @@ internal sealed class WorkspaceService(
     {
         var userId = access.RequireUserId();
         var mine = await workspaces.ListForUserAsync(userId, cancellationToken);
+        var asClient = await clientAccess.ListWorkspacesAsync(userId, cancellationToken);
 
-        return mine.Select(w => w.ToResponse(w.RoleOf(userId)!.Value)).ToList();
+        // An account is never both in the same workspace, so nothing shows twice.
+        return mine.Select(w => w.ToResponse(w.RoleOf(userId)!.Value)).Concat(asClient.Select(w => w.ToClientResponse())).ToList();
     }
 
     public async Task<WorkspaceResponse> GetAsync(Guid id, CancellationToken cancellationToken)
     {
-        var membership = await access.RequireMemberAsync(id, cancellationToken);
+        var caller = await callers.RequireAsync(id, cancellationToken);
 
-        return membership.Workspace.ToResponse(membership.Role);
+        return caller.Role is { } role ? caller.Workspace.ToResponse(role) : caller.Workspace.ToClientResponse();
     }
 
     public async Task<WorkspaceResponse> RenameAsync(Guid id, RenameWorkspaceRequest request, CancellationToken cancellationToken)

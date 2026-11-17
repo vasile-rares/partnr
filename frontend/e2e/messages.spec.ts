@@ -60,9 +60,10 @@ test("the firm and the client talk on the Messages page, and every change reache
   await expect(composer(firm)).toHaveValue("");
 
   // The client sees one unread message, in the sidebar and in the list; opening the conversation reads it.
-  await client.goto(`/portal/${workspace.id}`);
+  await client.goto(`/w/${workspace.id}`);
   await expect(mainNav(client).getByLabel("1 unread messages")).toBeVisible();
   await mainNav(client).getByRole("link", { name: "Messages" }).click();
+  await expect(client).toHaveURL(`/w/${workspace.id}/messages`);
   await expect(client.getByRole("list", { name: "Conversations" }).getByLabel("1 unread")).toBeVisible();
   await client.getByRole("main").getByRole("link", { name: /Website/ }).click();
   await expect(thread(client)).toContainText("Ana Pop");
@@ -104,9 +105,22 @@ test("an unknown conversation is not found on either side", async ({ request, pl
 
   const unknown = randomUUID();
   expect((await firm.goto(`/w/${workspace.id}/messages/${unknown}`))!.status()).toBe(404);
-  expect((await client.goto(`/portal/${workspace.id}/messages/${unknown}`))!.status()).toBe(404);
+  expect((await client.goto(`/w/${workspace.id}/messages/${unknown}`))!.status()).toBe(404);
 
   await studio.close();
+  await asClient.close();
+  await clientRequest.dispose();
+});
+
+test("a client opens the Messages page but not the firm's other pages", async ({ request, playwright, browser, baseURL }) => {
+  const { workspace, clientRequest } = await studioWithClient(request, () => playwright.request.newContext({ baseURL }));
+  const asClient = await browser.newContext({ baseURL, storageState: await clientRequest.storageState() });
+  const client = await asClient.newPage();
+
+  expect((await client.goto(`/w/${workspace.id}/messages`))!.status()).toBe(200);
+  expect((await client.goto(`/w/${workspace.id}/clients`))!.status()).toBe(404);
+  expect((await client.goto(`/w/${workspace.id}/settings`))!.status()).toBe(404);
+
   await asClient.close();
   await clientRequest.dispose();
 });

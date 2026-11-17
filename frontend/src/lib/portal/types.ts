@@ -53,7 +53,7 @@ export type PortalProjectUpdate = {
   sharedAtUtc: string;
 };
 
-/** Only shared ones reach the portal. Newest first; downloaded through `/api/portal/projects/{id}/files/{fileId}/download`. */
+/** Only shared ones reach the portal. Newest first; downloaded through `/api/workspaces/{id}/projects/{projectId}/files/{fileId}/download`. */
 export type PortalProjectFile = {
   id: string;
   name: string;

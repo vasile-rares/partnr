@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Partnr.Api.Controllers;
 
-/// <summary>The firm's side of the project conversations; a conversation is named by its project.</summary>
+/// <summary>The project conversations, for members and for clients alike; a conversation is named by its project.</summary>
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/conversations")]
 public sealed class MessagesController(IMessageService service) : ControllerBase

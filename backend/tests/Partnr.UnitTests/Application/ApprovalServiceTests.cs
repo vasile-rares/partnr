@@ -30,13 +30,17 @@ public class ApprovalServiceTests
         _projects.Items.Add(_project);
         _currentUser = new FakeCurrentUser(_me);
 
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(_projects, _workspaces);
         _service = new ApprovalService(
             _approvals,
             _deliverables,
-            _projects,
+            new ProjectAccess(_projects),
             new DeliverableResponseBuilder(_approvals),
             _notifications,
-            new WorkspaceAccess(_workspaces, _currentUser),
+            access,
+            clientAccess,
+            new CallerAccess(access, clientAccess),
             _unitOfWork);
     }
 

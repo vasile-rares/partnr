@@ -34,7 +34,7 @@ public class NotificationServiceTests
         var first = response.Items[0];
         Assert.Equal("Studio Pop asked for your approval: Logo", first.Title);
         Assert.Equal("Studio Pop is waiting for your approval of \"Logo\" in Website.", first.Text);
-        Assert.Equal($"/portal/{newer.WorkspaceId}/projects/{newer.ProjectId}?tab=deliverables", first.Path);
+        Assert.Equal($"/w/{newer.WorkspaceId}/projects/{newer.ProjectId}?tab=deliverables", first.Path);
         Assert.Equal("Studio Pop", first.WorkspaceName);
         Assert.False(first.IsRead);
     }

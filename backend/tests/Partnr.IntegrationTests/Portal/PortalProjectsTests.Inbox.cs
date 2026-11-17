@@ -18,7 +18,7 @@ public sealed partial class PortalProjectsTests
         Assert.Equal(1, inbox.Unread);
         var item = Assert.Single(inbox.Items);
         Assert.Equal("Studio asked for your approval: Mockup", item.Title);
-        Assert.Equal($"/portal/{studio.WorkspaceId}/projects/{project.Id}?tab=deliverables", item.Path);
+        Assert.Equal($"/w/{studio.WorkspaceId}/projects/{project.Id}?tab=deliverables", item.Path);
         Assert.Equal("Studio", item.WorkspaceName);
         Assert.False(item.IsRead);
         Assert.Equal(1, (await elena.Http.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count"))!.Unread);
@@ -30,7 +30,7 @@ public sealed partial class PortalProjectsTests
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var round = await studio.RequestApproval(project, mockup, null);
 
-        Assert.Equal(HttpStatusCode.OK, (await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { })).StatusCode);
 
         var inbox = (await studio.Http.GetFromJsonAsync<NotificationsResponse>("/api/notifications"))!;
         Assert.Equal(["Elena approved Mockup", "Elena joined your client portal"], inbox.Items.Select(i => i.Title));
@@ -43,7 +43,7 @@ public sealed partial class PortalProjectsTests
     {
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var first = await studio.RequestApproval(project, mockup, null);
-        Assert.Equal(HttpStatusCode.OK, (await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, first.Id, "request-changes"), new { message = "Bigger logo." })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, first.Id, "request-changes"), new { message = "Bigger logo." })).StatusCode);
         await studio.RequestApproval(project, mockup, "Once more.");
         var inbox = (await studio.Http.GetFromJsonAsync<NotificationsResponse>("/api/notifications"))!;
         Assert.Equal(2, inbox.Unread);

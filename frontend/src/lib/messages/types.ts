@@ -41,7 +41,5 @@ export type Conversation = {
 
 export const MESSAGE_MAX_LENGTH = 4000;
 
-/** The API route of a side's conversations: the firm's (`/api/workspaces/{id}/conversations`) or the client's. */
-export const firmConversationsApi = (workspaceId: string) => `/api/workspaces/${workspaceId}/conversations`;
-
-export const portalConversationsApi = (workspaceId: string) => `/api/portal/workspaces/${workspaceId}/conversations`;
+/** The API route of a workspace's conversations, the same for the firm and for the client. */
+export const conversationsApi = (workspaceId: string) => `/api/workspaces/${workspaceId}/conversations`;

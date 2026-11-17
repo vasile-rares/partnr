@@ -12,7 +12,7 @@ internal sealed record NotificationContent(string Subject, string Headline, stri
             $"{n.WorkspaceName} asked for your approval: {n.DeliverableTitle}",
             $"{n.WorkspaceName} is waiting for your approval of \"{n.DeliverableTitle}\" in {n.ProjectName}.",
             "Review and respond",
-            $"/portal/{n.WorkspaceId}/projects/{n.ProjectId}?tab=deliverables"),
+            $"/w/{n.WorkspaceId}/projects/{n.ProjectId}?tab=deliverables"),
 
         NotificationType.ApprovalApproved => new(
             $"{n.ActorName} approved {n.DeliverableTitle}",

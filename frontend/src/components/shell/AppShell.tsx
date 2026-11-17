@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import { NotificationsProvider } from "@/components/notifications/NotificationsProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { requireUser } from "@/lib/auth/session";
-import { getPortalWorkspaces } from "@/lib/portal/server";
-import { getMyWorkspaces } from "@/lib/workspaces/server";
+import { getClientWorkspaces, getMyWorkspaces } from "@/lib/workspaces/server";
 import { AppSidebar } from "./AppSidebar";
 import type { ShellContext } from "./types";
 
@@ -16,7 +15,7 @@ export async function AppShell({ context, children }: { context: ShellContext; c
   const [user, workspaces, clientOf, cookieStore] = await Promise.all([
     requireUser(),
     getMyWorkspaces(),
-    getPortalWorkspaces(),
+    getClientWorkspaces(),
     cookies(),
   ]);
 

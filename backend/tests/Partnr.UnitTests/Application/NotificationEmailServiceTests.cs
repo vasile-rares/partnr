@@ -34,7 +34,7 @@ public class NotificationEmailServiceTests
         Assert.Equal("Studio Pop asked for your approval: Homepage mockups", message.Subject);
         Assert.StartsWith("Hi Elena Popescu,", message.TextBody);
         Assert.Contains("Studio Pop is waiting for your approval of \"Homepage mockups\" in Website.", message.TextBody);
-        Assert.Contains($"https://app.test/portal/{notification.WorkspaceId}/projects/{notification.ProjectId}?tab=deliverables", message.TextBody);
+        Assert.Contains($"https://app.test/w/{notification.WorkspaceId}/projects/{notification.ProjectId}?tab=deliverables", message.TextBody);
         Assert.Contains("<a href=", message.HtmlBody);
         Assert.Equal(NotificationEmailStatus.Sent, notification.EmailStatus);
         Assert.Equal(_time.Now.UtcDateTime, notification.EmailSentAtUtc);

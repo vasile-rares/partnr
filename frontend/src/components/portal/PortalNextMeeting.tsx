@@ -22,7 +22,7 @@ export function PortalNextMeeting({ workspaceId, meeting }: { workspaceId: strin
           {meeting.project ? <p className="mt-1 text-sm text-muted-foreground">{meeting.project.name}</p> : null}
         </div>
         <div className="flex items-center gap-3">
-          <Link href={`/portal/${workspaceId}/meetings`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+          <Link href={`/w/${workspaceId}/meetings`} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
             All meetings
           </Link>
           {meeting.meetUrl ? (

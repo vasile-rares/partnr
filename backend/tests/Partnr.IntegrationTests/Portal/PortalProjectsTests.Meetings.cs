@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Partnr.IntegrationTests.Portal;
 
-// Meetings, from both doors: the firm's (/api/workspaces/...) and the client's (/api/portal/workspaces/...).
+// Meetings, from both sides, on the same route (/api/workspaces/{id}/meetings): the firm gets its own shape, the client theirs.
 public sealed partial class PortalProjectsTests
 {
     [Fact]
@@ -125,19 +125,20 @@ public sealed partial class PortalProjectsTests
 
         Assert.Equal(["Elena's"], (await elena.Http.GetFromJsonAsync<PortalMeetingResponse[]>(PortalMeetingsUrl(studio)))!.Select(m => m.Title));
 
-        // The client's door only reads, and the firm's door is not theirs.
-        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync(MeetingsUrl(studio))).StatusCode);
+        // A client only reads the list; everything else on the route is the firm's, and not theirs.
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"{MeetingsUrl(studio)}/{theirs.Id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.PostAsync($"{MeetingsUrl(studio)}/{theirs.Id}/cancel", null)).StatusCode);
     }
 
     [Fact]
-    public async Task APortalDoor_IsClosedToTheFirmsOwnMembers_ToOtherFirms_AndToAnonymousVisitors()
+    public async Task TheMeetingsRoute_GivesAMemberTheFirmsShape_AndIsClosedToOtherFirms_AndToAnonymousVisitors()
     {
         var studio = await Studio();
         var elena = await studio.AddClient("Elena");
         var otherFirm = await Studio();
 
-        Assert.Equal(HttpStatusCode.NotFound, (await studio.Http.GetAsync(PortalMeetingsUrl(studio))).StatusCode);
+        // The workspace's own member reaches the same route and gets the firm's answer, not the client's.
+        Assert.Empty((await studio.Http.GetFromJsonAsync<MeetingResponse[]>(PortalMeetingsUrl(studio)))!);
         Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync(PortalMeetingsUrl(otherFirm))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await otherFirm.Http.GetAsync(MeetingsUrl(studio))).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().GetAsync(PortalMeetingsUrl(studio))).StatusCode);
@@ -163,7 +164,7 @@ public sealed partial class PortalProjectsTests
 
     private static string MeetingsUrl(StudioSession studio) => $"/api/workspaces/{studio.WorkspaceId}/meetings";
 
-    private static string PortalMeetingsUrl(StudioSession studio) => $"/api/portal/workspaces/{studio.WorkspaceId}/meetings";
+    private static string PortalMeetingsUrl(StudioSession studio) => $"/api/workspaces/{studio.WorkspaceId}/meetings"; // the same route as the firm's: the caller decides the shape
 
     private static object NewMeeting(ClientSession client, string title = "Kick-off", string? description = null, Guid? projectId = null, int days = 1)
     {

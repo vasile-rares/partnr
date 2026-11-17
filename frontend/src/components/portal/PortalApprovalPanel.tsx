@@ -22,6 +22,7 @@ import { formatDate } from "@/lib/format";
 import type { PortalApproval, PortalDeliverable } from "@/lib/portal/types";
 
 type Props = {
+  workspaceId: string;
   projectId: string;
   deliverable: PortalDeliverable;
   /** Who is asking, in the client's eyes. */
@@ -33,7 +34,7 @@ type Answer = PortalApproval["history"][number];
 const day = (iso: string): string => formatDate(iso.slice(0, 10));
 
 /** What the client was asked about one deliverable, the buttons to answer it, and what they said before. */
-export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: Props) {
+export function PortalApprovalPanel({ workspaceId, projectId, deliverable, workspaceName }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string>();
@@ -61,9 +62,11 @@ export function PortalApprovalPanel({ projectId, deliverable, workspaceName }: P
 
     startTransition(async () => {
       setMessage(undefined);
-      const result = await sendJson("POST", `/api/portal/projects/${projectId}/deliverables/${deliverable.id}/approvals/${open.id}/${action}`, {
-        message: text,
-      });
+      const result = await sendJson(
+        "POST",
+        `/api/workspaces/${workspaceId}/projects/${projectId}/deliverables/${deliverable.id}/approvals/${open.id}/${action}`,
+        { message: text },
+      );
       if (result.ok) {
         router.refresh();
       } else {

@@ -1,6 +1,6 @@
 # Client invitations
 
-How an invited client gets into the portal. What they see there is in [portal.md](portal.md). Decisions: `decisions.md`, "Invitații pentru clienți".
+How an invited client gets into a firm's workspace. What they see there is in [portal.md](portal.md). Decisions: `decisions.md`, "Invitații pentru clienți".
 
 ## API
 
@@ -18,7 +18,7 @@ How an invited client gets into the portal. What they see there is in [portal.md
 ## Web app
 
 - **Freelancer**: `AddClientForm` (in `AddClientDialog`) adds the client and invites them in one go; if the invitation fails, the card exists anyway and the browser lands on the client's page with `?invite=failed`, where "Send invitation" says what happened. On the client's page `ClientPortalCard` shows the portal status and `ClientPortalActions`: "Send invitation" / "Resend invitation" / "Send a new invitation" and Cancel while one is pending. `PortalStatusBadge` shows the same status in the clients list.
-- **Invited person**: `/invite/[token]` (`app/(auth)/invite/[token]/page.tsx`, public, listed in the `proxy.ts` matcher exclusions) answers every case on the server: not found, already used (with a link to the portal), cancelled, expired; otherwise "Join {workspace}" with, depending on who is looking:
+- **Invited person**: `/invite/[token]` (`app/(auth)/invite/[token]/page.tsx`, public, listed in the `proxy.ts` matcher exclusions) answers every case on the server: not found, already used (with a link to `/`, which sends them to their firm), cancelled, expired; otherwise "Join {workspace}" with, depending on who is looking:
   - signed in with the invited address: `AcceptInvitationButton`;
   - signed in with another address: an alert and `SwitchAccountButton`;
   - not signed in, an account exists: "Sign in to accept" (`/login?next=/invite/{token}`);

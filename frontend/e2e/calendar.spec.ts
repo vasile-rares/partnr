@@ -158,12 +158,12 @@ test("the client sees the shared projects' deadlines, not the ones still in plan
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   await mainNav(page).getByRole("link", { name: "Calendar" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}/calendar`);
+  await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
 
-  await page.goto(`/portal/${workspace.id}/calendar?month=${FUTURE}`);
+  await page.goto(`/w/${workspace.id}/calendar?month=${FUTURE}`);
   const main = page.getByRole("main");
   await expect(main.locator('[data-date="2099-01-31"]').getByRole("link", { name: "Project deadline: Website" })).toBeVisible();
   await expect(main.locator('[data-date="2099-01-20"]').getByRole("link", { name: "Stage of Website: Design" })).toBeVisible();

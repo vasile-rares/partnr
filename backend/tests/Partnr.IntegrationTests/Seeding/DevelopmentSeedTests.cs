@@ -75,7 +75,7 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         Assert.Single(conversation.Messages, m => m.EditedAtUtc is not null && !m.IsDeleted);
         Assert.Equal(1, await Unread(owner, $"/api/workspaces/{studio.Id}/conversations/unread-count"));
         Assert.Equal(5, await Unread(member, $"/api/workspaces/{studio.Id}/conversations/unread-count"));
-        Assert.Equal(1, await Unread(await SignIn(DevelopmentSeed.ClientEmail), $"/api/portal/workspaces/{studio.Id}/conversations/unread-count"));
+        Assert.Equal(1, await Unread(await SignIn(DevelopmentSeed.ClientEmail), $"/api/workspaces/{studio.Id}/conversations/unread-count"));
 
         // Three meetings with Elena, all "sent" to Google: one coming up, one called off, one two days ago.
         var meetings = await owner.GetFromJsonAsync<MeetingResponse[]>($"/api/workspaces/{studio.Id}/meetings?includeCancelled=true");
@@ -83,7 +83,7 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
         Assert.All(meetings!, m => Assert.Equal(("Synced", "Elena Client"), (m.SyncStatus, m.Client.DisplayName)));
         Assert.Equal(["Scheduled", "Scheduled", "Cancelled"], meetings!.Select(m => m.Status));
         Assert.Equal(2, (await owner.GetFromJsonAsync<MeetingResponse[]>($"/api/workspaces/{studio.Id}/meetings"))!.Length);
-        var asClient = await (await SignIn(DevelopmentSeed.ClientEmail)).GetFromJsonAsync<PortalMeetingResponse[]>($"/api/portal/workspaces/{studio.Id}/meetings");
+        var asClient = await (await SignIn(DevelopmentSeed.ClientEmail)).GetFromJsonAsync<PortalMeetingResponse[]>($"/api/workspaces/{studio.Id}/meetings");
         Assert.Equal(["Kick-off call", "Design review", "Branding chat"], asClient!.Select(m => m.Title));
         Assert.Equal("https://meet.google.com/abc-defg-hij", asClient![1].MeetUrl);
         Assert.Null(asClient![2].MeetUrl); // called off: nothing to join

@@ -25,4 +25,25 @@ public sealed class ApprovalsController(IApprovalService service) : ControllerBa
         Guid approvalId,
         CancellationToken cancellationToken) =>
         Ok(await service.WithdrawAsync(workspaceId, projectId, deliverableId, approvalId, cancellationToken));
+
+    // The client's answer: closed to members, which get 404 like anyone else without the client's door.
+    [HttpPost("{approvalId:guid}/approve")]
+    public async Task<IActionResult> Approve(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        ApproveRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await service.ApproveAsync(workspaceId, projectId, deliverableId, approvalId, request, cancellationToken));
+
+    [HttpPost("{approvalId:guid}/request-changes")]
+    public async Task<IActionResult> RequestChanges(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        RequestChangesRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await service.RequestChangesAsync(workspaceId, projectId, deliverableId, approvalId, request, cancellationToken));
 }

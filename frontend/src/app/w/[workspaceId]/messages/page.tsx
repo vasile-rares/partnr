@@ -4,18 +4,18 @@ import { MessagesView } from "@/components/messages/MessagesView";
 import { Page } from "@/components/shell/Page";
 import { requireUser } from "@/lib/auth/session";
 import { getConversations } from "@/lib/messages/server";
-import { firmConversationsApi } from "@/lib/messages/types";
-import { getWorkspace } from "@/lib/workspaces/server";
+import { conversationsApi } from "@/lib/messages/types";
+import { getOpenWorkspace } from "@/lib/workspaces/server";
 
 export const metadata: Metadata = { title: "Messages" };
 
 export default async function MessagesPage({ params }: PageProps<"/w/[workspaceId]/messages">) {
   await requireUser();
-  const workspace = await getWorkspace((await params).workspaceId);
+  const workspace = await getOpenWorkspace((await params).workspaceId);
   if (!workspace) {
     notFound();
   }
-  const apiBase = firmConversationsApi(workspace.id);
+  const apiBase = conversationsApi(workspace.id);
 
   return (
     <Page crumbs={[{ label: "Home", href: `/w/${workspace.id}` }, { label: "Messages" }]}>

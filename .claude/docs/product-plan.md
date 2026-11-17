@@ -426,6 +426,14 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
       - [x] 4a. „Connect Google" în cont (card, mesajul după întoarcerea de la Google, Google fals pentru e2e)
       - [x] 4b. Pagina Meetings a freelancerului (listă Upcoming / Past, dialog New / Edit, Cancel, Retry sync, buton pe fișa clientului)
       - [x] 4c. Portalul (pagina Meetings, „Next meeting" pe Home), întâlniri în Calendar, date de test
+- [x] Portal unificat (fără servicii, rute și pagini separate pentru client), decis 2026-11-17 (deciziile în [decisions.md](decisions.md)), un feature pe rând:
+  - [x] 1. Mesaje (un singur service și o singură rută; pagina `/w/{id}/messages` pentru ambele părți)
+  - [x] 2. Întâlniri și calendar (aceeași rută pentru ambele părți, ecran ales după rol)
+  - [x] 3. Proiecte (aceeași rută pentru ambele părți, listă pe firmă, ecran ales după rol)
+  - [x] 4. Livrabile și aprobări (răspunsul clientului pe ruta workspace-ului, în `ApprovalService`)
+  - [x] 5. Updates și fișiere (descărcarea fișierelor clientului pe ruta workspace-ului)
+  - [x] 6. Home, dashboard, lista de firme, sidebar, linkuri din emailuri și invitații; ștergerea a tot ce era „portal” (rute, services, pagini)
+  - [ ] 7. Documentația și testele e2e rămase
 
 ## Decizii luate
 

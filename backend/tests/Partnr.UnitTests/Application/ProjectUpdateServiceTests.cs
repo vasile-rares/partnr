@@ -27,7 +27,7 @@ public class ProjectUpdateServiceTests
         _projects.Items.Add(_project);
         _currentUser = new FakeCurrentUser(_me);
 
-        _service = new ProjectUpdateService(_updates, _projects, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+        _service = new ProjectUpdateService(_updates, new ProjectAccess(_projects), new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
     }
 
     [Fact]

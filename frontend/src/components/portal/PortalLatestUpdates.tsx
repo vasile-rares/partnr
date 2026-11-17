@@ -27,7 +27,7 @@ export function PortalLatestUpdates({ workspaceId, updates }: { workspaceId: str
             <p className="font-medium">{update.title}</p>
             {update.body ? <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-muted-foreground">{update.body}</p> : null}
             <p className="mt-2 text-sm text-muted-foreground">
-              <Link href={`/portal/${workspaceId}/projects/${update.projectId}?tab=updates`} className="hover:underline">
+              <Link href={`/w/${workspaceId}/projects/${update.projectId}?tab=updates`} className="hover:underline">
                 {update.projectName}
               </Link>
               {" · "}

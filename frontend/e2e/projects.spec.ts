@@ -99,11 +99,13 @@ test("stages are added, reordered, edited and deleted from the bar, and the prog
   await pickDate(page, inDays(20));
   await expect(menu.getByRole("status")).toHaveText("Saved");
   await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0); // the closing menu is still there for a moment, and the next one must not meet it
   await segment("Launch").click();
   await menu.getByLabel("Due date").click();
   await pickDate(page, inDays(10));
   await expect.poll(order).toEqual(["Design", "Launch", "Development"]);
   await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0); // the closing menu is still there for a moment, and the next one must not meet it
 
   // Status is one click, the name and the description save when they are left, and a name cannot be emptied.
   await segment("Design").click();
@@ -125,6 +127,7 @@ test("stages are added, reordered, edited and deleted from the bar, and the prog
   await menu.getByLabel("Stage name").press("Enter");
   await expect(segment("Design")).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0); // the closing menu is still there for a moment, and the next one must not meet it
 
   await segment("Launch").click();
   await page.getByRole("button", { name: "Delete Launch" }).click();
@@ -145,6 +148,7 @@ test("stages are added, reordered, edited and deleted from the bar, and the prog
   await editor.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0); // the closing menu is still there for a moment, and the next one must not meet it
   await expect(timeline.getByRole("button", { name: "Add stage" })).toBeHidden();
   await segment("Design").click();
   await expect(page.locator('[data-slot="popover-content"]')).toContainText("Design");

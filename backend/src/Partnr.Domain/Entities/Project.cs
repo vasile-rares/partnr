@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Partnr.Domain.Enums;
 using Partnr.Domain.Exceptions;
@@ -43,6 +44,13 @@ public sealed class Project : Entity
     public DateTime? ArchivedAtUtc { get; private set; }
 
     public bool IsArchived => ArchivedAtUtc is not null;
+
+    /// <summary>The portal's SQL filter in ProjectRepository.SharedWithClient must say the same.</summary>
+    public bool IsOpenToClient([NotNullWhen(true)] Client? client) =>
+        !IsArchived
+        && Status != ProjectStatus.Planning
+        && client is { UserId: not null, IsArchived: false }
+        && client.Id == ClientId;
 
     /// <summary>The database returns stages in no particular order, so the position decides.</summary>
     public IReadOnlyList<ProjectStage> Stages => _stages.OrderBy(s => s.Position).ToList();

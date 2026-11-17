@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Partnr.Api.Controllers;
 
+/// <summary>The meetings of a workspace. Only the list is open to a client (their own, in their own shape); the rest is for members.</summary>
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/meetings")]
 public sealed class MeetingsController(IMeetingService service) : ControllerBase
@@ -22,7 +23,7 @@ public sealed class MeetingsController(IMeetingService service) : ControllerBase
         [FromQuery] Guid? clientId,
         [FromQuery] Guid? projectId,
         CancellationToken cancellationToken) =>
-        Ok(await service.ListAsync(workspaceId, includeCancelled, clientId, projectId, cancellationToken));
+        Ok((await service.ListAsync(workspaceId, includeCancelled, clientId, projectId, cancellationToken)).Body);
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>

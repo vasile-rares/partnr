@@ -19,7 +19,7 @@ import {
 import { UnreadMessagesBadge } from "@/components/messages/UnreadMessagesBadge";
 import { ContextSwitcher } from "./ContextSwitcher";
 import { NavUser } from "./NavUser";
-import { isActivePath, portalNav, workspaceNav, type NavGroup, type NavItem } from "./nav";
+import { isActivePath, clientNav, workspaceNav, type NavGroup, type NavItem } from "./nav";
 import type { ShellContext, ShellUser, ShellWorkspace } from "./types";
 
 type AppSidebarProps = {
@@ -34,15 +34,15 @@ export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarPr
   const groups: NavGroup[] =
     context.kind === "workspace"
       ? workspaceNav(context.workspace.id)
-      : context.kind === "portal"
-        ? portalNav(context.workspace.id)
+      : context.kind === "client"
+        ? clientNav(context.workspace.id)
         : [];
   const projects = context.kind === "none" ? [] : context.projects;
   const projectsBase =
     context.kind === "workspace"
       ? `/w/${context.workspace.id}/projects`
-      : context.kind === "portal"
-        ? `/portal/${context.workspace.id}/projects`
+      : context.kind === "client"
+        ? `/w/${context.workspace.id}/projects`
         : "";
 
   return (

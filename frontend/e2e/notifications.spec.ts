@@ -70,11 +70,11 @@ test("approvals and invitations email the person who has to know, with a link to
   const [, requested] = await waitForEmails(clientEmail, 2);
   expect(requested.subject).toBe("Studio Pop asked for your approval: Homepage mockup");
   expect(requested.text).not.toContain("Check the mobile layout."); // the note is read in the app
-  expect(pathOf(requested)).toBe(`/portal/${workspace.id}/projects/${project.id}?tab=deliverables`);
+  expect(pathOf(requested)).toBe(`/w/${workspace.id}/projects/${project.id}?tab=deliverables`);
 
   // The client's answer emails the member who asked, not the client.
   const decided = await clientRequest.post(
-    `/api/portal/projects/${project.id}/deliverables/${deliverable.id}/approvals/${round.id}/approve`,
+    `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables/${deliverable.id}/approvals/${round.id}/approve`,
     { data: { message: "Looks great." } },
   );
   expect(decided.ok()).toBe(true);
@@ -113,19 +113,19 @@ test("the bell counts unread notifications, opens the one you click, and marks t
   // The client has one unread: the request. Opening it marks it read and leads to the deliverables.
   const asClient = await browser.newContext({ baseURL, storageState: await clientRequest.storageState() });
   const clientPage = await asClient.newPage();
-  await clientPage.goto(`/portal/${workspace.id}`);
+  await clientPage.goto(`/w/${workspace.id}`);
   await expect(bell(clientPage)).toHaveAccessibleName("Notifications, 1 unread");
   await bell(clientPage).click();
   const popover = clientPage.locator(".notifications-popover");
   await expect(popover.getByRole("listitem")).toHaveCount(1);
   await expect(popover).toContainText("Studio Pop asked for your approval: Homepage mockup");
   await popover.getByRole("button", { name: /Studio Pop asked for your approval/ }).click();
-  await expect(clientPage).toHaveURL(`/portal/${workspace.id}/projects/${project.id}?tab=deliverables`);
+  await expect(clientPage).toHaveURL(`/w/${workspace.id}/projects/${project.id}?tab=deliverables`);
   await expect(bell(clientPage)).toHaveAccessibleName("Notifications");
 
   // The freelancer gets the answer next to the notice about the client joining; "Mark all as read" clears both.
   const answered = await clientRequest.post(
-    `/api/portal/projects/${project.id}/deliverables/${deliverable.id}/approvals/${round.id}/request-changes`,
+    `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables/${deliverable.id}/approvals/${round.id}/request-changes`,
     { data: { message: "The blue is too dark." } },
   );
   expect(answered.ok()).toBe(true);
@@ -186,7 +186,7 @@ test("the bell follows changes live, with no reload, and a second tab follows th
   // The client answers while both tabs stay as they are.
   const asked = await ask("Check the mobile layout.");
   const answered = await clientRequest.post(
-    `/api/portal/projects/${project.id}/deliverables/${deliverable.id}/approvals/${asked.id}/approve`,
+    `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables/${deliverable.id}/approvals/${asked.id}/approve`,
     { data: {} },
   );
   expect(answered.ok()).toBe(true);
@@ -206,11 +206,11 @@ test("the bell follows changes live, with no reload, and a second tab follows th
   expect((await clientRequest.post("/api/notifications/read-all")).ok()).toBe(true);
   const asClient = await browser.newContext({ baseURL, storageState: await clientRequest.storageState() });
   const clientPage = await asClient.newPage();
-  await clientPage.goto(`/portal/${workspace.id}`);
+  await clientPage.goto(`/w/${workspace.id}`);
   const second = await ask("One more look?");
   await expect(bell(clientPage)).toHaveAccessibleName("Notifications, 1 unread");
   await mainNav(clientPage).getByRole("link", { name: "Projects" }).click();
-  await expect(clientPage).toHaveURL(`/portal/${workspace.id}/projects`);
+  await expect(clientPage).toHaveURL(`/w/${workspace.id}/projects`);
   await expect(bell(clientPage)).toHaveAccessibleName("Notifications, 1 unread");
   const withdrawn = await request.post(
     `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables/${deliverable.id}/approvals/${second.id}/withdraw`,

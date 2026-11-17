@@ -19,6 +19,7 @@ public interface IProjectFileService
 
     Task<ProjectFileResponse> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Open to a client too, for a shared, non-archived file of a project shared with them; anything else is NotFound for them.</summary>
     Task<FileDownload> DownloadAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken);
 
     Task<ProjectFileResponse> UpdateAsync(

@@ -188,9 +188,9 @@ test("a client sees and downloads only the files the freelancer shared", async (
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/portal/${workspace.id}/projects/${project.id}`);
+  await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   await openTab(page, "Files");
   const files = page.getByRole("region", { name: "Files" });
   await expect(files.getByRole("listitem")).toHaveCount(1);
@@ -209,6 +209,6 @@ test("a client sees and downloads only the files the freelancer shared", async (
   await page.reload();
   await expect(page.getByRole("tab", { name: "Files" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Files" })).toHaveCount(0);
-  const gone = await page.request.get(`/api/portal/projects/${project.id}/files/${brief.id}/download`);
+  const gone = await page.request.get(`/api/workspaces/${workspace.id}/projects/${project.id}/files/${brief.id}/download`);
   expect(gone.status()).toBe(404);
 });

@@ -35,7 +35,7 @@ public sealed partial class PortalProjectsTests
         await using var forStudio = await Listen(studio.Email);
         await using var forElena = await Listen(elena.Email);
 
-        await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
+        await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
 
         Assert.True(await forStudio.NextAsync(SignalWait));
         Assert.False(await forElena.NextAsync(QuietWait));
@@ -142,11 +142,13 @@ public sealed partial class PortalProjectsTests
     {
         private readonly HubConnection _connection;
         private readonly Channel<bool> _signals = Channel.CreateUnbounded<bool>();
+        private readonly Channel<Guid> _conversations = Channel.CreateUnbounded<Guid>();
 
         public InboxListener(HubConnection connection)
         {
             _connection = connection;
             _connection.On(NotificationsHub.InboxChanged, () => _signals.Writer.TryWrite(true));
+            _connection.On<Guid>(NotificationsHub.ConversationChanged, projectId => _conversations.Writer.TryWrite(projectId));
         }
 
         public Task StartAsync() => _connection.StartAsync();
@@ -164,6 +166,20 @@ public sealed partial class PortalProjectsTests
             catch (OperationCanceledException)
             {
                 return false;
+            }
+        }
+
+        /// <summary>The project whose conversation changed, when a signal arrived (and is taken) within the time; null otherwise.</summary>
+        public async Task<Guid?> NextConversationAsync(TimeSpan timeout)
+        {
+            using var cancel = new CancellationTokenSource(timeout);
+            try
+            {
+                return await _conversations.Reader.ReadAsync(cancel.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
             }
         }
 

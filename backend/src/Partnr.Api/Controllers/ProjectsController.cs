@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Partnr.Api.Controllers;
 
+/// <summary>The projects of a workspace. The list and one project are open to a client too (the ones shared with them, in their own shape); the rest is for members.</summary>
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/projects")]
 public sealed class ProjectsController(IProjectService service) : ControllerBase
@@ -21,11 +22,11 @@ public sealed class ProjectsController(IProjectService service) : ControllerBase
         [FromQuery] bool includeArchived,
         [FromQuery] Guid? clientId,
         CancellationToken cancellationToken) =>
-        Ok(await service.ListAsync(workspaceId, includeArchived, clientId, cancellationToken));
+        Ok((await service.ListAsync(workspaceId, includeArchived, clientId, cancellationToken)).Body);
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
-        Ok(await service.GetByIdAsync(workspaceId, id, cancellationToken));
+        Ok((await service.GetByIdAsync(workspaceId, id, cancellationToken)).Body);
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid workspaceId, Guid id, UpdateProjectRequest request, CancellationToken cancellationToken) =>

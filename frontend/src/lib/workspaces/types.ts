@@ -5,3 +5,9 @@ export type Workspace = {
   role: "Owner" | "Member";
   createdAtUtc: string;
 };
+
+/** A workspace opened by someone who is a client of it: they only follow their own projects there. */
+export type ClientWorkspace = Omit<Workspace, "role"> & { role: "Client" };
+
+/** A workspace the person can open, as a member or as a client; `role` tells which. */
+export type OpenWorkspace = Workspace | ClientWorkspace;

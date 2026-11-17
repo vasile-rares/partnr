@@ -4,19 +4,19 @@ import { MessagesView } from "@/components/messages/MessagesView";
 import { Page } from "@/components/shell/Page";
 import { requireUser } from "@/lib/auth/session";
 import { getConversation, getConversations } from "@/lib/messages/server";
-import { firmConversationsApi } from "@/lib/messages/types";
-import { getWorkspace } from "@/lib/workspaces/server";
+import { conversationsApi } from "@/lib/messages/types";
+import { getOpenWorkspace } from "@/lib/workspaces/server";
 
 export const metadata: Metadata = { title: "Messages" };
 
 export default async function ConversationPage({ params }: PageProps<"/w/[workspaceId]/messages/[projectId]">) {
   await requireUser();
   const { workspaceId, projectId } = await params;
-  const workspace = await getWorkspace(workspaceId);
+  const workspace = await getOpenWorkspace(workspaceId);
   if (!workspace) {
     notFound();
   }
-  const apiBase = firmConversationsApi(workspace.id);
+  const apiBase = conversationsApi(workspace.id);
   const [conversations, open] = await Promise.all([getConversations(apiBase), getConversation(apiBase, projectId)]);
   if (!open) {
     notFound();

@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IClientInvitationService, ClientInvitationService>();
         services.AddScoped<IInvitationService, InvitationService>();
         services.AddScoped<ProjectResponseBuilder>();
+        services.AddScoped<PortalProjectResponseBuilder>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<DeliverableResponseBuilder>();
         services.AddScoped<IDeliverableService, DeliverableService>();
@@ -31,17 +32,16 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ConversationThreads>();
         services.AddScoped<IMessageService, MessageService>();
-        services.AddScoped<IPortalMessageService, PortalMessageService>();
         services.AddScoped<IGoogleConnectionService, GoogleConnectionService>();
         services.AddScoped<MeetingResponseBuilder>();
         services.AddScoped<IMeetingService, MeetingService>();
-        services.AddScoped<IPortalMeetingService, PortalMeetingService>();
         services.AddScoped<IMeetingSyncService, MeetingSyncService>();
-        services.AddScoped<IPortalService, PortalService>();
-        services.AddScoped<IPortalApprovalService, PortalApprovalService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<WorkspaceAccess>();
+        services.AddScoped<ClientAccess>();
+        services.AddScoped<ProjectAccess>();
+        services.AddScoped<CallerAccess>();
         services.AddScoped<IWorkspaceService, WorkspaceService>();
 
         return services;

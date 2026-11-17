@@ -11,7 +11,7 @@ namespace Partnr.Application.Services;
 
 internal sealed class ProjectUpdateService(
     IProjectUpdateRepository updates,
-    IProjectRepository projects,
+    ProjectAccess projectAccess,
     WorkspaceAccess access,
     IUnitOfWork unitOfWork) : IProjectUpdateService
 {
@@ -22,8 +22,7 @@ internal sealed class ProjectUpdateService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
 
         var update = ProjectUpdate.Create(workspaceId, projectId, request.Title, request.Body);
         updates.Add(update);
@@ -39,7 +38,7 @@ internal sealed class ProjectUpdateService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        await RequireProjectAsync(workspaceId, projectId, cancellationToken);
+        await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
 
         var list = await updates.ListAsync(workspaceId, projectId, includeArchived, cancellationToken);
 
@@ -49,7 +48,7 @@ internal sealed class ProjectUpdateService(
     public async Task<ProjectUpdateResponse> GetByIdAsync(Guid workspaceId, Guid projectId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        await RequireProjectAsync(workspaceId, projectId, cancellationToken);
+        await projectAccess.RequireProjectAsync(workspaceId, projectId, cancellationToken);
         var update = await RequireUpdateAsync(workspaceId, projectId, id, cancellationToken);
 
         return update.ToResponse();
@@ -95,12 +94,9 @@ internal sealed class ProjectUpdateService(
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
         var update = await RequireEditableProjectAndUpdateAsync(workspaceId, projectId, id, cancellationToken);
-        EnsureNotArchived(update);
+        ProjectContentRules.EnsureNotArchived(update.IsArchived, "update");
 
-        if (update.Status != ProjectUpdateStatus.Draft)
-        {
-            throw new ConflictException("Only a draft can be deleted. Move it back to Draft, or archive it.");
-        }
+        ProjectContentRules.EnsureDeletable(update.Status == ProjectUpdateStatus.Draft);
 
         updates.Remove(update);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -116,7 +112,7 @@ internal sealed class ProjectUpdateService(
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
         var update = await RequireEditableProjectAndUpdateAsync(workspaceId, projectId, id, cancellationToken);
-        EnsureNotArchived(update);
+        ProjectContentRules.EnsureNotArchived(update.IsArchived, "update");
 
         change(update);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -130,15 +126,10 @@ internal sealed class ProjectUpdateService(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureProjectNotArchived(project);
+        await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
 
         return await RequireUpdateAsync(workspaceId, projectId, id, cancellationToken);
     }
-
-    private async Task<Project> RequireProjectAsync(Guid workspaceId, Guid projectId, CancellationToken cancellationToken) =>
-        await projects.GetByIdAsync(workspaceId, projectId, cancellationToken)
-            ?? throw new NotFoundException($"The project with id '{projectId}' was not found.");
 
     private async Task<ProjectUpdate> RequireUpdateAsync(
         Guid workspaceId,
@@ -147,20 +138,4 @@ internal sealed class ProjectUpdateService(
         CancellationToken cancellationToken) =>
         await updates.GetByIdAsync(workspaceId, projectId, id, cancellationToken)
             ?? throw new NotFoundException($"The update with id '{id}' was not found.");
-
-    private static void EnsureProjectNotArchived(Project project)
-    {
-        if (project.IsArchived)
-        {
-            throw new ConflictException("This project is archived. Restore it before making changes.");
-        }
-    }
-
-    private static void EnsureNotArchived(ProjectUpdate update)
-    {
-        if (update.IsArchived)
-        {
-            throw new ConflictException("This update is archived. Restore it before making changes.");
-        }
-    }
 }

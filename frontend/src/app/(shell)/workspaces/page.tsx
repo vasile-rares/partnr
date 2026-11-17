@@ -5,13 +5,13 @@ import { Page } from "@/components/shell/Page";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
-import { getMyWorkspaces } from "@/lib/workspaces/server";
+import { getOpenWorkspaces } from "@/lib/workspaces/server";
 
 export const metadata: Metadata = { title: "Your workspaces" };
 
 export default async function WorkspacesPage() {
   await requireUser();
-  const workspaces = await getMyWorkspaces();
+  const workspaces = await getOpenWorkspaces();
 
   return (
     <Page crumbs={[{ label: "Workspaces" }]} narrow>

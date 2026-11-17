@@ -8,7 +8,7 @@ public interface IWorkspaceRepository
 
     Task<IReadOnlyList<Workspace>> ListForUserAsync(Guid userId, CancellationToken cancellationToken);
 
-    /// <summary>Workspaces where the account is a client (card linked, not archived), without members.</summary>
+    /// <summary>Workspaces where the account is a client (card linked, not archived). Members are loaded too: a client's message has to reach them.</summary>
     Task<IReadOnlyList<Workspace>> ListForClientAsync(Guid userId, CancellationToken cancellationToken);
 
     void Add(Workspace workspace);

@@ -18,7 +18,7 @@ public sealed partial class PortalProjectsTests
         var project = await studio.AddProject(elena, "Website");
         await studio.SetStatus(project, "Active");
         var file = await AddFile(studio, project, "mockups.pdf", "pdf-bytes", name: "Homepage mockups", description: "Round 1");
-        var url = $"/api/portal/projects/{project.Id}";
+        var url = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}";
         var filesUrl = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/files/{file.Id}";
 
         Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Files);
@@ -47,7 +47,7 @@ public sealed partial class PortalProjectsTests
         await studio.SetStatus(project, "Active");
         var file = await AddFile(studio, project, "Logo ideas.svg", "<svg onload=\"alert(1)\"/>", share: true);
 
-        var response = await elena.Http.GetAsync($"/api/portal/projects/{project.Id}/files/{file.Id}/download");
+        var response = await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/files/{file.Id}/download");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("<svg onload=\"alert(1)\"/>", await response.Content.ReadAsStringAsync());
@@ -71,7 +71,7 @@ public sealed partial class PortalProjectsTests
         var filesUrl = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/files";
         await studio.Http.PostAsync($"{filesUrl}/{unshared.Id}/unshare", null);
         await studio.Http.PostAsync($"{filesUrl}/{archived.Id}/archive", null);
-        string Download(Guid id) => $"/api/portal/projects/{project.Id}/files/{id}/download";
+        string Download(Guid id) => $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/files/{id}/download";
 
         foreach (var hidden in new[] { draft.Id, unshared.Id, archived.Id, Guid.NewGuid() })
         {
@@ -92,7 +92,7 @@ public sealed partial class PortalProjectsTests
         var project = await studio.AddProject(elena, "Not yet");
         var file = await AddFile(studio, project, "early.pdf", "early", share: true);
 
-        var response = await elena.Http.GetAsync($"/api/portal/projects/{project.Id}/files/{file.Id}/download");
+        var response = await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/files/{file.Id}/download");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -106,7 +106,7 @@ public sealed partial class PortalProjectsTests
         await studio.SetStatus(project, "Active");
         await AddFile(studio, project, "mockups.pdf", "pdf", share: true);
 
-        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}"));
+        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"));
 
         var file = body.RootElement.GetProperty("files")[0];
         Assert.Equal(["description", "fileName", "id", "name", "sizeBytes"], file.EnumerateObject().Select(p => p.Name).Order());

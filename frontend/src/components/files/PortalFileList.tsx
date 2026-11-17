@@ -5,7 +5,7 @@ import { formatFileSize } from "@/lib/format";
 import type { PortalProjectFile } from "@/lib/portal/types";
 
 /** Hidden when nothing is shared, like the deliverables. Each file is a plain download link: the API answers with an attachment. */
-export function PortalFileList({ projectId, files }: { projectId: string; files: PortalProjectFile[] }) {
+export function PortalFileList({ workspaceId, projectId, files }: { workspaceId: string; projectId: string; files: PortalProjectFile[] }) {
   if (files.length === 0) {
     return null;
   }
@@ -29,7 +29,7 @@ export function PortalFileList({ projectId, files }: { projectId: string; files:
               </div>
             </div>
             <a
-              href={`/api/portal/projects/${projectId}/files/${file.id}/download`}
+              href={`/api/workspaces/${workspaceId}/projects/${projectId}/files/${file.id}/download`}
               download
               className={buttonVariants({ variant: "outline", size: "sm" })}
               aria-label={`Download ${file.name}`}

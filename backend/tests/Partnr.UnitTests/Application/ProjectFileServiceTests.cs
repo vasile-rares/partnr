@@ -30,7 +30,7 @@ public class ProjectFileServiceTests
         _projects.Items.Add(_project);
         _currentUser = new FakeCurrentUser(_me);
 
-        _service = new ProjectFileService(_files, _projects, _storage, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+        _service = new ProjectFileService(_files, new ProjectAccess(_projects), _storage, new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces), new CallerAccess(new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces)), _unitOfWork);
     }
 
     [Fact]
@@ -62,9 +62,11 @@ public class ProjectFileServiceTests
     {
         var service = new ProjectFileService(
             _files,
-            _projects,
+            new ProjectAccess(_projects),
             _storage,
             new WorkspaceAccess(_workspaces, _currentUser),
+            new ClientAccess(_projects, _workspaces),
+            new CallerAccess(new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces)),
             new FailingUnitOfWork());
 
         await Assert.ThrowsAsync<ConflictException>(() =>

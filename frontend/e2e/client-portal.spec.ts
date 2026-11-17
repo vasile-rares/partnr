@@ -36,11 +36,11 @@ test("someone without an account signs up through the invitation and lands in th
   await page.getByLabel("Company (optional)").fill("Elena Design");
   await page.getByRole("button", { name: "Create account and accept" }).click();
 
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
 
   await page.goto("/");
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   const seen = await (await request.get(`/api/workspaces/${workspace.id}/clients/${client.id}`)).json();
   expect(seen).toMatchObject({
@@ -70,7 +70,7 @@ test("someone who already has an account signs in and accepts", async ({ page, r
   await expect(page).toHaveURL(`/invite/${token}`);
   await page.getByRole("button", { name: "Accept invitation" }).click();
 
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
 
   await page.goto(`/invite/${token}`);
@@ -118,17 +118,17 @@ test("a link that is invalid, cancelled or from a deleted client says so", async
   await expect(page.getByText("Studio Pop cancelled this invitation")).toBeVisible();
 });
 
-test("the portal asks you to sign in, and is empty for someone who is nobody's client", async ({ page, request }) => {
-  await page.goto("/portal");
-  await expect(page).toHaveURL(/\/login\?next=%2Fportal$/);
+test("a workspace asks you to sign in, and is not found by someone who is nobody's client", async ({ page, request }) => {
+  const address = `/w/${randomUUID()}`;
+  await page.goto(address);
+  await expect(page).toHaveURL(/\/login\?next=%2Fw%2F/);
 
   const user = newUser();
   await request.post("/api/auth/register", { data: user });
   await page.goto("/login");
   await signIn(page, user.email, user.password);
   await expect(page).toHaveURL("/workspaces/new");
-  await page.goto("/portal");
-  await expect(page.getByText("You are not connected to anyone yet.")).toBeVisible();
+  expect((await page.goto(address))!.status()).toBe(404);
 });
 
 test("a client reads the updates the freelancer shared, newest first, with the earlier ones tucked away", async ({ page, request }) => {
@@ -150,9 +150,9 @@ test("a client reads the updates the freelancer shared, newest first, with the e
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
+  await page.goto(`/w/${workspace.id}/projects/${website.id}`);
   const updates = page.getByRole("region", { name: "Updates" });
   await expect(updates.getByText("No updates yet. Studio Pop will post news here as the project moves.")).toBeVisible();
   await openTab(page, "Updates");
@@ -173,7 +173,7 @@ test("a client reads the updates the freelancer shared, newest first, with the e
   await addUpdate("Secret draft", "Not for the client.", false);
 
   // The overview glances at the three latest and leads to the full list, which opens the Updates tab.
-  await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
+  await page.goto(`/w/${workspace.id}/projects/${website.id}`);
   await expect(updates.getByRole("listitem")).toHaveCount(3);
   await expect(updates.getByRole("listitem").first()).toContainText("Update 7");
   await updates.getByRole("button", { name: "See all updates (7)" }).click();
@@ -194,14 +194,14 @@ test("a client reads the updates the freelancer shared, newest first, with the e
   await expect(updates.getByText("Update 1", { exact: true })).toBeVisible();
 
   // The home page gathers the latest few, each leading to its project's Updates tab.
-  await page.goto(`/portal/${workspace.id}`);
+  await page.goto(`/w/${workspace.id}`);
   const latest = page.getByRole("region", { name: "Latest updates" }).getByRole("listitem");
   await expect(latest).toHaveCount(5);
   await expect(latest.first()).toContainText("Update 7");
   await expect(latest.first()).toContainText("Layouts are signed off.");
   await expect(page.getByText("Secret draft")).toHaveCount(0);
   await latest.first().getByRole("link", { name: "Website" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}/projects/${website.id}?tab=updates`);
+  await expect(page).toHaveURL(`/w/${workspace.id}/projects/${website.id}?tab=updates`);
 });
 
 test("a client approves one deliverable and asks for changes on another, and is asked again after the freelancer replies", async ({
@@ -238,8 +238,8 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
-  await page.goto(`/portal/${workspace.id}/projects`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("2 waiting for you");
 
   await page.getByRole("main").getByRole("link", { name: /Website/ }).click();
@@ -275,9 +275,9 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await expect(logoItem).toContainText("Changes requested");
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
   await expect(deliverablesTab).toHaveText("Deliverables");
-  await page.goto(`/portal/${workspace.id}/projects`);
+  await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).not.toContainText("waiting for you");
-  await page.goto(`/portal/${workspace.id}`);
+  await page.goto(`/w/${workspace.id}`);
   await expect(page.getByRole("region", { name: "Waiting for you" })).toHaveCount(0);
 
   // The freelancer sees both answers, replies to the changes, and asks again: the earlier answer stays as history.
@@ -303,25 +303,25 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await dashboard.goto(`/w/${workspace.id}`);
   await expect(attention).toContainText("1 waiting for the client");
   await studio.close();
-  await page.goto(`/portal/${workspace.id}/projects/${website.id}`);
+  await page.goto(`/w/${workspace.id}/projects/${website.id}`);
   await expect(banner).toContainText("1 deliverable needs your approval.");
   await openTab(page, "Deliverables");
   await expect(logoItem).toContainText("Awaiting approval");
   await expect(logoItem).toContainText("Studio Pop asks: “Bluer now?”");
   await logoItem.getByText("Earlier answers (1)").click();
   await expect(logoItem).toContainText("You said: “The blue is too dark.”");
-  await page.goto(`/portal/${workspace.id}/projects`);
+  await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toContainText("1 waiting for you");
 
   // The home page puts the open question first and leads straight to the tab that answers it.
-  await page.goto(`/portal/${workspace.id}`);
+  await page.goto(`/w/${workspace.id}`);
   await expect(page.getByText("Welcome back, Elena. Here's where things stand with Studio Pop.")).toBeVisible();
   const waitingForYou = page.getByRole("region", { name: "Waiting for you" });
   await expect(waitingForYou.getByRole("listitem")).toHaveCount(1);
   await expect(waitingForYou).toContainText("Logo");
   await expect(waitingForYou).toContainText("Studio Pop asks: “Bluer now?”");
   await waitingForYou.getByRole("link", { name: /Logo/ }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}/projects/${website.id}?tab=deliverables`);
+  await expect(page).toHaveURL(`/w/${workspace.id}/projects/${website.id}?tab=deliverables`);
   await expect(page.getByRole("tab", { name: /Deliverables/ })).toHaveAttribute("aria-selected", "true");
 });
 
@@ -382,9 +382,9 @@ test("a client sees the projects shared with them, and what is done and what com
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
 
-  await page.goto(`/portal/${workspace.id}/projects`);
+  await page.goto(`/w/${workspace.id}/projects`);
   const project = page.getByRole("main").getByRole("link", { name: /Website/ });
   await expect(project).toContainText("1 of 3 done");
   await expect(project).toContainText("Active");
@@ -392,7 +392,7 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(page.getByText("Brand refresh")).toHaveCount(0);
 
   await project.click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}/projects/${website.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}/projects/${website.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
   await expect(page.getByText("A new site with five pages.")).toBeVisible();
   await expect(page.getByText("Working on Development.")).toBeVisible();
@@ -423,12 +423,12 @@ test("a client sees the projects shared with them, and what is done and what com
   await expect(page.getByRole("region", { name: "Deliverables" })).toHaveCount(0);
 
   // The draft has no page for the client until the freelancer moves it out of Planning.
-  await page.goto(`/portal/${workspace.id}/projects/${draft.id}`);
+  await page.goto(`/w/${workspace.id}/projects/${draft.id}`);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await setStatus(draft, "Active");
-  await page.goto(`/portal/${workspace.id}/projects`);
+  await page.goto(`/w/${workspace.id}/projects`);
   await expect(page.getByRole("main").getByRole("link", { name: /Brand refresh/ })).toContainText("No stages yet");
-  await page.goto(`/portal/${workspace.id}/projects/${draft.id}`);
+  await page.goto(`/w/${workspace.id}/projects/${draft.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Brand refresh" })).toBeVisible();
   await expect(page.getByText("The stages of this project haven't been set up yet.")).toBeVisible();
 });
@@ -464,15 +464,15 @@ test("a client of two firms moves between their portals from the sidebar, and a 
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${studioPop.workspace.id}`);
+  await expect(page).toHaveURL(`/w/${studioPop.workspace.id}`);
 
   // Signed in with the invited address, so the second invitation is one click.
   await page.goto(`/invite/${brandLab.token}`);
   await page.getByRole("button", { name: "Accept invitation" }).click();
-  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/w\/[0-9a-f-]{36}$/);
 
   // Each portal shows only its own firm's projects, in the list and in the sidebar.
-  await page.goto(`/portal/${studioPop.workspace.id}`);
+  await page.goto(`/w/${studioPop.workspace.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Studio Pop" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: /Logo/ })).toHaveCount(0);
@@ -481,19 +481,19 @@ test("a client of two firms moves between their portals from the sidebar, and a 
 
   await page.getByRole("button", { name: "Studio Pop" }).click();
   await page.getByRole("menuitem", { name: "Brand Lab" }).click();
-  await expect(page).toHaveURL(`/portal/${brandLab.workspace.id}`);
+  await expect(page).toHaveURL(`/w/${brandLab.workspace.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Brand Lab" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: /Logo/ })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: /Website/ })).toHaveCount(0);
   await expect(mainNav(page).getByRole("link", { name: "Logo" })).toBeVisible();
 
   await page.getByRole("main").getByRole("link", { name: /Logo/ }).click();
-  await expect(page).toHaveURL(`/portal/${brandLab.workspace.id}/projects/${logo.id}`);
+  await expect(page).toHaveURL(`/w/${brandLab.workspace.id}/projects/${logo.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Logo" })).toBeVisible();
 
   // The same project under the other firm's address, and a firm the client does not belong to, are both not found.
-  await page.goto(`/portal/${studioPop.workspace.id}/projects/${logo.id}`);
+  await page.goto(`/w/${studioPop.workspace.id}/projects/${logo.id}`);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
-  await page.goto(`/portal/${randomUUID()}`);
+  await page.goto(`/w/${randomUUID()}`);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
 });

@@ -36,13 +36,17 @@ public class MeetingServiceTests
         _tomorrow = _time.Now.AddDays(1);
 
         var clientResponses = new ClientResponseBuilder(new FakeIdentityService(), new FakeClientInvitationRepository(), _time);
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(_projects, _workspaces);
         _service = new MeetingService(
             _meetings,
             _clients,
             _projects,
             _google,
             new MeetingResponseBuilder(_clients, clientResponses, _projects),
-            new WorkspaceAccess(_workspaces, _currentUser),
+            access,
+            clientAccess,
+            new CallerAccess(access, clientAccess),
             _unitOfWork,
             _time);
     }
@@ -197,11 +201,11 @@ public class MeetingServiceTests
         await _service.CancelAsync(_workspace.Id, cancelled.Id, CancellationToken.None);
         await _service.CreateAsync(_workspace.Id, Create() with { ClientId = other.Id, Title = "Theirs" }, CancellationToken.None);
 
-        var all = await _service.ListAsync(_workspace.Id, false, _acme.Id, null, CancellationToken.None);
+        var all = (await _service.ListAsync(_workspace.Id, false, _acme.Id, null, CancellationToken.None)).Member!;
         Assert.Equal([sooner.Id, later.Id], all.Select(m => m.Id));
-        Assert.Equal(3, (await _service.ListAsync(_workspace.Id, true, _acme.Id, null, CancellationToken.None)).Count);
-        Assert.Equal([sooner.Id], (await _service.ListAsync(_workspace.Id, false, null, project.Id, CancellationToken.None)).Select(m => m.Id));
-        Assert.Equal(3, (await _service.ListAsync(_workspace.Id, false, null, null, CancellationToken.None)).Count);
+        Assert.Equal(3, (await _service.ListAsync(_workspace.Id, true, _acme.Id, null, CancellationToken.None)).Member!.Count);
+        Assert.Equal([sooner.Id], (await _service.ListAsync(_workspace.Id, false, null, project.Id, CancellationToken.None)).Member!.Select(m => m.Id));
+        Assert.Equal(3, (await _service.ListAsync(_workspace.Id, false, null, null, CancellationToken.None)).Member!.Count);
     }
 
     [Fact]

@@ -58,21 +58,21 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
   ];
 }
 
-export function portalNav(workspaceId: string): NavGroup[] {
-  const base = `/portal/${workspaceId}`;
+export function clientNav(workspaceId: string): NavGroup[] {
+  const base = `/w/${workspaceId}`;
 
   return [
     {
       items: [
         { label: "Home", icon: HouseIcon, href: base, exact: true },
-        { label: "Projects", icon: FolderKanbanIcon, href: `${base}/projects` },
-        { label: "Calendar", icon: CalendarIcon, href: `${base}/calendar` },
-        { label: "Meetings", icon: VideoIcon, href: `${base}/meetings` },
+        { label: "Projects", icon: FolderKanbanIcon, href: `/w/${workspaceId}/projects` },
+        { label: "Calendar", icon: CalendarIcon, href: `/w/${workspaceId}/calendar` },
+        { label: "Meetings", icon: VideoIcon, href: `/w/${workspaceId}/meetings` },
         {
           label: "Messages",
           icon: MessageSquareIcon,
-          href: `${base}/messages`,
-          unreadFrom: `/api/portal/workspaces/${workspaceId}/conversations/unread-count`,
+          href: `/w/${workspaceId}/messages`,
+          unreadFrom: `/api/workspaces/${workspaceId}/conversations/unread-count`,
         },
       ],
     },

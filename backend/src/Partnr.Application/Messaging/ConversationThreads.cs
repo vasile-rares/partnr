@@ -4,7 +4,6 @@ using Partnr.Application.Exceptions;
 using Partnr.Application.Interfaces.Repositories;
 using Partnr.Application.Interfaces.Services;
 using Partnr.Domain.Entities;
-using Partnr.Domain.Enums;
 
 namespace Partnr.Application.Messaging;
 
@@ -28,15 +27,6 @@ internal sealed class ConversationThreads(
     public const int PageSize = 50;
 
     private const string FormerMember = "Former member";
-
-    /// <summary>
-    /// The one rule, shared with the portal: a conversation exists while the client can open the project. In Planning, archived,
-    /// or with a client who has no account (or an archived card) there is nobody on the other side.
-    /// </summary>
-    public static bool IsOpen(Project project, Client? client) =>
-        !project.IsArchived
-        && project.Status != ProjectStatus.Planning
-        && client is { UserId: not null, IsArchived: false };
 
     public async Task<IReadOnlyList<ConversationSummaryResponse>> SummariesAsync(
         Guid userId,

@@ -2,7 +2,6 @@ using Partnr.Application.DTOs.Auth;
 using Partnr.Application.Interfaces.Repositories;
 using Partnr.Application.Interfaces.Services;
 using Partnr.Domain.Entities;
-using Partnr.Domain.Enums;
 
 namespace Partnr.Application.Notifications;
 
@@ -22,15 +21,14 @@ internal sealed class NotificationWriter(
     {
         var client = await clients.GetByIdAsync(project.WorkspaceId, project.ClientId, cancellationToken);
 
-        // The portal's own rule: someone who cannot open the project must not be told about it.
-        if (client is null || client.UserId is not { } clientUserId || client.IsArchived
-            || project.IsArchived || project.Status == ProjectStatus.Planning)
+        // Someone who cannot open the project must not be told about it.
+        if (!project.IsOpenToClient(client))
         {
             return;
         }
 
         notifications.Add(Notification.ApprovalRequested(
-            clientUserId, project.WorkspaceId, workspaceName, project.Id, project.Name, deliverable.Title, round.Id));
+            client.UserId!.Value, project.WorkspaceId, workspaceName, project.Id, project.Name, deliverable.Title, round.Id));
     }
 
     public async Task ApprovalDecidedAsync(Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken)

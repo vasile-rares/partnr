@@ -20,7 +20,7 @@ export function PortalProjectList({ workspaceId, projects }: { workspaceId: stri
       {projects.map((project) => (
         <li key={project.id} className="portal-project-item">
           <Link
-            href={`/portal/${workspaceId}/projects/${project.id}`}
+            href={`/w/${workspaceId}/projects/${project.id}`}
             className="portal-project-link flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4 hover:bg-muted/50"
           >
             <div className="min-w-0">

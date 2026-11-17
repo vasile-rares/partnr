@@ -355,7 +355,7 @@ test("the client sees its meetings in the portal: next on Home, a list with Join
   await page.getByLabel("Full name").fill("Elena Popescu");
   await page.getByLabel("Password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create account and accept" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}`);
+  await expect(page).toHaveURL(`/w/${workspace.id}`);
 
   const next = page.getByRole("region", { name: "Next meeting" });
   await expect(next).toContainText("Design review");
@@ -363,7 +363,7 @@ test("the client sees its meetings in the portal: next on Home, a list with Join
   await expect(next.getByRole("link", { name: /Join Design review/ })).toHaveAttribute("href", /^https:\/\/meet\.google\.com\//);
 
   await mainNav(page).getByRole("link", { name: "Meetings" }).click();
-  await expect(page).toHaveURL(`/portal/${workspace.id}/meetings`);
+  await expect(page).toHaveURL(`/w/${workspace.id}/meetings`);
   const upcoming = page.getByRole("main").getByRole("listitem");
   await expect(upcoming.filter({ hasText: "Design review" })).toContainText("Website");
   await expect(upcoming.filter({ hasText: "Design review" }).getByRole("link", { name: /Join/ })).toBeVisible();
@@ -378,7 +378,7 @@ test("the client sees its meetings in the portal: next on Home, a list with Join
   await expect(history).toContainText("Cancelled");
   await expect(history.getByRole("link", { name: /Join/ })).toHaveCount(0);
 
-  await page.goto(`/portal/${workspace.id}/calendar?month=2099-07`);
+  await page.goto(`/w/${workspace.id}/calendar?month=2099-07`);
   await expect(page.getByRole("main").locator('[data-date="2099-07-15"]').getByRole("link", { name: "Meeting: 10:30 Design review" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: /Called off/ })).toHaveCount(0);
 });

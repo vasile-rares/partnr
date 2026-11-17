@@ -11,7 +11,7 @@ export function PortalActiveProjects({ workspaceId, projects }: { workspaceId: s
         <h2 id="active-title" className="font-heading text-xl font-semibold">
           Active projects
         </h2>
-        <Link href={`/portal/${workspaceId}/projects`} className="text-sm text-muted-foreground hover:underline">
+        <Link href={`/w/${workspaceId}/projects`} className="text-sm text-muted-foreground hover:underline">
           All projects
         </Link>
       </div>
@@ -24,7 +24,7 @@ export function PortalActiveProjects({ workspaceId, projects }: { workspaceId: s
             return (
               <li key={project.id} className="portal-active-projects-item">
                 <Link
-                  href={`/portal/${workspaceId}/projects/${project.id}`}
+                  href={`/w/${workspaceId}/projects/${project.id}`}
                   className="portal-active-projects-link flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4 hover:bg-muted/50"
                 >
                   <div className="min-w-0">

@@ -1,6 +1,7 @@
 using Partnr.Application.Authorization;
 using Partnr.Application.DTOs.Approvals;
 using Partnr.Application.Exceptions;
+using Partnr.Application.Mappings;
 using Partnr.Application.Services;
 using Partnr.Domain.Entities;
 using Partnr.Domain.Enums;
@@ -8,7 +9,8 @@ using Partnr.Domain.Exceptions;
 
 namespace Partnr.UnitTests.Application;
 
-public class PortalApprovalServiceTests
+/// <summary>The client's answer to an approval request, through the one ApprovalService.</summary>
+public class ApprovalServiceForClientsTests
 {
     private readonly Guid _me = Guid.NewGuid();
     private readonly FakeWorkspaceRepository _workspaces = new();
@@ -24,9 +26,9 @@ public class PortalApprovalServiceTests
     private readonly Project _project;
     private readonly Deliverable _deliverable;
     private readonly ApprovalRequest _round;
-    private readonly PortalApprovalService _service;
+    private readonly ApprovalService _service;
 
-    public PortalApprovalServiceTests()
+    public ApprovalServiceForClientsTests()
     {
         _projects = new FakeProjectRepository { Clients = _clients };
         _studio = Workspace.Create("Studio Pop", Guid.NewGuid());
@@ -46,14 +48,25 @@ public class PortalApprovalServiceTests
         _round = ApprovalRequest.Request(_studio.Id, _project.Id, _deliverable.Id, Guid.NewGuid(), "Please check.");
         _approvals.Items.Add(_round);
 
-        _service = new PortalApprovalService(_projects, _deliverables, _approvals, _notifications, new WorkspaceAccess(_workspaces, _currentUser), _unitOfWork);
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(_projects, _workspaces);
+        _service = new ApprovalService(
+            _approvals,
+            _deliverables,
+            new ProjectAccess(_projects),
+            new DeliverableResponseBuilder(_approvals),
+            _notifications,
+            access,
+            clientAccess,
+            new CallerAccess(access, clientAccess),
+            _unitOfWork);
     }
 
     [Fact]
     public async Task ADecision_TellsTheNotificationWriter()
     {
         await _service.RequestChangesAsync(
-            _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = "Bigger logo." }, CancellationToken.None);
+            _studio.Id, _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = "Bigger logo." }, CancellationToken.None);
 
         Assert.Same(_round, Assert.Single(_notifications.Decided));
     }
@@ -62,7 +75,7 @@ public class PortalApprovalServiceTests
     public async Task ARefusedDecision_NotifiesNobody()
     {
         await Assert.ThrowsAsync<DomainException>(() =>
-            _service.RequestChangesAsync(_project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = " " }, CancellationToken.None));
+            _service.RequestChangesAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = " " }, CancellationToken.None));
 
         Assert.Empty(_notifications.Decided);
     }
@@ -71,7 +84,7 @@ public class PortalApprovalServiceTests
     public async Task Approve_ClosesTheRound_WithWhoDecided_AndAnOptionalMessage()
     {
         var response = await _service.ApproveAsync(
-            _project.Id,
+            _studio.Id, _project.Id,
             _deliverable.Id,
             _round.Id,
             new ApproveRequest { Message = "  Looks great.  " },
@@ -89,7 +102,7 @@ public class PortalApprovalServiceTests
     [Fact]
     public async Task Approve_WithoutAMessage_IsAllowed()
     {
-        await _service.ApproveAsync(_project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None);
+        await _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None);
 
         Assert.Equal(ApprovalStatus.Approved, _round.Status);
         Assert.Null(_round.Message);
@@ -99,7 +112,7 @@ public class PortalApprovalServiceTests
     public async Task RequestChanges_ClosesTheRound_WithTheMessage()
     {
         var response = await _service.RequestChangesAsync(
-            _project.Id,
+            _studio.Id, _project.Id,
             _deliverable.Id,
             _round.Id,
             new RequestChangesRequest { Message = "Bigger logo." },
@@ -116,7 +129,7 @@ public class PortalApprovalServiceTests
     public async Task RequestChanges_WithoutSayingWhat_Throws_AndKeepsTheRoundOpen(string message)
     {
         await Assert.ThrowsAsync<DomainException>(() =>
-            _service.RequestChangesAsync(_project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = message }, CancellationToken.None));
+            _service.RequestChangesAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = message }, CancellationToken.None));
 
         Assert.True(_round.IsPending);
         Assert.Equal(0, _unitOfWork.SaveCount);
@@ -125,12 +138,12 @@ public class PortalApprovalServiceTests
     [Fact]
     public async Task ADecision_IsFinal_ASecondAnswerIsAConflict()
     {
-        await _service.ApproveAsync(_project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None);
+        await _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None);
 
         await Assert.ThrowsAsync<ConflictException>(() =>
-            _service.RequestChangesAsync(_project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = "Changed my mind." }, CancellationToken.None));
+            _service.RequestChangesAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = "Changed my mind." }, CancellationToken.None));
         await Assert.ThrowsAsync<ConflictException>(() =>
-            _service.ApproveAsync(_project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
 
         Assert.Equal(ApprovalStatus.Approved, _round.Status);
         Assert.Equal(1, _unitOfWork.SaveCount);
@@ -142,7 +155,7 @@ public class PortalApprovalServiceTests
         _round.Withdraw();
 
         await Assert.ThrowsAsync<ConflictException>(() =>
-            _service.ApproveAsync(_project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
 
         Assert.Equal(ApprovalStatus.Withdrawn, _round.Status);
     }
@@ -166,7 +179,7 @@ public class PortalApprovalServiceTests
         foreach (var projectId in new[] { draft.Id, archived.Id, theirs.Id, Guid.NewGuid() })
         {
             await Assert.ThrowsAsync<NotFoundException>(() =>
-                _service.ApproveAsync(projectId, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+                _service.ApproveAsync(_studio.Id, projectId, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
         }
 
         Assert.True(_round.IsPending);
@@ -185,11 +198,11 @@ public class PortalApprovalServiceTests
         _deliverables.Items.Add(archived);
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            _service.ApproveAsync(_project.Id, draft.Id, draftRound.Id, new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, draft.Id, draftRound.Id, new ApproveRequest(), CancellationToken.None));
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            _service.ApproveAsync(_project.Id, archived.Id, Guid.NewGuid(), new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, archived.Id, Guid.NewGuid(), new ApproveRequest(), CancellationToken.None));
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            _service.ApproveAsync(_project.Id, Guid.NewGuid(), _round.Id, new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, Guid.NewGuid(), _round.Id, new ApproveRequest(), CancellationToken.None));
 
         Assert.True(draftRound.IsPending);
     }
@@ -202,9 +215,9 @@ public class PortalApprovalServiceTests
         _deliverables.Items.Add(other);
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            _service.ApproveAsync(_project.Id, other.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, other.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            _service.ApproveAsync(_project.Id, _deliverable.Id, Guid.NewGuid(), new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, Guid.NewGuid(), new ApproveRequest(), CancellationToken.None));
 
         Assert.True(_round.IsPending);
     }
@@ -215,6 +228,32 @@ public class PortalApprovalServiceTests
         _currentUser.UserId = null;
 
         await Assert.ThrowsAsync<UnauthorizedException>(() =>
-            _service.ApproveAsync(_project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+            _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AMemberOfTheFirm_CannotAnswerForTheClient()
+    {
+        _currentUser.UserId = _studio.Members.Single().UserId;
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.ApproveAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.RequestChangesAsync(_studio.Id, _project.Id, _deliverable.Id, _round.Id, new RequestChangesRequest { Message = "No." }, CancellationToken.None));
+
+        Assert.True(_round.IsPending);
+    }
+
+    [Fact]
+    public async Task TheFirmInTheRouteHasToBeTheProjectsOwn()
+    {
+        var other = Workspace.Create("Other Firm", Guid.NewGuid());
+        _workspaces.Items.Add(other);
+        _workspaces.ClientOf[_me] = [_studio.Id, other.Id];
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.ApproveAsync(other.Id, _project.Id, _deliverable.Id, _round.Id, new ApproveRequest(), CancellationToken.None));
+
+        Assert.True(_round.IsPending);
     }
 }

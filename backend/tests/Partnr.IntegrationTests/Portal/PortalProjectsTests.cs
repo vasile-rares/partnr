@@ -26,18 +26,18 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.AddStage(project, "Design");
         await studio.AddStage(project, "Launch");
 
-        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!);
-        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{project.Id}")).StatusCode);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects"))!);
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}")).StatusCode);
 
         await studio.SetStatus(project, "Active");
 
-        var list = await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects");
+        var list = await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects");
         var shown = Assert.Single(list!);
         Assert.Equal((project.Id, "Website", "Active"), (shown.Id, shown.Name, shown.Status));
         Assert.Equal((studio.WorkspaceId, "Studio"), (shown.Workspace.Id, shown.Workspace.Name));
         Assert.Equal((0, 2), (shown.Progress.Done, shown.Progress.Total));
 
-        var detail = await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}");
+        var detail = await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}");
         Assert.Equal("Five pages", detail!.Description);
         Assert.Equal(["Design", "Launch"], detail.Stages.Select(s => s.Name));
     }
@@ -49,7 +49,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         var elena = await studio.AddClient("Elena");
         var project = await studio.AddProject(elena, "Website");
         await studio.SetStatus(project, "Active");
-        var url = $"/api/portal/projects/{project.Id}";
+        var url = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}";
         Assert.Equal(HttpStatusCode.OK, (await elena.Http.GetAsync(url)).StatusCode);
 
         await studio.SetStatus(project, "Planning");
@@ -60,7 +60,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
 
         await studio.Http.PostAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/archive", null);
         Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync(url)).StatusCode);
-        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!);
+        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects"))!);
 
         await studio.Http.PostAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/restore", null);
         Assert.Equal(HttpStatusCode.OK, (await elena.Http.GetAsync(url)).StatusCode);
@@ -73,11 +73,12 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         var elena = await studio.AddClient("Elena");
         var project = await studio.AddProject(elena, "Website");
         await studio.SetStatus(project, "Active");
-        var url = $"/api/portal/projects/{project.Id}";
+        var url = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}";
 
         await studio.Http.PostAsync($"/api/workspaces/{studio.WorkspaceId}/clients/{elena.ClientId}/archive", null);
         Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync(url)).StatusCode);
-        Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!);
+        // An archived card closes the whole firm's door, the list included.
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects")).StatusCode);
 
         await studio.Http.PostAsync($"/api/workspaces/{studio.WorkspaceId}/clients/{elena.ClientId}/restore", null);
         Assert.Equal(HttpStatusCode.OK, (await elena.Http.GetAsync(url)).StatusCode);
@@ -94,12 +95,12 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.SetStatus(hers, "Active");
         await studio.SetStatus(his, "Active");
 
-        var elenaList = await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects");
-        var bramList = await bram.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects");
+        var elenaList = await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects");
+        var bramList = await bram.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects");
 
         Assert.Equal(hers.Id, Assert.Single(elenaList!).Id);
         Assert.Equal(his.Id, Assert.Single(bramList!).Id);
-        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{his.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{his.Id}")).StatusCode);
     }
 
     [Fact]
@@ -111,8 +112,8 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.SetStatus(project, "Active");
         await studio.AddStage(project, "Design");
 
-        var detail = await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}");
-        var list = await elena.Http.GetStringAsync("/api/portal/projects");
+        var detail = await elena.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}");
+        var list = await elena.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects");
 
         foreach (var body in new[] { detail, list })
         {
@@ -123,20 +124,28 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task AMemberOfTheWorkspace_SeesNothingThroughThePortal_AndAnAnonymousVisitorGetsUnauthorized()
+    public async Task AMember_GetsTheFirmsShape_AStrangerGetsNothing_AndAnAnonymousVisitorGetsUnauthorized()
     {
         var studio = await Studio();
         var elena = await studio.AddClient("Elena");
         var project = await studio.AddProject(elena, "Website");
         await studio.SetStatus(project, "Active");
+        var list = $"/api/workspaces/{studio.WorkspaceId}/projects";
 
-        // The workspace's own owner is not anyone's client: the portal is the client's view only.
-        Assert.Empty((await studio.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!);
-        Assert.Equal(HttpStatusCode.NotFound, (await studio.Http.GetAsync($"/api/portal/projects/{project.Id}")).StatusCode);
+        // The workspace's own owner reaches the same route, and gets the firm's answer: the client is named, which the client's shape never does.
+        var asOwner = await studio.Http.GetFromJsonAsync<ProjectResponse[]>(list);
+        Assert.Equal(project.Id, Assert.Single(asOwner!).Id);
+        Assert.Equal(elena.ClientId, asOwner![0].Client.Id);
+
+        // Someone who is neither a member nor a client of the workspace finds neither the list nor the project.
+        var stranger = factory.CreateClient();
+        (await stranger.PostAsJsonAsync("/api/auth/register", new { email = NewEmail(), password = Password, fullName = "Stranger" })).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync(list)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"{list}/{project.Id}")).StatusCode);
 
         var anonymous = factory.CreateClient();
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/portal/projects")).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/portal/projects/{project.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(list)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"{list}/{project.Id}")).StatusCode);
     }
 
     [Fact]
@@ -153,7 +162,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
             $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}/stages/{design.Id}",
             new { name = "Design", status = "Done" });
 
-        var detail = await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}");
+        var detail = await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}");
         Assert.Equal((1, 2), (detail!.Progress.Done, detail.Progress.Total));
         Assert.Equal(["Done", "ToDo"], detail.Stages.Select(s => s.Status));
     }
@@ -167,7 +176,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.SetStatus(project, "Active");
         var design = (await studio.AddStage(project, "Design")).Stages[0];
         var mockup = await studio.AddDeliverable(project, "Homepage mockup", design.Id);
-        var url = $"/api/portal/projects/{project.Id}";
+        var url = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}";
 
         Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Deliverables);
 
@@ -200,15 +209,15 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         var shared = await studio.AddDeliverable(hers, "Elena's mockup", null, share: true);
 
         // Shared, but the project is still a draft: there is nothing to see, and no way in through the project.
-        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{hers.Id}")).StatusCode);
 
         await studio.SetStatus(hers, "Active");
-        Assert.Equal("Elena's mockup", Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{hers.Id}"))!.Deliverables).Title);
+        Assert.Equal("Elena's mockup", Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{hers.Id}"))!.Deliverables).Title);
 
-        var bramView = await bram.Http.GetStringAsync($"/api/portal/projects/{his.Id}");
+        var bramView = await bram.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{his.Id}");
         Assert.DoesNotContain(shared.Id.ToString(), bramView);
         Assert.DoesNotContain("Elena's mockup", bramView);
-        Assert.Equal(HttpStatusCode.NotFound, (await bram.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await bram.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{hers.Id}")).StatusCode);
     }
 
     [Fact]
@@ -221,7 +230,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         var design = (await studio.AddStage(project, "Design")).Stages[0];
         await studio.AddDeliverable(project, "Mockup", design.Id, share: true);
 
-        var body = await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}");
+        var body = await elena.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}");
 
         Assert.Contains("Mockup", body);
         foreach (var hidden in new[] { "workspaceId", "projectId", "stageId", "archivedAtUtc", "createdAtUtc" })
@@ -238,7 +247,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         var project = await studio.AddProject(elena, "Website");
         await studio.SetStatus(project, "Active");
         var update = await studio.AddUpdate(project, "Design approved", "Starting the build.");
-        var url = $"/api/portal/projects/{project.Id}";
+        var url = $"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}";
 
         Assert.Empty((await elena.Http.GetFromJsonAsync<PortalProjectResponse>(url))!.Updates);
 
@@ -270,7 +279,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{writtenSecond.Id}/share", null);
         await studio.Http.PostAsync($"{studio.UpdatesUrl(project)}/{writtenFirst.Id}/share", null);
 
-        var updates = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!.Updates;
+        var updates = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!.Updates;
         Assert.Equal(["Written first", "Written second"], updates.Select(u => u.Title));
     }
 
@@ -287,15 +296,15 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         var shared = await studio.AddUpdate(hers, "Elena's news", null, share: true);
 
         // Shared, but the project is still a draft: there is nothing to see, and no way in through the project.
-        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{hers.Id}")).StatusCode);
 
         await studio.SetStatus(hers, "Active");
-        Assert.Equal("Elena's news", Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{hers.Id}"))!.Updates).Title);
+        Assert.Equal("Elena's news", Assert.Single((await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{hers.Id}"))!.Updates).Title);
 
-        var bramView = await bram.Http.GetStringAsync($"/api/portal/projects/{his.Id}");
+        var bramView = await bram.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{his.Id}");
         Assert.DoesNotContain(shared.Id.ToString(), bramView);
         Assert.DoesNotContain("Elena's news", bramView);
-        Assert.Equal(HttpStatusCode.NotFound, (await bram.Http.GetAsync($"/api/portal/projects/{hers.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await bram.Http.GetAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{hers.Id}")).StatusCode);
     }
 
     [Fact]
@@ -307,7 +316,7 @@ public sealed partial class PortalProjectsTests(ApiFactory factory)
         await studio.SetStatus(project, "Active");
         await studio.AddUpdate(project, "Design approved", "Starting the build.", share: true);
 
-        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}"));
+        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"));
 
         var update = body.RootElement.GetProperty("updates")[0];
         Assert.Equal(["body", "id", "sharedAtUtc", "title"], update.EnumerateObject().Select(p => p.Name).Order());

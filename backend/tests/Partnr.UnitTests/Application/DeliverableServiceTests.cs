@@ -32,7 +32,7 @@ public class DeliverableServiceTests
 
         _service = new DeliverableService(
             _deliverables,
-            _projects,
+            new ProjectAccess(_projects),
             _approvals,
             new DeliverableResponseBuilder(_approvals),
             _notifications,

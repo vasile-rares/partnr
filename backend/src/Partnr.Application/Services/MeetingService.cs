@@ -1,4 +1,5 @@
 using Partnr.Application.Authorization;
+using Partnr.Application.DTOs;
 using Partnr.Application.DTOs.Meetings;
 using Partnr.Application.Exceptions;
 using Partnr.Application.Interfaces.Repositories;
@@ -16,9 +17,14 @@ internal sealed class MeetingService(
     IGoogleConnectionRepository googleConnections,
     MeetingResponseBuilder responses,
     WorkspaceAccess access,
+    ClientAccess clientAccess,
+    CallerAccess callers,
     IUnitOfWork unitOfWork,
     TimeProvider time) : IMeetingService
 {
+    /// <summary>Cancelled meetings stay visible to a client for a while, so they see what was called off; older history is not the portal's business.</summary>
+    private static readonly TimeSpan ClientHistory = TimeSpan.FromDays(30);
+
     public async Task<MeetingResponse> CreateAsync(Guid workspaceId, CreateMeetingRequest request, CancellationToken cancellationToken)
     {
         var member = await access.RequireMemberAsync(workspaceId, cancellationToken);
@@ -55,19 +61,43 @@ internal sealed class MeetingService(
         return await responses.BuildAsync(meeting, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<MeetingResponse>> ListAsync(
+    public async Task<RoleResponse<IReadOnlyList<MeetingResponse>, IReadOnlyList<PortalMeetingResponse>>> ListAsync(
         Guid workspaceId,
         bool includeCancelled,
         Guid? clientId,
         Guid? projectId,
         CancellationToken cancellationToken)
     {
-        await access.RequireMemberAsync(workspaceId, cancellationToken);
+        var caller = await callers.RequireAsync(workspaceId, cancellationToken);
+        if (caller.IsClient)
+        {
+            return RoleResponse<IReadOnlyList<MeetingResponse>, IReadOnlyList<PortalMeetingResponse>>.ForClient(
+                await ListForClientAsync(caller, cancellationToken));
+        }
 
-        return await responses.BuildAsync(
-            workspaceId,
-            await meetings.ListAsync(workspaceId, includeCancelled, clientId, projectId, cancellationToken),
-            cancellationToken);
+        return RoleResponse<IReadOnlyList<MeetingResponse>, IReadOnlyList<PortalMeetingResponse>>.ForMember(
+            await responses.BuildAsync(
+                workspaceId,
+                await meetings.ListAsync(workspaceId, includeCancelled, clientId, projectId, cancellationToken),
+                cancellationToken));
+    }
+
+    private async Task<IReadOnlyList<PortalMeetingResponse>> ListForClientAsync(Caller caller, CancellationToken cancellationToken)
+    {
+        var workspaceId = caller.Workspace.Id;
+        var list = await meetings.ListForClientAccountAsync(workspaceId, caller.UserId, Now() - ClientHistory, cancellationToken);
+        // The same door as the client's projects: a project in Planning or archived is not theirs to see, so it is not named.
+        var open = (await clientAccess.ListProjectsAsync(caller.UserId, workspaceId, cancellationToken)).ToDictionary(p => p.Id, p => p.Name);
+
+        return list.Select(m => new PortalMeetingResponse(
+            m.Id,
+            m.ProjectId is { } projectId && open.TryGetValue(projectId, out var name) ? new MeetingProjectResponse(projectId, name) : null,
+            m.Title,
+            m.Description,
+            m.StartsAtUtc,
+            m.EndsAtUtc,
+            m.Status.ToString(),
+            m.IsCancelled ? null : m.MeetUrl)).ToList();
     }
 
     public async Task<MeetingResponse> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)

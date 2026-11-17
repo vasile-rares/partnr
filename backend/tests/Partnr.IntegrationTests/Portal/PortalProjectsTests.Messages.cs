@@ -4,7 +4,7 @@ using Partnr.Application.DTOs.Messages;
 
 namespace Partnr.IntegrationTests.Portal;
 
-// The project conversations, from both doors: the firm's (/api/workspaces/...) and the client's (/api/portal/workspaces/...).
+// The project conversations, from both sides, through the same routes (/api/workspaces/...): a member of the firm and the client.
 public sealed partial class PortalProjectsTests
 {
     [Fact]
@@ -125,8 +125,8 @@ public sealed partial class PortalProjectsTests
         Assert.Equal(HttpStatusCode.NotFound, (await otherStudio.Http.GetAsync($"/api/workspaces/{otherStudio.WorkspaceId}/conversations/{project.Id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await otherStudio.Http.GetAsync(FirmConversation(studio, project))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await other.Http.GetAsync(PortalConversation(studio, project))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/portal/workspaces/{otherStudio.WorkspaceId}/conversations/{project.Id}")).StatusCode);
-        Assert.Empty((await other.Http.GetFromJsonAsync<ConversationSummaryResponse[]>(PortalList(studio)))!);
+        Assert.Equal(HttpStatusCode.NotFound, (await elena.Http.GetAsync($"/api/workspaces/{otherStudio.WorkspaceId}/conversations/{project.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.Http.GetAsync(PortalList(studio))).StatusCode); // not their firm
     }
 
     [Fact]
@@ -147,6 +147,21 @@ public sealed partial class PortalProjectsTests
         Assert.Equal(("Message 3", "Message 52"), (latest.Messages[0].Body, latest.Messages[^1].Body));
         Assert.Equal(["Message 1", "Message 2"], earlier.Messages.Select(m => m.Body));
         Assert.False(earlier.HasEarlier);
+    }
+
+    [Fact]
+    public async Task AMessage_SignalsTheOtherSide_WhoeverWroteIt()
+    {
+        var (studio, elena, project) = await OpenConversation("Elena");
+        await using var forStudio = await Listen(studio.Email);
+
+        // The client writes: the firm's members hear it, which needs the workspace opened as a client to know its members.
+        await Send(elena.Http, PortalConversation(studio, project), "Hello from the client");
+        Assert.Equal(project.Id, await forStudio.NextConversationAsync(SignalWait));
+
+        await using var forElena = await Listen(elena.Email);
+        await Send(studio.Http, FirmConversation(studio, project), "And a reply");
+        Assert.Equal(project.Id, await forElena.NextConversationAsync(SignalWait));
     }
 
     private async Task<(StudioSession Studio, ClientSession Client, Partnr.Application.DTOs.Projects.ProjectResponse Project)> OpenConversation(string clientName)
@@ -174,7 +189,7 @@ public sealed partial class PortalProjectsTests
     private static string FirmConversation(StudioSession studio, Partnr.Application.DTOs.Projects.ProjectResponse project) =>
         $"{FirmList(studio)}/{project.Id}";
 
-    private static string PortalList(StudioSession studio) => $"/api/portal/workspaces/{studio.WorkspaceId}/conversations";
+    private static string PortalList(StudioSession studio) => FirmList(studio); // one route for both sides
 
     private static string PortalUnread(StudioSession studio) => $"{PortalList(studio)}/unread-count";
 

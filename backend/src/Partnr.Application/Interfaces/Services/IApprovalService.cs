@@ -1,9 +1,14 @@
 using Partnr.Application.DTOs.Approvals;
 using Partnr.Application.DTOs.Deliverables;
+using Partnr.Application.DTOs.Portal;
 
 namespace Partnr.Application.Interfaces.Services;
 
-/// <summary>The workspace's side of approvals: asking the client, and taking the request back. Each call answers with the whole deliverable.</summary>
+/// <summary>
+/// Approvals: a member asks the client and can take the request back (each answers with the whole deliverable), and the client answers it.
+/// The client's answer is for a client only (a member gets NotFound); anything the client may not see (a draft or someone else's
+/// project, an unshared deliverable, an unknown round) is NotFound too, and a round no longer open is a Conflict.
+/// </summary>
 public interface IApprovalService
 {
     Task<DeliverableResponse> RequestAsync(
@@ -18,5 +23,21 @@ public interface IApprovalService
         Guid projectId,
         Guid deliverableId,
         Guid approvalId,
+        CancellationToken cancellationToken);
+
+    Task<PortalDeliverableResponse> ApproveAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        ApproveRequest request,
+        CancellationToken cancellationToken);
+
+    Task<PortalDeliverableResponse> RequestChangesAsync(
+        Guid workspaceId,
+        Guid projectId,
+        Guid deliverableId,
+        Guid approvalId,
+        RequestChangesRequest request,
         CancellationToken cancellationToken);
 }

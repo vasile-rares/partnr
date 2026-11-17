@@ -1,12 +1,16 @@
 using Partnr.Application.Authorization;
+using Partnr.Application.DTOs.Portal;
+using Partnr.Application.DTOs.Projects;
 using Partnr.Application.Exceptions;
+using Partnr.Application.Mappings;
 using Partnr.Application.Services;
 using Partnr.Domain.Entities;
 using Partnr.Domain.Enums;
 
 namespace Partnr.UnitTests.Application;
 
-public class PortalServiceTests
+/// <summary>What a client gets from the one ProjectService and ProjectFileService: their projects, and the files shared with them.</summary>
+public class ProjectServiceForClientsTests
 {
     private readonly Guid _me = Guid.NewGuid();
     private readonly FakeWorkspaceRepository _workspaces = new();
@@ -18,41 +22,30 @@ public class PortalServiceTests
     private readonly FakeFileStorage _storage = new();
     private readonly FakeApprovalRequestRepository _approvals = new();
     private readonly FakeCurrentUser _currentUser = new();
-    private readonly PortalService _service;
+    private readonly ProjectService _projectService;
+    private readonly ProjectFileService _fileService;
+    private Guid _studioId;
 
-    public PortalServiceTests()
+    public ProjectServiceForClientsTests()
     {
         _projects = new FakeProjectRepository { Clients = _clients };
-        _service = new PortalService(
-            _workspaces,
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(_projects, _workspaces);
+        _fileService = new ProjectFileService(_files, new ProjectAccess(_projects), _storage, access, clientAccess, new CallerAccess(access, clientAccess), new FakeUnitOfWork());
+        _projectService = new ProjectService(
             _projects,
-            _deliverables,
-            _updates,
-            _files,
-            _approvals,
-            _storage,
-            new WorkspaceAccess(_workspaces, _currentUser));
+            new ProjectAccess(_projects),
+            _clients,
+            new ProjectResponseBuilder(
+                _clients,
+                new ClientResponseBuilder(new FakeIdentityService(), new FakeClientInvitationRepository(), new FakeTimeProvider()),
+                _approvals),
+            new PortalProjectResponseBuilder(_deliverables, _updates, _files, _approvals),
+            access,
+            clientAccess,
+            new CallerAccess(access, clientAccess),
+            new FakeUnitOfWork());
     }
-
-    [Fact]
-    public async Task ListWorkspaces_ShowsOnlyTheNamesOfTheWorkspacesIAmAClientOf()
-    {
-        var mine = Workspace.Create("Studio Pop", Guid.NewGuid());
-        var other = Workspace.Create("Not mine", Guid.NewGuid());
-        _workspaces.Items.AddRange([mine, other]);
-        _workspaces.ClientOf[_me] = [mine.Id];
-        _currentUser.UserId = _me;
-
-        var list = await _service.ListWorkspacesAsync(CancellationToken.None);
-
-        var shown = Assert.Single(list);
-        Assert.Equal(mine.Id, shown.Id);
-        Assert.Equal("Studio Pop", shown.Name);
-    }
-
-    [Fact]
-    public async Task ListWorkspaces_Anonymous_ThrowsUnauthorized() =>
-        await Assert.ThrowsAsync<UnauthorizedException>(() => _service.ListWorkspacesAsync(CancellationToken.None));
 
     [Fact]
     public async Task ListProjects_ShowsTheProjectsOutOfPlanning_WithTheirWorkspaceAndProgress()
@@ -65,7 +58,7 @@ public class PortalServiceTests
         AddProject(studio, client, "Paused one", ProjectStatus.OnHold);
         AddProject(studio, client, "Delivered", ProjectStatus.Completed);
 
-        var list = await _service.ListProjectsAsync(CancellationToken.None);
+        var list = await ListProjectsAsync(CancellationToken.None);
 
         Assert.Equal(["Delivered", "Paused one", "Website"], list.Select(p => p.Name).Order());
         var shown = Assert.Single(list, p => p.Name == "Website");
@@ -81,10 +74,10 @@ public class PortalServiceTests
         AddProject(studio, client, "Archived", ProjectStatus.Active).Archive();
         var visible = AddProject(studio, client, "Visible", ProjectStatus.Active);
 
-        Assert.Equal(visible.Id, Assert.Single(await _service.ListProjectsAsync(CancellationToken.None)).Id);
+        Assert.Equal(visible.Id, Assert.Single(await ListProjectsAsync(CancellationToken.None)).Id);
 
         client.Archive();
-        Assert.Empty(await _service.ListProjectsAsync(CancellationToken.None));
+        Assert.Empty(await ListProjectsAsync(CancellationToken.None));
     }
 
     [Fact]
@@ -97,14 +90,14 @@ public class PortalServiceTests
         AddProject(studio, mine, "Mine", ProjectStatus.Active);
         AddProject(studio, someoneElse, "Theirs", ProjectStatus.Active);
 
-        var list = await _service.ListProjectsAsync(CancellationToken.None);
+        var list = await ListProjectsAsync(CancellationToken.None);
 
         Assert.Equal("Mine", Assert.Single(list).Name);
     }
 
     [Fact]
     public async Task ListProjects_Anonymous_ThrowsUnauthorized() =>
-        await Assert.ThrowsAsync<UnauthorizedException>(() => _service.ListProjectsAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedException>(() => ListProjectsAsync(CancellationToken.None));
 
     [Fact]
     public async Task GetProject_ReturnsTheDetailsAndTheStagesInOrder()
@@ -114,7 +107,7 @@ public class PortalServiceTests
         project.AddStage("Design", "Layouts", new DateOnly(2026, 11, 5));
         project.AddStage("Launch", null, null);
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         Assert.Equal(("Website", "Five pages", "Studio Pop"), (response.Name, response.Description, response.Workspace.Name));
         Assert.Equal(["Design", "Launch"], response.Stages.Select(s => s.Name));
@@ -133,7 +126,7 @@ public class PortalServiceTests
         AddDeliverable(project, "Still a draft", null, shared: false);
         AddDeliverable(project, "Archived", null, shared: true).Archive();
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         Assert.Equal([newer.Id, older.Id], response.Deliverables.Select(d => d.Id));
         Assert.Null(response.Deliverables[0].StageName);
@@ -148,7 +141,7 @@ public class PortalServiceTests
         var other = AddProject(studio, client, "Other", ProjectStatus.Active);
         AddDeliverable(other, "Theirs", null, shared: true);
 
-        var response = await _service.GetProjectAsync(mine.Id, CancellationToken.None);
+        var response = await GetProjectAsync(mine.Id, CancellationToken.None);
 
         Assert.Empty(response.Deliverables);
     }
@@ -166,7 +159,7 @@ public class PortalServiceTests
         var withdrawn = AddUpdate(project, "Withdrawn", shared: true);
         withdrawn.Unshare();
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         Assert.Equal([second.Id, first.Id], response.Updates.Select(u => u.Id));
         Assert.Equal(("Second", "Some details"), (response.Updates[0].Title, response.Updates[0].Body));
@@ -181,7 +174,7 @@ public class PortalServiceTests
         var other = AddProject(studio, client, "Other", ProjectStatus.Active);
         AddUpdate(other, "Theirs", shared: true);
 
-        var response = await _service.GetProjectAsync(mine.Id, CancellationToken.None);
+        var response = await GetProjectAsync(mine.Id, CancellationToken.None);
 
         Assert.Empty(response.Updates);
     }
@@ -198,7 +191,7 @@ public class PortalServiceTests
         AddFile(project, "archived.pdf", shared: true).Archive();
         AddFile(project, "withdrawn.pdf", shared: true).Unshare();
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         Assert.Equal([second.Id, first.Id], response.Files.Select(f => f.Id));
         Assert.Equal((second.Name, second.Description, "second.fig", 4), (response.Files[0].Name, response.Files[0].Description, response.Files[0].FileName, response.Files[0].SizeBytes));
@@ -212,7 +205,7 @@ public class PortalServiceTests
         var other = AddProject(studio, client, "Other", ProjectStatus.Active);
         AddFile(other, "theirs.pdf", shared: true);
 
-        var response = await _service.GetProjectAsync(mine.Id, CancellationToken.None);
+        var response = await GetProjectAsync(mine.Id, CancellationToken.None);
 
         Assert.Empty(response.Files);
     }
@@ -224,7 +217,7 @@ public class PortalServiceTests
         var project = AddProject(studio, client, "Website", ProjectStatus.Active);
         var file = AddFile(project, "mockups.pdf", shared: true);
 
-        var download = await _service.DownloadFileAsync(project.Id, file.Id, CancellationToken.None);
+        var download = await DownloadFileAsync(project.Id, file.Id, CancellationToken.None);
 
         using var content = download.Content;
         using var reader = new StreamReader(content);
@@ -245,7 +238,7 @@ public class PortalServiceTests
 
         foreach (var id in new[] { draft.Id, archived.Id, elsewhere.Id, Guid.NewGuid() })
         {
-            await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(project.Id, id, CancellationToken.None));
+            await Assert.ThrowsAsync<NotFoundException>(() => DownloadFileAsync(project.Id, id, CancellationToken.None));
         }
     }
 
@@ -265,14 +258,14 @@ public class PortalServiceTests
         var theirs = AddProject(strangersStudio, strangersClient, "Theirs", ProjectStatus.Active);
         var secret = AddFile(theirs, "secret.pdf", shared: true);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(planning.Id, planned.Id, CancellationToken.None));
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(archivedProject.Id, old.Id, CancellationToken.None));
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.DownloadFileAsync(theirs.Id, secret.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => DownloadFileAsync(planning.Id, planned.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => DownloadFileAsync(archivedProject.Id, old.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => DownloadFileAsync(theirs.Id, secret.Id, CancellationToken.None));
     }
 
     [Fact]
     public async Task DownloadFile_Anonymous_ThrowsUnauthorized() =>
-        await Assert.ThrowsAsync<UnauthorizedException>(() => _service.DownloadFileAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedException>(() => DownloadFileAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None));
 
     [Fact]
     public async Task GetProject_ShowsTheOpenRound_AndTheDecidedOnesNewestFirst_ButNeverAWithdrawnOne()
@@ -287,7 +280,7 @@ public class PortalServiceTests
         approved.Approve(_me, "Looks great.");
         var open = AddRound(project, mockup, "Final check.");
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         var approval = Assert.Single(response.Deliverables).Approval;
         Assert.Equal("Pending", approval.Status);
@@ -305,7 +298,7 @@ public class PortalServiceTests
         var project = AddProject(studio, client, "Website", ProjectStatus.Active);
         AddDeliverable(project, "Mockup", null, shared: true);
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         var approval = Assert.Single(response.Deliverables).Approval;
         Assert.Equal("None", approval.Status);
@@ -322,7 +315,7 @@ public class PortalServiceTests
         var mockup = AddDeliverable(project, "Mockup", null, shared: true);
         AddRound(project, mockup, "Never mind").Withdraw();
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         Assert.Equal("None", response.Deliverables[0].Approval.Status);
         Assert.Empty(response.Deliverables[0].Approval.History);
@@ -339,7 +332,7 @@ public class PortalServiceTests
         AddRound(project, AddDeliverable(project, "Answered", null, shared: true), null).Approve(_me, null);
         AddDeliverable(project, "Nothing asked", null, shared: true);
 
-        var response = await _service.GetProjectAsync(project.Id, CancellationToken.None);
+        var response = await GetProjectAsync(project.Id, CancellationToken.None);
 
         Assert.Equal(2, response.AwaitingApproval);
     }
@@ -354,7 +347,7 @@ public class PortalServiceTests
         AddRound(busy, AddDeliverable(busy, "Two", null, shared: true), null);
         AddRound(quiet, AddDeliverable(quiet, "Done", null, shared: true), null).Approve(_me, null);
 
-        var list = await _service.ListProjectsAsync(CancellationToken.None);
+        var list = await ListProjectsAsync(CancellationToken.None);
 
         Assert.Equal(2, list.Single(p => p.Name == "Busy").AwaitingApproval);
         Assert.Equal(0, list.Single(p => p.Name == "Quiet").AwaitingApproval);
@@ -374,13 +367,72 @@ public class PortalServiceTests
 
         foreach (var id in new[] { draft.Id, archived.Id, theirs.Id, Guid.NewGuid() })
         {
-            await Assert.ThrowsAsync<NotFoundException>(() => _service.GetProjectAsync(id, CancellationToken.None));
+            await Assert.ThrowsAsync<NotFoundException>(() => GetProjectAsync(id, CancellationToken.None));
         }
     }
 
     [Fact]
     public async Task GetProject_Anonymous_ThrowsUnauthorized() =>
-        await Assert.ThrowsAsync<UnauthorizedException>(() => _service.GetProjectAsync(Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedException>(() => GetProjectAsync(Guid.NewGuid(), CancellationToken.None));
+
+    // The client's list and project, from the one ProjectService, in the studio the test set up.
+    private async Task<IReadOnlyList<PortalProjectSummaryResponse>> ListProjectsAsync(CancellationToken cancellationToken) =>
+        (await _projectService.ListAsync(_studioId, false, null, cancellationToken)).Client!;
+
+    private async Task<Partnr.Application.DTOs.ProjectFiles.FileDownload> DownloadFileAsync(Guid projectId, Guid fileId, CancellationToken cancellationToken) =>
+        await _fileService.DownloadAsync(_studioId, projectId, fileId, cancellationToken);
+
+    private async Task<PortalProjectResponse> GetProjectAsync(Guid id, CancellationToken cancellationToken) =>
+        (await _projectService.GetByIdAsync(_studioId, id, cancellationToken)).Client!;
+
+    [Fact]
+    public async Task GetProject_OfAnotherFirm_IsNotFound_EvenForAClientOfBoth()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var other = Workspace.Create("Other Firm", Guid.NewGuid());
+        _workspaces.Items.Add(other);
+        _workspaces.ClientOf[_me] = [studio.Id, other.Id];
+        var otherCard = Client.Register(other.Id, "Elena", "elena@example.com");
+        otherCard.LinkTo(_me, DateTime.UtcNow);
+        _clients.Items.Add(otherCard);
+        var elsewhere = AddProject(other, otherCard, "Elsewhere", ProjectStatus.Active);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => GetProjectAsync(elsewhere.Id, CancellationToken.None));
+        Assert.NotNull((await _projectService.GetByIdAsync(other.Id, elsewhere.Id, CancellationToken.None)).Client);
+        Assert.Empty(await ListProjectsAsync(CancellationToken.None));
+        Assert.NotNull(client);
+    }
+
+    [Fact]
+    public async Task AMember_GetsTheFirmsShape_NotTheClients()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Planning);
+        _currentUser.UserId = studio.Members.Single().UserId;
+
+        var list = await _projectService.ListAsync(studio.Id, false, null, CancellationToken.None);
+        var one = await _projectService.GetByIdAsync(studio.Id, project.Id, CancellationToken.None);
+
+        Assert.Null(list.Client);
+        Assert.Equal("Website", Assert.Single(list.Member!).Name); // a draft: only the firm sees it
+        Assert.Null(one.Client);
+        Assert.Equal("Website", one.Member!.Name);
+    }
+
+    [Fact]
+    public async Task EverythingButReadingProjects_StaysClosedToAClient()
+    {
+        var (studio, client) = AsClientOfAStudio();
+        var project = AddProject(studio, client, "Website", ProjectStatus.Active);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _projectService.CreateAsync(studio.Id, new CreateProjectRequest { ClientId = client.Id, Name = "Mine now" }, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _projectService.UpdateAsync(studio.Id, project.Id, new UpdateProjectRequest { Name = "Changed", Status = "Active" }, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _projectService.AddStageAsync(studio.Id, project.Id, new CreateStageRequest { Name = "Extra" }, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _projectService.ArchiveAsync(studio.Id, project.Id, CancellationToken.None));
+    }
 
     private (Workspace Studio, Client Client) AsClientOfAStudio()
     {
@@ -391,6 +443,7 @@ public class PortalServiceTests
         client.LinkTo(_me, DateTime.UtcNow);
         _clients.Items.Add(client);
         _currentUser.UserId = _me;
+        _studioId = studio.Id;
 
         return (studio, client);
     }

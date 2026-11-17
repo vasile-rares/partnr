@@ -1,4 +1,6 @@
 using Partnr.Application.Authorization;
+using Partnr.Application.DTOs;
+using Partnr.Application.DTOs.Portal;
 using Partnr.Application.DTOs.Projects;
 using Partnr.Application.Exceptions;
 using Partnr.Application.Interfaces.Repositories;
@@ -11,9 +13,13 @@ namespace Partnr.Application.Services;
 
 internal sealed class ProjectService(
     IProjectRepository projects,
+    ProjectAccess projectAccess,
     IClientRepository clients,
     ProjectResponseBuilder responses,
+    PortalProjectResponseBuilder clientView,
     WorkspaceAccess access,
+    ClientAccess clientAccess,
+    CallerAccess callers,
     IUnitOfWork unitOfWork) : IProjectService
 {
     public async Task<ProjectResponse> CreateAsync(
@@ -38,26 +44,42 @@ internal sealed class ProjectService(
         return await responses.BuildAsync(project, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ProjectResponse>> ListAsync(
+    public async Task<RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>> ListAsync(
         Guid workspaceId,
         bool includeArchived,
         Guid? clientId,
         CancellationToken cancellationToken)
     {
-        await access.RequireMemberAsync(workspaceId, cancellationToken);
+        var caller = await callers.RequireAsync(workspaceId, cancellationToken);
+        if (caller.IsClient)
+        {
+            var shared = await clientAccess.ListProjectsAsync(caller.UserId, workspaceId, cancellationToken);
+
+            return RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>.ForClient(
+                await clientView.SummariesAsync(shared, caller.Workspace, cancellationToken));
+        }
 
         var list = await projects.ListAsync(workspaceId, includeArchived, clientId, cancellationToken);
 
-        return await responses.BuildAsync(workspaceId, list, cancellationToken);
+        return RoleResponse<IReadOnlyList<ProjectResponse>, IReadOnlyList<PortalProjectSummaryResponse>>.ForMember(
+            await responses.BuildAsync(workspaceId, list, cancellationToken));
     }
 
-    public async Task<ProjectResponse> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
+    public async Task<RoleResponse<ProjectResponse, PortalProjectResponse>> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
     {
-        await access.RequireMemberAsync(workspaceId, cancellationToken);
+        var caller = await callers.RequireAsync(workspaceId, cancellationToken);
+        if (caller.IsClient)
+        {
+            var shared = await clientAccess.FindProjectInWorkspaceAsync(caller.UserId, workspaceId, id, cancellationToken)
+                ?? throw new NotFoundException($"The project with id '{id}' was not found.");
 
-        var project = await RequireProjectAsync(workspaceId, id, cancellationToken);
+            return RoleResponse<ProjectResponse, PortalProjectResponse>.ForClient(
+                await clientView.BuildAsync(shared, caller.Workspace, cancellationToken));
+        }
 
-        return await responses.BuildAsync(project, cancellationToken);
+        var project = await projectAccess.RequireProjectAsync(workspaceId, id, cancellationToken);
+
+        return RoleResponse<ProjectResponse, PortalProjectResponse>.ForMember(await responses.BuildAsync(project, cancellationToken));
     }
 
     public async Task<ProjectResponse> UpdateAsync(
@@ -67,8 +89,7 @@ internal sealed class ProjectService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, id, cancellationToken);
-        EnsureNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, id, cancellationToken);
 
         project.UpdateDetails(request.Name, request.Description, request.StartDate, request.DueDate);
         project.ChangeStatus(Enum.Parse<ProjectStatus>(request.Status)); // [AllowedValues] already checked the name
@@ -127,7 +148,7 @@ internal sealed class ProjectService(
     public async Task<ProjectResponse> ArchiveAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireOwnerAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, id, cancellationToken);
+        var project = await projectAccess.RequireProjectAsync(workspaceId, id, cancellationToken);
 
         project.Archive();
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -138,17 +159,13 @@ internal sealed class ProjectService(
     public async Task<ProjectResponse> RestoreAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken)
     {
         await access.RequireOwnerAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, id, cancellationToken);
+        var project = await projectAccess.RequireProjectAsync(workspaceId, id, cancellationToken);
 
         project.Restore();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(project, cancellationToken);
     }
-
-    private async Task<Project> RequireProjectAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
-        await projects.GetByIdAsync(workspaceId, id, cancellationToken)
-            ?? throw new NotFoundException($"The project with id '{id}' was not found.");
 
     // Every stage change has the same shape: find the project, refuse if archived, change it, save once, answer with the whole project.
     private async Task<ProjectResponse> ChangeStagesAsync(
@@ -158,8 +175,7 @@ internal sealed class ProjectService(
         CancellationToken cancellationToken)
     {
         await access.RequireMemberAsync(workspaceId, cancellationToken);
-        var project = await RequireProjectAsync(workspaceId, projectId, cancellationToken);
-        EnsureNotArchived(project);
+        var project = await projectAccess.RequireEditableProjectAsync(workspaceId, projectId, cancellationToken);
 
         change(project);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -170,12 +186,4 @@ internal sealed class ProjectService(
     /// <summary>Returns the id once it is known to belong to the project, so an unknown or foreign stage is a 404, not a 400.</summary>
     private static Guid RequireStage(Project project, Guid stageId) =>
         project.HasStage(stageId) ? stageId : throw new NotFoundException($"The stage with id '{stageId}' was not found.");
-
-    private static void EnsureNotArchived(Project project)
-    {
-        if (project.IsArchived)
-        {
-            throw new ConflictException("This project is archived. Restore it before making changes.");
-        }
-    }
 }

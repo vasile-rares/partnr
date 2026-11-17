@@ -24,13 +24,13 @@ export function InvitationRegisterForm({ token, email }: { token: string; email:
       const text = (key: string) => String(formData.get(key) ?? "");
       const values = { fullName: text("fullName"), phone: text("phone"), company: text("company") };
 
-      const result = await sendJson("POST", `/api/invitations/${token}/register`, {
+      const result = await sendJson<{ workspaceId: string }>("POST", `/api/invitations/${token}/register`, {
         ...values,
         password: text("password"),
       });
 
       if (result.ok) {
-        router.replace("/portal");
+        router.replace(`/w/${result.data.workspaceId}`);
         router.refresh();
         return values;
       }

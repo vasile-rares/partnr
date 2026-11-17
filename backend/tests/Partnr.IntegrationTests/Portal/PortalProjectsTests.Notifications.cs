@@ -18,7 +18,7 @@ public sealed partial class PortalProjectsTests
 
         var message = Assert.Single(await EmailsTo(elena.Email, "asked for your approval"));
         Assert.Equal("Studio asked for your approval: Mockup", message.Subject);
-        Assert.Contains($"/portal/{studio.WorkspaceId}/projects/{project.Id}?tab=deliverables", message.TextBody);
+        Assert.Contains($"/w/{studio.WorkspaceId}/projects/{project.Id}?tab=deliverables", message.TextBody);
         Assert.StartsWith("Hi Elena,", message.TextBody);
     }
 
@@ -27,11 +27,11 @@ public sealed partial class PortalProjectsTests
     {
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var approved = await studio.RequestApproval(project, mockup, null);
-        Assert.Equal(HttpStatusCode.OK, (await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, approved.Id, "approve"), new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, approved.Id, "approve"), new { })).StatusCode);
         var again = await studio.RequestApproval(project, mockup, "Once more.");
         Assert.Equal(
             HttpStatusCode.OK,
-            (await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, again.Id, "request-changes"), new { message = "Bigger logo." })).StatusCode);
+            (await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, again.Id, "request-changes"), new { message = "Bigger logo." })).StatusCode);
 
         var approvedMail = Assert.Single(await EmailsTo(studio.Email, "approved Mockup"));
         var changesMail = Assert.Single(await EmailsTo(studio.Email, "requested changes to Mockup"));

@@ -31,11 +31,21 @@ public class ProjectServiceTests
         _currentUser = new FakeCurrentUser(_me);
 
         var clientResponses = new ClientResponseBuilder(_identity, _invitations, new FakeTimeProvider());
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(_projects, _workspaces);
         _service = new ProjectService(
             _projects,
+            new ProjectAccess(_projects),
             _clients,
             new ProjectResponseBuilder(_clients, clientResponses, new FakeApprovalRequestRepository()),
-            new WorkspaceAccess(_workspaces, _currentUser),
+            new PortalProjectResponseBuilder(
+                new FakeDeliverableRepository(),
+                new FakeProjectUpdateRepository(),
+                new FakeProjectFileRepository(),
+                new FakeApprovalRequestRepository()),
+            access,
+            clientAccess,
+            new CallerAccess(access, clientAccess),
             _unitOfWork);
     }
 
@@ -117,9 +127,9 @@ public class ProjectServiceTests
         archived.Archive();
         AddProject(bright.Id, "Menu");
 
-        var acmeActive = await _service.ListAsync(_workspace.Id, includeArchived: false, _acme.Id, CancellationToken.None);
-        var acmeAll = await _service.ListAsync(_workspace.Id, includeArchived: true, _acme.Id, CancellationToken.None);
-        var everyone = await _service.ListAsync(_workspace.Id, includeArchived: false, clientId: null, CancellationToken.None);
+        var acmeActive = (await _service.ListAsync(_workspace.Id, includeArchived: false, _acme.Id, CancellationToken.None)).Member!;
+        var acmeAll = (await _service.ListAsync(_workspace.Id, includeArchived: true, _acme.Id, CancellationToken.None)).Member!;
+        var everyone = (await _service.ListAsync(_workspace.Id, includeArchived: false, clientId: null, CancellationToken.None)).Member!;
 
         Assert.Equal(website.Id, Assert.Single(acmeActive).Id);
         Assert.Equal(2, acmeAll.Count);

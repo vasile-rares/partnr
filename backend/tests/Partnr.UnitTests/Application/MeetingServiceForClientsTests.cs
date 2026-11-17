@@ -1,13 +1,15 @@
 using Partnr.Application.Authorization;
 using Partnr.Application.DTOs.Meetings;
 using Partnr.Application.Exceptions;
+using Partnr.Application.Mappings;
 using Partnr.Application.Services;
 using Partnr.Domain.Entities;
 using Partnr.Domain.Enums;
 
 namespace Partnr.UnitTests.Application;
 
-public class PortalMeetingServiceTests
+/// <summary>The meetings list as a client gets it from the one MeetingService, and what stays closed to them.</summary>
+public class MeetingServiceForClientsTests
 {
     private readonly Guid _me = Guid.NewGuid();
     private readonly Guid _organizer = Guid.NewGuid();
@@ -19,10 +21,10 @@ public class PortalMeetingServiceTests
     private readonly FakeProjectRepository _projects;
     private readonly Workspace _studio;
     private readonly Client _mine;
-    private readonly PortalMeetingService _service;
+    private readonly MeetingService _service;
     private readonly DateTime _now;
 
-    public PortalMeetingServiceTests()
+    public MeetingServiceForClientsTests()
     {
         _now = _time.Now.UtcDateTime;
         _currentUser = new FakeCurrentUser(_me);
@@ -35,7 +37,20 @@ public class PortalMeetingServiceTests
         _mine.LinkTo(_me, _now);
         _clients.Items.Add(_mine);
 
-        _service = new PortalMeetingService(_meetings, _projects, _workspaces, new WorkspaceAccess(_workspaces, _currentUser), _time);
+        var access = new WorkspaceAccess(_workspaces, _currentUser);
+        var clientAccess = new ClientAccess(_projects, _workspaces);
+        var clientResponses = new ClientResponseBuilder(new FakeIdentityService(), new FakeClientInvitationRepository(), _time);
+        _service = new MeetingService(
+            _meetings,
+            _clients,
+            _projects,
+            new FakeGoogleConnectionRepository(),
+            new MeetingResponseBuilder(_clients, clientResponses, _projects),
+            access,
+            clientAccess,
+            new CallerAccess(access, clientAccess),
+            new FakeUnitOfWork(),
+            _time);
     }
 
     [Fact]
@@ -44,7 +59,7 @@ public class PortalMeetingServiceTests
         var later = Schedule(_mine, days: 3, title: "Later");
         var sooner = Schedule(_mine, days: 1, title: "Sooner");
 
-        var list = await _service.ListAsync(_studio.Id, CancellationToken.None);
+        var list = await ListAsync();
 
         Assert.Equal([sooner.Id, later.Id], list.Select(m => m.Id));
         Assert.All(list, m => Assert.Equal("Scheduled", m.Status));
@@ -58,10 +73,10 @@ public class PortalMeetingServiceTests
         Schedule(other, days: 1, title: "Theirs");
         var mine = Schedule(_mine, days: 2, title: "Mine");
 
-        Assert.Equal([mine.Id], (await _service.ListAsync(_studio.Id, CancellationToken.None)).Select(m => m.Id));
+        Assert.Equal([mine.Id], (await ListAsync()).Select(m => m.Id));
 
         _mine.Archive();
-        Assert.Empty(await _service.ListAsync(_studio.Id, CancellationToken.None));
+        Assert.Empty(await ListAsync());
     }
 
     [Fact]
@@ -74,7 +89,7 @@ public class PortalMeetingServiceTests
         Schedule(_mine, days: 1, title: "About the website", projectId: shared.Id);
         Schedule(_mine, days: 2, title: "About the secret", projectId: draft.Id);
 
-        var list = await _service.ListAsync(_studio.Id, CancellationToken.None);
+        var list = await ListAsync();
 
         Assert.Equal(new MeetingProjectResponse(shared.Id, "Website"), list[0].Project);
         Assert.Null(list[1].Project);
@@ -89,7 +104,7 @@ public class PortalMeetingServiceTests
         Schedule(_mine, days: -31, title: "Long ago", skipChecks: true);
         var lastWeek = Schedule(_mine, days: -7, title: "Last week", skipChecks: true);
 
-        var list = await _service.ListAsync(_studio.Id, CancellationToken.None);
+        var list = await ListAsync();
 
         Assert.Equal([lastWeek.Id, recent.Id], list.Select(m => m.Id));
         Assert.Equal("Cancelled", list[1].Status);
@@ -101,8 +116,8 @@ public class PortalMeetingServiceTests
         var other = Workspace.Create("Other", Guid.NewGuid());
         _workspaces.Items.Add(other);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.ListAsync(other.Id, CancellationToken.None));
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.ListAsync(Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => ListAsync(other.Id));
+        await Assert.ThrowsAsync<NotFoundException>(() => ListAsync(Guid.NewGuid()));
     }
 
     [Fact]
@@ -110,8 +125,37 @@ public class PortalMeetingServiceTests
     {
         _currentUser.UserId = null;
 
-        await Assert.ThrowsAsync<UnauthorizedException>(() => _service.ListAsync(_studio.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedException>(() => ListAsync());
     }
+
+    [Fact]
+    public async Task List_AsAMemberOfTheFirm_IsTheFirmsOwnShape_NotTheClients()
+    {
+        _currentUser.UserId = _organizer;
+        Schedule(_mine, days: 1, title: "Kick-off");
+
+        var answer = await _service.ListAsync(_studio.Id, false, null, null, CancellationToken.None);
+
+        Assert.NotNull(answer.Member);
+        Assert.Null(answer.Client);
+        Assert.IsAssignableFrom<IReadOnlyList<MeetingResponse>>(answer.Body);
+    }
+
+    [Fact]
+    public async Task EverythingButTheList_StaysClosedToAClient()
+    {
+        var meeting = Schedule(_mine, days: 1, title: "Kick-off");
+        var request = new CreateMeetingRequest { ClientId = _mine.Id, Title = "x", StartsAt = _time.Now.AddDays(2), EndsAt = _time.Now.AddDays(2).AddHours(1) };
+
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateAsync(_studio.Id, request, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetByIdAsync(_studio.Id, meeting.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.UpdateAsync(_studio.Id, meeting.Id, request, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.CancelAsync(_studio.Id, meeting.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.RetrySyncAsync(_studio.Id, meeting.Id, CancellationToken.None));
+    }
+
+    private async Task<IReadOnlyList<PortalMeetingResponse>> ListAsync(Guid? workspaceId = null) =>
+        (await _service.ListAsync(workspaceId ?? _studio.Id, false, null, null, CancellationToken.None)).Client!;
 
     // `skipChecks` writes a meeting that is already in the past, which Schedule would refuse: it goes through a clock set back.
     private Meeting Schedule(Client client, int days, string title, Guid? projectId = null, bool skipChecks = false)

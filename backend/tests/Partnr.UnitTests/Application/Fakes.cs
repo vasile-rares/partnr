@@ -90,9 +90,7 @@ internal sealed class FakeProjectRepository : IProjectRepository
     public FakeClientRepository Clients { get; init; } = new();
 
     private IEnumerable<Project> SharedWith(Guid userId) =>
-        Items.Where(p => !p.IsArchived
-            && p.Status != ProjectStatus.Planning
-            && Clients.Items.Any(c => c.Id == p.ClientId && c.UserId == userId && !c.IsArchived));
+        Items.Where(p => p.IsOpenToClient(Clients.Items.FirstOrDefault(c => c.Id == p.ClientId && c.UserId == userId)));
 
     public Task<IReadOnlyList<Project>> ListSharedWithClientAsync(Guid userId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<Project>>(SharedWith(userId).ToList());
@@ -620,4 +618,74 @@ internal sealed class FakeBackgroundEmailQueue : IBackgroundEmailQueue
     public List<EmailMessage> Queued { get; } = [];
 
     public void Enqueue(EmailMessage message) => Queued.Add(message);
+}
+
+internal sealed class FakeConversationReadRepository : IConversationReadRepository
+{
+    public List<ConversationRead> Items { get; } = [];
+
+    public Task<ConversationRead?> GetAsync(Guid userId, Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(r => r.UserId == userId && r.ProjectId == projectId));
+
+    public void Add(ConversationRead read) => Items.Add(read);
+}
+
+internal sealed class FakeMessageRepository(FakeConversationReadRepository reads) : IMessageRepository
+{
+    public List<Message> Items { get; } = [];
+
+    public Task<Message?> GetByIdAsync(Guid projectId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(m => m.ProjectId == projectId && m.Id == id));
+
+    public Task<MessagePage> ListPageAsync(Guid projectId, Guid? beforeId, int limit, CancellationToken cancellationToken)
+    {
+        var all = Items.Where(m => m.ProjectId == projectId).OrderBy(m => m.CreatedAtUtc).ToList();
+        if (beforeId is { } before && all.FindIndex(m => m.Id == before) is var at and >= 0)
+        {
+            all = all.Take(at).ToList();
+        }
+
+        var page = all.TakeLast(limit).ToList();
+
+        return Task.FromResult(new MessagePage(page, all.Count > page.Count));
+    }
+
+    public Task<IReadOnlyDictionary<Guid, Message>> GetLatestPerProjectAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, Message>>(Items
+            .Where(m => projectIds.Contains(m.ProjectId))
+            .GroupBy(m => m.ProjectId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.CreatedAtUtc).Last()));
+
+    public Task<IReadOnlyDictionary<Guid, int>> CountUnreadPerProjectAsync(
+        Guid userId,
+        IReadOnlyCollection<Guid> projectIds,
+        CancellationToken cancellationToken)
+    {
+        var counts = new Dictionary<Guid, int>();
+        foreach (var projectId in projectIds)
+        {
+            var readUpTo = reads.Items.FirstOrDefault(r => r.UserId == userId && r.ProjectId == projectId)?.LastReadAtUtc ?? DateTime.MinValue;
+            var unread = Items.Count(m => m.ProjectId == projectId && m.AuthorUserId != userId && !m.IsDeleted && m.CreatedAtUtc > readUpTo);
+            if (unread > 0)
+            {
+                counts[projectId] = unread;
+            }
+        }
+
+        return Task.FromResult<IReadOnlyDictionary<Guid, int>>(counts);
+    }
+
+    public void Add(Message message) => Items.Add(message);
+}
+
+internal sealed class FakeConversationPublisher : IConversationPublisher
+{
+    public List<(IReadOnlyCollection<Guid> UserIds, Guid ProjectId)> Pushes { get; } = [];
+
+    public Task ConversationChangedAsync(IReadOnlyCollection<Guid> userIds, Guid projectId, CancellationToken cancellationToken)
+    {
+        Pushes.Add((userIds, projectId));
+
+        return Task.CompletedTask;
+    }
 }

@@ -1,32 +1,21 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { PortalActiveProjects } from "@/components/portal/PortalActiveProjects";
 import { PortalLatestUpdates } from "@/components/portal/PortalLatestUpdates";
 import { PortalNextMeeting } from "@/components/portal/PortalNextMeeting";
 import { PortalWaitingForYou } from "@/components/portal/PortalWaitingForYou";
 import { Page } from "@/components/shell/Page";
-import { requireUser } from "@/lib/auth/session";
 import { getPortalMeetings } from "@/lib/meetings/server";
 import { nowIso, splitMeetings } from "@/lib/meetings/time";
-import { getPortalProject, getPortalProjects, getPortalWorkspace } from "@/lib/portal/server";
+import { getPortalProject, getPortalProjects } from "@/lib/portal/server";
 import type { PortalProject } from "@/lib/portal/types";
+import type { ClientWorkspace } from "@/lib/workspaces/types";
 
 const LATEST_UPDATES = 5;
 
-export async function generateMetadata({ params }: PageProps<"/portal/[workspaceId]">): Promise<Metadata> {
-  const workspace = await getPortalWorkspace((await params).workspaceId);
-  return { title: workspace?.name ?? "Not found" };
-}
-
-export default async function PortalHomePage({ params }: PageProps<"/portal/[workspaceId]">) {
-  const user = await requireUser();
-  const workspace = await getPortalWorkspace((await params).workspaceId);
-  if (!workspace) {
-    notFound();
-  }
-  const summaries = (await getPortalProjects()).filter((project) => project.workspace.id === workspace.id);
+/** The workspace's Home as a client sees it: what waits for them, what runs, the latest news and the next meeting. */
+export async function ClientHomeView({ workspace, firstName }: { workspace: ClientWorkspace; firstName: string }) {
+  const summaries = await getPortalProjects(workspace.id);
   // A client has few projects with one firm, so the details of each are loaded side by side instead of adding an endpoint.
-  const projects = (await Promise.all(summaries.map((summary) => getPortalProject(summary.id)))).filter(
+  const projects = (await Promise.all(summaries.map((summary) => getPortalProject(workspace.id, summary.id)))).filter(
     (project): project is PortalProject => project !== null,
   );
 
@@ -47,7 +36,6 @@ export default async function PortalHomePage({ params }: PageProps<"/portal/[wor
     .sort((a, b) => b.sharedAtUtc.localeCompare(a.sharedAtUtc))
     .slice(0, LATEST_UPDATES);
   const nextMeeting = splitMeetings(await getPortalMeetings(workspace.id), nowIso()).upcoming[0] ?? null;
-  const firstName = user.fullName.trim().split(/\s+/)[0];
 
   return (
     <Page crumbs={[{ label: "Home" }]} narrow>

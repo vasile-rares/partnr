@@ -16,8 +16,8 @@ public sealed partial class PortalProjectsTests
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var round = await studio.RequestApproval(project, mockup, "Check the mobile layout.");
 
-        var before = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
-        var list = (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!;
+        var before = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
+        var list = (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects"))!;
 
         var approval = Assert.Single(before.Deliverables).Approval;
         Assert.Equal("Pending", approval.Status);
@@ -25,7 +25,7 @@ public sealed partial class PortalProjectsTests
         Assert.Equal(1, before.AwaitingApproval);
         Assert.Equal(1, Assert.Single(list).AwaitingApproval);
 
-        var approved = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { message = "Looks great." });
+        var approved = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { message = "Looks great." });
 
         Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
         var answer = (await approved.Content.ReadFromJsonAsync<PortalDeliverableResponse>())!.Approval;
@@ -34,9 +34,9 @@ public sealed partial class PortalProjectsTests
         var decided = Assert.Single(answer.History);
         Assert.Equal(("Approved", "Check the mobile layout.", "Looks great."), (decided.Decision, decided.Note, decided.Message));
 
-        var after = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
+        var after = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
         Assert.Equal(0, after.AwaitingApproval);
-        Assert.Equal(0, (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))![0].AwaitingApproval);
+        Assert.Equal(0, (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects"))![0].AwaitingApproval);
 
         var asFreelancer = await studio.Http.GetFromJsonAsync<DeliverableResponse>($"{studio.DeliverablesUrl(project)}/{mockup.Id}");
         Assert.Equal("Approved", asFreelancer!.ApprovalStatus);
@@ -48,7 +48,7 @@ public sealed partial class PortalProjectsTests
     {
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var round = await studio.RequestApproval(project, mockup, null);
-        var url = ApprovalUrl(project, mockup, round.Id, "request-changes");
+        var url = ApprovalUrl(studio, project, mockup, round.Id, "request-changes");
 
         var blank = await elena.Http.PostAsJsonAsync(url, new { message = "  " });
         var missing = await elena.Http.PostAsJsonAsync(url, new { });
@@ -65,7 +65,7 @@ public sealed partial class PortalProjectsTests
         var again = await studio.RequestApproval(project, mockup, "Logo is bigger now.");
         Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
 
-        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
+        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
         var approval = view.Deliverables.Single().Approval;
         Assert.Equal(("Pending", again.Id), (approval.Status, approval.Pending!.Id));
         Assert.Equal("ChangesRequested", Assert.Single(approval.History).Decision);
@@ -77,14 +77,14 @@ public sealed partial class PortalProjectsTests
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var round = await studio.RequestApproval(project, mockup, null);
 
-        var tooLong = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { message = new string('x', 2001) });
-        var first = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
-        var second = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "request-changes"), new { message = "Changed my mind." });
+        var tooLong = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { message = new string('x', 2001) });
+        var first = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
+        var second = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "request-changes"), new { message = "Changed my mind." });
 
         Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
-        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
+        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
         Assert.Equal("Approved", view.Deliverables.Single().Approval.Status);
     }
 
@@ -95,8 +95,8 @@ public sealed partial class PortalProjectsTests
         var round = await studio.RequestApproval(project, mockup, "Never mind.");
         await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/approvals/{round.Id}/withdraw", null);
 
-        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
-        var answer = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
+        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
+        var answer = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
 
         var approval = view.Deliverables.Single().Approval;
         Assert.Equal(("None", 0), (approval.Status, view.AwaitingApproval));
@@ -112,13 +112,13 @@ public sealed partial class PortalProjectsTests
         var round = await studio.RequestApproval(project, mockup, null);
 
         await studio.Http.PostAsync($"{studio.DeliverablesUrl(project)}/{mockup.Id}/unshare", null);
-        var answer = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
-        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
+        var answer = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
+        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
 
         Assert.Equal(HttpStatusCode.NotFound, answer.StatusCode);
         Assert.Empty(view.Deliverables);
         Assert.Equal(0, view.AwaitingApproval);
-        Assert.Equal(0, (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))![0].AwaitingApproval);
+        Assert.Equal(0, (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects"))![0].AwaitingApproval);
     }
 
     [Fact]
@@ -128,14 +128,14 @@ public sealed partial class PortalProjectsTests
         var bram = await studio.AddClient("Bram");
         var round = await studio.RequestApproval(project, mockup, null);
 
-        var approve = await bram.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
-        var changes = await bram.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "request-changes"), new { message = "No." });
-        var signedOut = await factory.CreateClient().PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
+        var approve = await bram.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
+        var changes = await bram.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "request-changes"), new { message = "No." });
+        var signedOut = await factory.CreateClient().PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
 
         Assert.Equal(HttpStatusCode.NotFound, approve.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, changes.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
-        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/portal/projects/{project.Id}"))!;
+        var view = (await elena.Http.GetFromJsonAsync<PortalProjectResponse>($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"))!;
         Assert.Equal("Pending", view.Deliverables.Single().Approval.Status);
     }
 
@@ -146,8 +146,8 @@ public sealed partial class PortalProjectsTests
         var round = await studio.RequestApproval(project, mockup, null);
         await studio.SetStatus(project, "Planning");
 
-        var answer = await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, round.Id, "approve"), new { });
-        var list = (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>("/api/portal/projects"))!;
+        var answer = await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, round.Id, "approve"), new { });
+        var list = (await elena.Http.GetFromJsonAsync<PortalProjectSummaryResponse[]>($"/api/workspaces/{studio.WorkspaceId}/projects"))!;
 
         Assert.Equal(HttpStatusCode.NotFound, answer.StatusCode);
         Assert.Empty(list);
@@ -158,10 +158,10 @@ public sealed partial class PortalProjectsTests
     {
         var (studio, elena, project, mockup) = await SharedDeliverable("Elena");
         var answered = await studio.RequestApproval(project, mockup, "First.");
-        await elena.Http.PostAsJsonAsync(ApprovalUrl(project, mockup, answered.Id, "request-changes"), new { message = "Fix it." });
+        await elena.Http.PostAsJsonAsync(ApprovalUrl(studio, project, mockup, answered.Id, "request-changes"), new { message = "Fix it." });
         await studio.RequestApproval(project, mockup, "Second.");
 
-        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/portal/projects/{project.Id}"));
+        using var body = JsonDocument.Parse(await elena.Http.GetStringAsync($"/api/workspaces/{studio.WorkspaceId}/projects/{project.Id}"));
 
         var approval = body.RootElement.GetProperty("deliverables")[0].GetProperty("approval");
         Assert.Equal(["history", "pending", "status"], approval.EnumerateObject().Select(p => p.Name).Order());
@@ -183,9 +183,10 @@ public sealed partial class PortalProjectsTests
     }
 
     private static string ApprovalUrl(
+        StudioSession studio,
         ProjectResponse project,
         DeliverableResponse deliverable,
         Guid approvalId,
         string action) =>
-        $"/api/portal/projects/{project.Id}/deliverables/{deliverable.Id}/approvals/{approvalId}/{action}";
+        $"{studio.DeliverablesUrl(project)}/{deliverable.Id}/approvals/{approvalId}/{action}";
 }
