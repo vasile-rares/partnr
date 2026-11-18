@@ -55,6 +55,17 @@ public sealed class InternalAuthTests(ApiFactory factory)
         Assert.Contains(response.Headers.GetValues("Set-Cookie"), cookie => cookie.StartsWith(".AspNetCore.Identity.Application=", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task The_health_check_is_open_to_anyone()
+    {
+        using var api = Api();
+        using var client = api.CreateClient();
+
+        var response = await client.GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("other key")]
     [InlineData("other issuer")]

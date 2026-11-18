@@ -1,13 +1,13 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Partnr.Workspaces.Api;
-using Partnr.Workspaces.Api.Authentication;
 using Partnr.Workspaces.Api.Internal;
 using Partnr.Workspaces.Api.Middleware;
 using Partnr.Workspaces.Api.Realtime;
 using Partnr.Workspaces.Application;
 using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure;
+using Partnr.ServiceDefaults;
 using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
 using Wolverine;
@@ -15,6 +15,8 @@ using Wolverine;
 const string FrontendCorsPolicy = "Frontend";
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 builder.Services
     .AddApplication()
@@ -104,6 +106,7 @@ app.UseRateLimiter(); // after authentication, so the limit can follow the signe
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapDefaultEndpoints();
 app.MapHub<NotificationsHub>(NotificationsHub.Route);
 app.MapGrpcService<SessionValidationService>();
 

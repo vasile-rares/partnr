@@ -1,16 +1,14 @@
-using Partnr.Contracts;
 using Partnr.Contracts.Sessions;
 using Partnr.Gateway.Sessions;
+using Partnr.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-builder.Services.AddOptions<InternalAuthOptions>()
-    .BindConfiguration(InternalAuth.ConfigurationSection)
-    .ValidateDataAnnotations()
-    .Validate(InternalAuthOptions.IsValidKey, $"InternalAuth:SigningKey must be base64 and at least {InternalAuthOptions.MinimumKeyBytes} bytes.")
-    .ValidateOnStart();
+builder.Services.AddInternalAuthOptions();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<InternalTokenIssuer>();
 
@@ -22,6 +20,7 @@ builder.Services.AddTransient<ISessionValidator, GrpcSessionValidator>();
 var app = builder.Build();
 
 app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), api => api.UseMiddleware<SessionMiddleware>());
+app.MapDefaultEndpoints();
 app.MapReverseProxy();
 
 app.Run();

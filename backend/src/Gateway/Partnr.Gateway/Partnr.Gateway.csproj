@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\Partnr.Contracts\Partnr.Contracts.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Partnr.ServiceDefaults\Partnr.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

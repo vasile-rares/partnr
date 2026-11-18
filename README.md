@@ -92,6 +92,8 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
    dotnet run --project src/Gateway/Partnr.Gateway --launch-profile http
    ```
 
+   Optional: `aspire run` in `backend/` starts both with the [Aspire](https://aspire.dev) dashboard (logs, metrics and traces of the backend); it needs the Aspire CLI (`dotnet tool install -g Aspire.Cli`) and replaces steps 2 and 3, except for loading demo data.
+
 4. Start the frontend (http://localhost:3000):
 
    ```bash

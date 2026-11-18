@@ -80,6 +80,18 @@ public sealed class ProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Answers_its_own_health_check_without_asking_the_api()
+    {
+        using var gateway = GatewayHost.For("http://127.0.0.1:1");
+        using var client = GatewayHost.ClientOf(gateway);
+
+        var response = await client.GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Answers_bad_gateway_when_the_api_is_down()
     {
         using var gateway = GatewayHost.For("http://127.0.0.1:1");
