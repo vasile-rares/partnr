@@ -44,6 +44,7 @@ public class ProjectServiceForClientsTests
             access,
             clientAccess,
             new CallerAccess(access, clientAccess),
+            new FakeEventPublisher(),
             new FakeUnitOfWork());
     }
 

@@ -12,7 +12,7 @@ using Testcontainers.PostgreSql;
 namespace Partnr.Workspaces.IntegrationTests;
 
 /// <summary>Runs the real API against a throwaway Postgres container (needs Docker).</summary>
-public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17").Build();
 
@@ -24,7 +24,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeGoogleCalendarClient Calendar { get; } = new();
 
-    public async Task InitializeAsync()
+    public virtual async Task InitializeAsync()
     {
         await postgres.StartAsync();
 
@@ -44,10 +44,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await postgres.DisposeAsync();
+        await DisposeContainersAsync();
     }
+
+    protected virtual Task DisposeContainersAsync() => Task.CompletedTask;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // No broker unless a test brings one (BrokerApiFactory): the development settings point at a RabbitMQ that may not be running.
+        builder.UseSetting("Events:RabbitMqUri", "");
         builder.UseSetting("ConnectionStrings:Postgres", postgres.GetConnectionString());
 
         // Tests run the email service themselves, so what they see does not depend on a timer.

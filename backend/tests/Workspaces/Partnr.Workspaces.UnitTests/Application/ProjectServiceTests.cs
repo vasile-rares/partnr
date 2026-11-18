@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs.Projects;
 using Partnr.Workspaces.Application.Exceptions;
@@ -18,6 +19,7 @@ public class ProjectServiceTests
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeEventPublisher _events = new();
     private readonly Workspace _workspace;
     private readonly Client _acme;
     private readonly ProjectService _service;
@@ -46,6 +48,7 @@ public class ProjectServiceTests
             access,
             clientAccess,
             new CallerAccess(access, clientAccess),
+            _events,
             _unitOfWork);
     }
 
@@ -58,6 +61,28 @@ public class ProjectServiceTests
         Assert.Equal(new ProjectClientResponse(_acme.Id, "Acme"), response.Client);
         Assert.Single(_projects.Items);
         Assert.Equal(1, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Create_PublishesProjectCreated_ForTheOutboxToSendWithTheSave()
+    {
+        var response = await _service.CreateAsync(_workspace.Id, NewProject(_acme.Id), CancellationToken.None);
+
+        var created = Assert.IsType<ProjectCreated>(Assert.Single(_events.Published));
+        Assert.Equal(response.Id, created.ProjectId);
+        Assert.Equal(_workspace.Id, created.WorkspaceId);
+        Assert.Equal(_acme.Id, created.ClientId);
+        Assert.Equal(response.Name, created.Name);
+    }
+
+    [Fact]
+    public async Task Create_ForAnArchivedClient_PublishesNothing()
+    {
+        _acme.Archive();
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.CreateAsync(_workspace.Id, NewProject(_acme.Id), CancellationToken.None));
+
+        Assert.Empty(_events.Published);
     }
 
     [Fact]

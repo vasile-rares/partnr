@@ -8,6 +8,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,12 +90,30 @@ try {
   process.exit(1);
 }
 
+// Events go through RabbitMQ (the tests use their own queues on the development broker, see Events__Prefix). Same idea: say so up front.
+const rabbitPort = Number(process.env.E2E_RABBITMQ_PORT ?? "5672");
+try {
+  await new Promise((resolve, reject) => {
+    const socket = net.connect(rabbitPort, "localhost");
+    socket.once("connect", () => {
+      socket.end();
+      resolve(undefined);
+    });
+    socket.once("error", reject);
+  });
+} catch {
+  console.error(`RabbitMQ is not reachable on port ${rabbitPort}. Start it with "docker compose up -d" in backend/ (the API sends its events through it).`);
+  process.exit(1);
+}
+
 const env = {
   ...process.env,
   // Its own bucket, created on first use, so the tests never touch the files of the dev one.
   Storage__ServiceUrl: storageUrl,
   Storage__Bucket: storageBucket,
   ArtifactsPath: artifactsPath,
+  // Own exchanges and queues, so the tests never share them with a development API on the same broker.
+  Events__Prefix: "e2e.",
   ConnectionStrings__Postgres: connectionString,
   ASPNETCORE_ENVIRONMENT: "Development", // outside Development the auth cookie is Secure-only and would not work over http
   // The endpoints are set in appsettings.Development.json (HTTP for the gateway's proxy, HTTP/2 for its gRPC calls); these replace them.

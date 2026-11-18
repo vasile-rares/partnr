@@ -51,7 +51,7 @@ Smaller ideas (CRM, AI-assisted updates, stage templates, a public API) are left
 | -------- | ---------------------------------------------------------------------------------------------------- |
 | Backend  | .NET 10, ASP.NET Core Identity, EF Core, PostgreSQL 17, Clean Architecture (see [backend/CLAUDE.md](backend/CLAUDE.md)) |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4, [shadcn/ui](https://ui.shadcn.com) on Base UI         |
-| Local services | Docker Compose: Postgres, [Mailpit](https://mailpit.axllent.org) (email catcher), [RustFS](https://github.com/rustfs/rustfs) (S3-compatible storage) |
+| Local services | Docker Compose: Postgres, [Mailpit](https://mailpit.axllent.org) (email catcher), [RustFS](https://github.com/rustfs/rustfs) (S3-compatible storage), [RabbitMQ](https://www.rabbitmq.com) (events between services) |
 | Tests    | xUnit (unit, integration with Testcontainers, architecture), Playwright (end to end)                  |
 
 ```
@@ -71,7 +71,7 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
 
 ### Run it locally
 
-1. Start Postgres, Mailpit and RustFS:
+1. Start Postgres, Mailpit, RustFS and RabbitMQ:
 
    ```bash
    cd backend
@@ -108,7 +108,7 @@ With the demo data, sign in with password `demo-password` as:
 | `member@example.com` | Member of "Studio Pop"                  |
 | `client@example.com` | Client of "Studio Pop" (the portal)     |
 
-Useful local addresses: API docs at http://localhost:5050/scalar/v1 (through the gateway; sign in to the app first and "Try it" works), caught emails at http://localhost:8025, storage console at http://localhost:9001.
+Useful local addresses: RabbitMQ management UI at http://localhost:15672 (partnr / partnr), API docs at http://localhost:5050/scalar/v1 (through the gateway; sign in to the app first and "Try it" works), caught emails at http://localhost:8025, storage console at http://localhost:9001.
 
 > [!NOTE]
 > The credentials in `docker-compose.yml` and `appsettings.Development.json` are for local development only.
@@ -127,7 +127,7 @@ pnpm exec playwright install chromium   # once
 pnpm test:e2e
 ```
 
-The e2e run builds the API and the frontend itself and uses a separate `partnr_e2e` database, never the development one. Postgres, Mailpit and RustFS must be running.
+The e2e run builds the API and the frontend itself and uses a separate `partnr_e2e` database, never the development one. Postgres, Mailpit, RustFS and RabbitMQ must be running.
 
 ## Documentation
 

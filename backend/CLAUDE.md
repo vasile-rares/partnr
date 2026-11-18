@@ -19,7 +19,7 @@ src/Services/Workspaces/
     Common/                      SecureToken (random tokens, only their hash is stored)
   Partnr.Workspaces.Application/      Only the DI abstractions package.
     Interfaces/Repositories/     One repository per aggregate, plus IUnitOfWork
-    Interfaces/Services/         The use-case services (IXService) and the ports Infrastructure implements (IEmailSender, IFileStorage, IGoogleCalendarClient, ICurrentUser, ...)
+    Interfaces/Services/         The use-case services (IXService) and the ports Infrastructure implements (IEmailSender, IFileStorage, IGoogleCalendarClient, ICurrentUser, IEventPublisher, ...)
     Services/                    One use-case service per feature, nothing else (all internal, names end in "Service", enforced by an architecture test)
     Authorization/               WorkspaceAccess (who may touch a workspace), ClientAccess (what a client's account may open in the portal), CallerAccess (member or client, for routes open to both), ProjectAccess (finds a project and refuses changes once archived), ProjectContentRules (what deliverables, updates and files share)
     Messaging/                   ConversationThreads (the conversation rules `MessageService` applies to members and clients alike)
@@ -34,10 +34,11 @@ src/Services/Workspaces/
     Authentication/              ApplicationUser, IdentityService, CurrentUser, cookie setup
     Email/                       SmtpEmailSender (MailKit), BackgroundEmailQueue, EmailOptions
     Notifications/               NotificationEmailWorker (sends the due notification emails), NotificationOptions, the do-nothing publishers the Api replaces
+    Events/                      Wolverine + RabbitMQ: OutboxEventPublisher (the IEventPublisher port), OutboxUnitOfWork (the IUnitOfWork: saves the change and the published events in one transaction), EventsOptions
     Storage/                     S3FileStorage (AWSSDK.S3, any S3-compatible service), StorageOptions
     Google/                      OAuth and Calendar clients (plain HttpClient), MeetingSyncWorker, SecretProtector (AES-GCM), FakeGoogle, GoogleOptions
     DependencyInjection.cs       AddInfrastructure()
-  Partnr.Workspaces.Api/              Controllers/ (thin), Extensions/ (ControllerBaseExtensions: file downloads), Middleware/ (exception handler), Realtime/ (NotificationsHub and the SignalR publishers: the only code that knows about SignalR), Program.cs (composition root)
+  Partnr.Workspaces.Api/              Controllers/ (thin), Extensions/ (ControllerBaseExtensions: file downloads), Middleware/ (exception handler), Realtime/ (NotificationsHub and the SignalR publishers: the only code that knows about SignalR), Events/ (handlers of events that arrive from the broker), Program.cs (composition root)
 tests/Workspaces/
   Partnr.Workspaces.UnitTests/        Domain/, Application/ (services with fakes, request validation)
   Partnr.Workspaces.IntegrationTests/ Real Postgres via Testcontainers + WebApplicationFactory (needs Docker)
@@ -47,6 +48,13 @@ tests/Workspaces/
 Folders not created yet, to add when their first file appears: `Domain/ValueObjects/`, `Domain/Events/`, `Application/Validators/` (validation is data annotations on DTOs for now), `Infrastructure/Services/` (other non-persistence implementations; email and file storage have their own `Email/` and `Storage/`), `Api/Filters/`, `Api/DTOs/` (only for API-only shapes; use-case DTOs stay in Application). Do not create empty folders.
 
 Integration tests live in a separate project so the fast unit tests can run on their own (`dotnet test tests/Workspaces/Partnr.Workspaces.UnitTests`). The architecture tests are fast too and need no database.
+
+## Events (between services)
+
+- **A service says what happened by publishing an event** (`IEventPublisher.PublishAsync`, a type from `Partnr.Contracts.Events`) **before** `IUnitOfWork.SaveChangesAsync`, like the notification writer. `IUnitOfWork` is implemented by `Infrastructure/Events/OutboxUnitOfWork`, which saves the change and, **in the same database transaction**, the event in Wolverine's outbox (tables in the `wolverine` schema of this service's own database, built at startup). Once the transaction commits Wolverine sends the event to RabbitMQ; if the save fails, the event is never sent. Do not inject `ApplicationDbContext` to save: a plain `SaveChangesAsync` on it would lose the events.
+- **Wolverine over RabbitMQ with conventional routing**: one exchange per event type (`{Prefix}{Type}`) and, per consuming service, one queue (`{Prefix}{ServiceName}.{Type}`), so every service gets its own copy. A consumer is a class with a static `Handle(TheEvent, ...)` method (Wolverine finds it by convention in the Api assembly, e.g. `Api/Events/`). Settings in the `Events` section: `RabbitMqUri` (empty means nothing leaves the process, as in the integration tests), `ServiceName`, `Prefix` (the e2e run uses `e2e.` so it never shares queues with a development API).
+- **Today** there is one event, `ProjectCreated` (published by `ProjectService.CreateAsync`), and a temporary probe handler that only logs it: it proves the whole trip until the first real consumer exists in another service (`.claude/docs/microservices-plan.md`). Events carry what the consumer needs (ids, names, times), so it does not have to call back.
+- Tests: the unit tests check what a service publishes (`FakeEventPublisher`); `tests/.../Events/EventsOverTheBrokerTests` runs the real trip against a RabbitMQ container (needs Docker).
 
 ## Dependency rules
 
@@ -128,7 +136,7 @@ dotnet ef database update --project src/Services/Workspaces/Partnr.Workspaces.In
 ## Common commands
 
 ```bash
-docker compose up -d                                              # Postgres + Mailpit (http://localhost:8025) + RustFS (S3 on :9000, console :9001)
+docker compose up -d                                              # Postgres + Mailpit (http://localhost:8025) + RustFS (S3 on :9000, console :9001) + RabbitMQ (AMQP :5672, UI http://localhost:15672, partnr / partnr)
 dotnet build                                                      # must be 0 warnings
 dotnet test
 dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http   # http://localhost:5051

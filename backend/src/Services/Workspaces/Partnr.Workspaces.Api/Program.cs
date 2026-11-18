@@ -10,6 +10,7 @@ using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
+using Wolverine;
 
 const string FrontendCorsPolicy = "Frontend";
 
@@ -45,6 +46,9 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
         }));
 });
+
+// Wolverine looks for handlers in the assembly that called AddWolverine (Infrastructure); the consumers of events live here.
+builder.Services.ConfigureWolverine(wolverine => wolverine.Discovery.IncludeAssembly(typeof(Program).Assembly));
 
 builder.Services.AddSignalR();
 builder.Services.AddGrpc();

@@ -10,7 +10,7 @@ using Npgsql;
 namespace Partnr.Workspaces.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-    : IdentityUserContext<ApplicationUser, Guid>(options), IUnitOfWork
+    : IdentityUserContext<ApplicationUser, Guid>(options)
 {
     private const string UniqueViolationSqlState = "23505";
 

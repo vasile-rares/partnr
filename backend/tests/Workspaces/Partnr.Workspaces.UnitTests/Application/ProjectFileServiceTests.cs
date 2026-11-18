@@ -310,7 +310,7 @@ public class ProjectFileServiceTests
 
     private sealed class FailingUnitOfWork : Partnr.Workspaces.Application.Interfaces.Repositories.IUnitOfWork
     {
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
             throw new ConflictException("A record with the same unique value already exists.");
     }
 }

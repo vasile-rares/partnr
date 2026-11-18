@@ -59,7 +59,7 @@ Fiecare serviciu își seed-uiește propria bază, iar amprenta de reseed rămâ
 
 Se detaliază la începutul fiecărui pas. Deschis:
 
-- La pasul 1: cine pornește infrastructura (Postgres, Mailpit, RustFS, RabbitMQ), Aspire sau `docker-compose` rămâne pentru ea, și ce folosește rularea e2e.
+- ~~La pasul 1: cine pornește infrastructura~~ Hotărât 2026-11-19: **rămâne `docker-compose`** (acum cu RabbitMQ, utilizator `partnr`); Aspire AppHost pornește doar procesele .NET și le leagă la containerele din compose prin connection string-uri. E2E-ul și testele de integrare nu se schimbă.
 - Migrarea datelor existente din baza monolitului în bazele noi (Integrations, Storage, Identity): ordinea e copiere, apoi golirea coloanelor mutate dintr-o migrare separată a monolitului.
 - La Identity: copierea conturilor și a hash-urilor de parolă și ce se întâmplă cu sesiunile active.
 
@@ -73,6 +73,9 @@ Schiță, fiecare pas se face separat, cu `dotnet build` fără warning-uri, `do
   - [x] **0b.2 Sesiunea.** gRPC către monolit pentru validarea cookie-ului, gateway-ul emite JWT-ul; monolitul îl ignoră deocamdată. Făcut: contractul `sessions.proto` în `Partnr.Contracts`, monolitul îl servește pe un port HTTP/2 separat (5052), gateway-ul întreabă la fiecare cerere cu cookie de sesiune. Rămas pentru 0b.3: gateway-ul trebuie să treacă mai departe și `Set-Cookie`-ul de reînnoire pe care îl scrie validarea (acum nu îl trece, pentru că monolitul își validează încă singur cookie-ul pe cererea proxiată).
   - [x] **0b.3 Monolitul trece pe JWT.** Cookie-ul rămâne doar la rutele de autentificare. Făcut: API-ul validează doar JWT-ul gateway-ului (o cerere cu doar cookie e 401), gateway-ul trece mai departe `Set-Cookie`-ul verificării (reînnoire, ștergere), iar testele de integrare se autentifică prin emulatorul de gateway. Efect: Scalar (`:5051/scalar`) nu mai poate apela rute autentificate.
 - [ ] **1. Fundația evenimentelor.** Aspire (AppHost, ServiceDefaults), `Partnr.Contracts`, RabbitMQ, Wolverine cu outbox în monolit, un prim eveniment publicat și un consumator de probă.
+  - [x] **1.1 Evenimente.** RabbitMQ în `docker-compose`, Wolverine cu outbox în Postgres (schema `wolverine` din baza monolitului), `ProjectCreated` în `Partnr.Contracts` publicat de `ProjectService` în aceeași tranzacție cu salvarea, handler de probă în Api (se șterge la pasul 2). `IUnitOfWork` e acum `OutboxUnitOfWork`. Teste cu RabbitMQ real (Testcontainers) și un test care prinde lipsa descoperirii handlerelor din Api.
+  - [ ] **1.2 ServiceDefaults.** `Partnr.ServiceDefaults`: OpenTelemetry, `/health`, reziliență; folosit de API și gateway; apoi consolidarea cheii JWT interne și a validării ei.
+  - [ ] **1.3 Aspire AppHost.** `Partnr.AppHost`: pornește API-ul și gateway-ul, dashboard OpenTelemetry; infrastructura rămâne în compose.
 - [ ] **2. Integrations.** Serviciu nou cu baza lui: conexiunea Google (rutele `/api/integrations/google`, inclusiv callback-ul OAuth prin gateway), tokenurile criptate, `MeetingSyncWorker`; întâlnirile ajung la el prin evenimente, iar rezultatul se întoarce tot prin eveniment. Datele se mută din baza monolitului. Se actualizează `google-calendar.md` și `meetings.md`.
 - [ ] **3. Notifications.** Serviciu nou cu baza lui: inbox, worker de emailuri, SignalR. `INotificationWriter` devine evenimente prin outbox; destinatarii vin în payload.
 - [ ] **4. Storage.** Serviciu nou; bucket-ul rămâne, se copiază înregistrările; `IFileStorage` devine client gRPC; ștergerea trece prin `ProjectFileRemoved`.

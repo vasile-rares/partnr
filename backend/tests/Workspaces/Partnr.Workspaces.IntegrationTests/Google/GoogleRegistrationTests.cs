@@ -11,7 +11,7 @@ namespace Partnr.Workspaces.IntegrationTests.Google;
 public class GoogleRegistrationTests
 {
     [Fact]
-    public void TheConnectionService_AndItsParts_CanBeBuilt()
+    public async Task TheConnectionService_AndItsParts_CanBeBuilt()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -28,7 +28,7 @@ public class GoogleRegistrationTests
             ["Google:EncryptionKey"] = "byS15QxyadAsWI5yIoIgUlIwfAYH17sJrwkWib43D+0=",
         }).Build();
 
-        using var provider = new ServiceCollection()
+        await using var provider = new ServiceCollection()
             .AddLogging()
             .AddSingleton<IHostEnvironment>(new TestHostEnvironment())
             .AddApplication()
@@ -42,7 +42,7 @@ public class GoogleRegistrationTests
     }
 
     [Fact]
-    public void TheFakeGoogle_NeedsNoCredentials_AndSkipsTheConsentScreen()
+    public async Task TheFakeGoogle_NeedsNoCredentials_AndSkipsTheConsentScreen()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -58,7 +58,7 @@ public class GoogleRegistrationTests
             ["Google:EncryptionKey"] = "byS15QxyadAsWI5yIoIgUlIwfAYH17sJrwkWib43D+0=",
         }).Build();
 
-        using var provider = new ServiceCollection()
+        await using var provider = new ServiceCollection()
             .AddLogging()
             .AddSingleton<IHostEnvironment>(new TestHostEnvironment())
             .AddApplication()

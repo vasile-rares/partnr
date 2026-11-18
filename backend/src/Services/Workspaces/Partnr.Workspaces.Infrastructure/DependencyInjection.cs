@@ -5,6 +5,7 @@ using Partnr.Workspaces.Application.Interfaces.Repositories;
 using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure.Authentication;
 using Partnr.Workspaces.Infrastructure.Email;
+using Partnr.Workspaces.Infrastructure.Events;
 using Partnr.Workspaces.Infrastructure.Google;
 using Partnr.Workspaces.Infrastructure.Notifications;
 using Partnr.Workspaces.Infrastructure.Persistence;
@@ -29,10 +30,9 @@ public static class DependencyInjection
         services.TryAddSingleton<IInboxPublisher, NoopInboxPublisher>();
         services.TryAddSingleton<IConversationPublisher, NoopConversationPublisher>();
         services.AddSingleton<InboxPushInterceptor>();
-        services.AddDbContext<ApplicationDbContext>((sp, options) => options
+        services.AddEvents(configuration, connectionString, (options, sp) => options
             .UseNpgsql(connectionString)
             .AddInterceptors(sp.GetRequiredService<InboxPushInterceptor>()));
-        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientInvitationRepository, ClientInvitationRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();

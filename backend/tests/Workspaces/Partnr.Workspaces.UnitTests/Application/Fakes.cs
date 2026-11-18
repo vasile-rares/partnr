@@ -13,10 +13,22 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
 {
     public int SaveCount { get; private set; }
 
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveCount++;
-        return Task.FromResult(1);
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeEventPublisher : IEventPublisher
+{
+    public List<object> Published { get; } = [];
+
+    public ValueTask PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+        where TEvent : notnull
+    {
+        Published.Add(@event);
+        return ValueTask.CompletedTask;
     }
 }
 

@@ -32,6 +32,19 @@ services:
     volumes:
       - rustfs-data:/data
 
+  # Message broker for the events between services (Wolverine). AMQP on :5672, management UI on http://localhost:15672 (partnr / partnr).
+  # No volume: the events that matter are kept in the outbox in Postgres, and the queues are created again at startup.
+  # (The default "guest" user only works from localhost, and through Docker's port mapping the connection does not look like that.)
+  rabbitmq:
+    image: rabbitmq:4.4.1-management
+    container_name: partnr-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: partnr
+      RABBITMQ_DEFAULT_PASS: partnr
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # management UI
+
 volumes:
   postgres-data:
   rustfs-data:
