@@ -1,8 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Own ports, so the tests never collide with the dev servers (3000 / 5051).
+// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052).
 const WEB_PORT = 3100;
+const GATEWAY_PORT = 5150;
 const API_PORT = 5151;
+const API_GRPC_PORT = 5152;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -22,7 +24,17 @@ export default defineConfig({
       // Compiles the API, recreates the test database and runs the API against it (see e2e/start-api.mjs).
       command: "node e2e/start-api.mjs",
       url: `http://localhost:${API_PORT}/api/auth/me`, // answers 401 once the API is up, which counts as ready
-      env: { E2E_API_PORT: String(API_PORT) },
+      env: { E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT) },
+      reuseExistingServer: false,
+      timeout: 240_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      // The only door to the backend, like in the real thing: the web app's /api rewrite points here (see e2e/start-gateway.mjs).
+      command: "node e2e/start-gateway.mjs",
+      url: `http://localhost:${GATEWAY_PORT}/api/auth/me`, // 401 through the proxy: the gateway and the API are both up
+      env: { E2E_GATEWAY_PORT: String(GATEWAY_PORT), E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT) },
       reuseExistingServer: false,
       timeout: 240_000,
       stdout: "pipe",
@@ -32,7 +44,7 @@ export default defineConfig({
       // A production build, like the real thing. BACKEND_URL is needed at build time too: the /api rewrite is baked in then.
       command: `pnpm build && pnpm start --port ${WEB_PORT}`,
       url: `http://localhost:${WEB_PORT}/login`,
-      env: { BACKEND_URL: `http://localhost:${API_PORT}` },
+      env: { BACKEND_URL: `http://localhost:${GATEWAY_PORT}` },
       reuseExistingServer: false,
       timeout: 240_000,
     },

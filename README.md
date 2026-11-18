@@ -86,7 +86,13 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
    dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http -- --seed
    ```
 
-3. Start the frontend (http://localhost:3000):
+3. Start the gateway (http://localhost:5050), the only door the frontend talks to, in a second terminal:
+
+   ```bash
+   dotnet run --project src/Gateway/Partnr.Gateway --launch-profile http
+   ```
+
+4. Start the frontend (http://localhost:3000):
 
    ```bash
    cd ../frontend

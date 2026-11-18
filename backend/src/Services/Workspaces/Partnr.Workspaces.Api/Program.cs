@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Partnr.Workspaces.Api;
+using Partnr.Workspaces.Api.Internal;
 using Partnr.Workspaces.Api.Middleware;
 using Partnr.Workspaces.Api.Realtime;
 using Partnr.Workspaces.Application;
@@ -44,6 +45,7 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.AddGrpc();
 // These replace the do-nothing ones AddInfrastructure leaves.
 builder.Services.AddSingleton<IInboxPublisher, SignalRInboxPublisher>();
 builder.Services.AddSingleton<IConversationPublisher, SignalRConversationPublisher>();
@@ -97,6 +99,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<NotificationsHub>(NotificationsHub.Route);
+app.MapGrpcService<SessionValidationService>();
 
 app.Run();
 

@@ -1,9 +1,18 @@
 <Solution>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/Partnr.Contracts/Partnr.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/Partnr.Gateway/Partnr.Gateway.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Workspaces/">
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj" />
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Application/Partnr.Workspaces.Application.csproj" />
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Domain/Partnr.Workspaces.Domain.csproj" />
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Infrastructure/Partnr.Workspaces.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/Gateway/">
+    <Project Path="tests/Gateway/Partnr.Gateway.Tests/Partnr.Gateway.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/Workspaces/">
     <Project Path="tests/Workspaces/Partnr.Workspaces.ArchitectureTests/Partnr.Workspaces.ArchitectureTests.csproj" />

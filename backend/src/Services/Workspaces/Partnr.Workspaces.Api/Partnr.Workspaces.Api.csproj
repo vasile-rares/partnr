@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -14,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Partnr.Contracts\Partnr.Contracts.csproj" />
     <ProjectReference Include="..\Partnr.Workspaces.Application\Partnr.Workspaces.Application.csproj" />
     <ProjectReference Include="..\Partnr.Workspaces.Infrastructure\Partnr.Workspaces.Infrastructure.csproj" />
   </ItemGroup>

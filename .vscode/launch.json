@@ -10,15 +10,26 @@
       "cwd": "${workspaceFolder}/backend/src/Services/Workspaces/Partnr.Workspaces.Api",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:5051",
         "Seed__ReseedOnChange": "true"
+      }
+    },
+    {
+      "name": "Gateway",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-gateway",
+      "program": "${workspaceFolder}/backend/src/Gateway/Partnr.Gateway/bin/Debug/net10.0/Partnr.Gateway.dll",
+      "cwd": "${workspaceFolder}/backend/src/Gateway/Partnr.Gateway",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5050"
       }
     }
   ],
   "compounds": [
     {
       "name": "Full stack",
-      "configurations": ["API"],
+      "configurations": ["API", "Gateway"],
       "preLaunchTask": "frontend",
       "stopAll": true
     }

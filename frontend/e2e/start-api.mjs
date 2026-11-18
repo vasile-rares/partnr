@@ -20,6 +20,7 @@ const apiDll = path.join(artifactsPath, "bin", "Partnr.Workspaces.Api", "debug",
 
 const TEST_DATABASE = "partnr_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
+const apiGrpcPort = process.env.E2E_API_GRPC_PORT ?? "5152";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
 const storageUrl = process.env.E2E_STORAGE_URL ?? "http://localhost:9000";
 const storageBucket = process.env.E2E_STORAGE_BUCKET ?? "partnr-e2e";
@@ -96,7 +97,9 @@ const env = {
   ArtifactsPath: artifactsPath,
   ConnectionStrings__Postgres: connectionString,
   ASPNETCORE_ENVIRONMENT: "Development", // outside Development the auth cookie is Secure-only and would not work over http
-  ASPNETCORE_URLS: `http://localhost:${apiPort}`,
+  // The endpoints are set in appsettings.Development.json (HTTP for the gateway's proxy, HTTP/2 for its gRPC calls); these replace them.
+  Kestrel__Endpoints__Http__Url: `http://localhost:${apiPort}`,
+  Kestrel__Endpoints__Grpc__Url: `http://localhost:${apiGrpcPort}`,
   // Links in emails must open the frontend that the tests run against (see playwright.config.ts), not the dev one on :3000.
   App__FrontendUrl: process.env.E2E_FRONTEND_URL ?? "http://localhost:3100",
   // No Google account is needed: a stand-in walks the same flows (Development only, the API refuses it anywhere else).
