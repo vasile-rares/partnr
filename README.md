@@ -81,9 +81,9 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
 2. Start the API (http://localhost:5051), and optionally load demo data:
 
    ```bash
-   dotnet run --project src/Partnr.Api --launch-profile http
+   dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http
    # demo data, then exits (safe to run again)
-   dotnet run --project src/Partnr.Api --launch-profile http -- --seed
+   dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http -- --seed
    ```
 
 3. Start the frontend (http://localhost:3000):

@@ -6,16 +6,18 @@
 
 Solution: `Partnr.slnx`.
 
+The backend is being split into services (plan: `.claude/docs/microservices-plan.md`). Until the other services are extracted, everything below is the **Workspaces** service, which holds the whole monolith: its projects live in `src/Services/Workspaces/` and its tests in `tests/Workspaces/`, all named `Partnr.Workspaces.*` (namespace included). Each service that comes later gets the same four layers in `src/Services/<Name>/`.
+
 Folders are grouped **by role inside each layer** (not by feature); the namespace always matches the folder.
 
 ```
-src/
-  Partnr.Domain/           No NuGet packages.
+src/Services/Workspaces/
+  Partnr.Workspaces.Domain/           No NuGet packages.
     Entities/                    Entity (base, UUID v7 ids) and one class per entity; aggregates own their children (Project owns its stages)
     Enums/                       Statuses and roles, stored as text
     Exceptions/                  DomainException
     Common/                      SecureToken (random tokens, only their hash is stored)
-  Partnr.Application/      Only the DI abstractions package.
+  Partnr.Workspaces.Application/      Only the DI abstractions package.
     Interfaces/Repositories/     One repository per aggregate, plus IUnitOfWork
     Interfaces/Services/         The use-case services (IXService) and the ports Infrastructure implements (IEmailSender, IFileStorage, IGoogleCalendarClient, ICurrentUser, ...)
     Services/                    One use-case service per feature, nothing else (all internal, names end in "Service", enforced by an architecture test)
@@ -27,7 +29,7 @@ src/
     Mappings/                    ToResponse() extension methods; a *ResponseBuilder class when a response needs more data than the entity (a repository or the account)
     Exceptions/                  AppException and its subclasses
     DependencyInjection.cs       AddApplication()
-  Partnr.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
+  Partnr.Workspaces.Infrastructure/   EF Core + Npgsql, ASP.NET Core Identity
     Persistence/                 ApplicationDbContext, InboxPushInterceptor (after a save that worked, tells the accounts whose inbox it touched), Configurations/, Repositories/, Seeding/, Migrations/
     Authentication/              ApplicationUser, IdentityService, CurrentUser, cookie setup
     Email/                       SmtpEmailSender (MailKit), BackgroundEmailQueue, EmailOptions
@@ -35,16 +37,16 @@ src/
     Storage/                     S3FileStorage (AWSSDK.S3, any S3-compatible service), StorageOptions
     Google/                      OAuth and Calendar clients (plain HttpClient), MeetingSyncWorker, SecretProtector (AES-GCM), FakeGoogle, GoogleOptions
     DependencyInjection.cs       AddInfrastructure()
-  Partnr.Api/              Controllers/ (thin), Extensions/ (ControllerBaseExtensions: file downloads), Middleware/ (exception handler), Realtime/ (NotificationsHub and the SignalR publishers: the only code that knows about SignalR), Program.cs (composition root)
-tests/
-  Partnr.UnitTests/        Domain/, Application/ (services with fakes, request validation)
-  Partnr.IntegrationTests/ Real Postgres via Testcontainers + WebApplicationFactory (needs Docker)
-  Partnr.ArchitectureTests/ NetArchTest rules for the dependency rules below
+  Partnr.Workspaces.Api/              Controllers/ (thin), Extensions/ (ControllerBaseExtensions: file downloads), Middleware/ (exception handler), Realtime/ (NotificationsHub and the SignalR publishers: the only code that knows about SignalR), Program.cs (composition root)
+tests/Workspaces/
+  Partnr.Workspaces.UnitTests/        Domain/, Application/ (services with fakes, request validation)
+  Partnr.Workspaces.IntegrationTests/ Real Postgres via Testcontainers + WebApplicationFactory (needs Docker)
+  Partnr.Workspaces.ArchitectureTests/ NetArchTest rules for the dependency rules below
 ```
 
 Folders not created yet, to add when their first file appears: `Domain/ValueObjects/`, `Domain/Events/`, `Application/Validators/` (validation is data annotations on DTOs for now), `Infrastructure/Services/` (other non-persistence implementations; email and file storage have their own `Email/` and `Storage/`), `Api/Filters/`, `Api/DTOs/` (only for API-only shapes; use-case DTOs stay in Application). Do not create empty folders.
 
-Integration tests live in a separate project so the fast unit tests can run on their own (`dotnet test tests/Partnr.UnitTests`). The architecture tests are fast too and need no database.
+Integration tests live in a separate project so the fast unit tests can run on their own (`dotnet test tests/Workspaces/Partnr.Workspaces.UnitTests`). The architecture tests are fast too and need no database.
 
 ## Dependency rules
 
@@ -55,7 +57,7 @@ Application    -> Domain
 Domain         -> nothing
 ```
 
-- Dependencies point inward only. Domain depends on nothing external. These rules are checked by `tests/Partnr.ArchitectureTests` (`LayerDependencyTests`); add a test there when a new rule is agreed.
+- Dependencies point inward only. Domain depends on nothing external. These rules are checked by `tests/Workspaces/Partnr.Workspaces.ArchitectureTests` (`LayerDependencyTests`); add a test there when a new rule is agreed.
 - Application talks to the database only through repository interfaces (`IClientRepository`, one per aggregate, in `Interfaces/Repositories/`) and `IUnitOfWork`. Both are implemented in Infrastructure: `ClientRepository` (reads, `Add`/`Remove`, never saves) and `ApplicationDbContext` (`IUnitOfWork.SaveChangesAsync`). Application has no EF Core reference.
 - Api does not reference types from `Infrastructure.Persistence`; it only calls `AddInfrastructure()` from the composition root.
 
@@ -105,7 +107,7 @@ Use `Clients` as the template. Every step is needed; nothing fails at build time
 4. **Infrastructure**: `DbSet<Project>` in `ApplicationDbContext`, `Persistence/Configurations/ProjectConfiguration.cs`, `Persistence/Repositories/ProjectRepository.cs`, and register `IProjectRepository` in `Infrastructure/DependencyInjection.cs`.
 5. **Migration**: `dotnet ef migrations add <Name> ...` (see Database and migrations), then review the generated file.
 6. **Api**: `Controllers/ProjectsController.cs`, thin, no error handling.
-7. **Tests**: service tests in `tests/Partnr.UnitTests/Application/` (fake repository + fake unit of work), entity tests in `Domain/`.
+7. **Tests**: service tests in `tests/Workspaces/Partnr.Workspaces.UnitTests/Application/` (fake repository + fake unit of work), entity tests in `Domain/`.
 8. Run `dotnet build` (0 warnings) and `dotnet test`.
 9. **Docs**: describe the feature's routes and rules in `.claude/docs/features/<feature>.md` and add it to the map in the root `CLAUDE.md`.
 
@@ -113,14 +115,14 @@ External services (email, OAuth, AI, file storage) follow the same rule as repos
 
 ## Database and migrations
 
-- PostgreSQL 17 via `docker-compose.yml` (db `partnr`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/Partnr.Api/appsettings.Development.json`. To use a different Postgres (e.g. one installed locally), override it with user secrets instead of editing that file: `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=...;Password=..." --project src/Partnr.Api`.
+- PostgreSQL 17 via `docker-compose.yml` (db `partnr`, local-dev-only credentials `postgres`/`postgres`, port 5432). The `Postgres` connection string is in `src/Services/Workspaces/Partnr.Workspaces.Api/appsettings.Development.json`. To use a different Postgres (e.g. one installed locally), override it with user secrets instead of editing that file: `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=...;Password=..." --project src/Services/Workspaces/Partnr.Workspaces.Api`.
 - **Email** goes through `IEmailSender` (Application), implemented by `Infrastructure/Email/SmtpEmailSender` (MailKit) and configured by the `Email` section (`From`, `SmtpHost`, `SmtpPort`, `SmtpUsername`, `SmtpPassword`, `UseTls`), validated at startup. In development the SMTP server is **Mailpit** from `docker-compose.yml` (SMTP on 1025, inbox UI on http://localhost:8025): every email is caught there, none reaches a real inbox. Production only changes the configuration. Integration tests replace the sender with `FakeEmailSender` (`ApiFactory.Emails`); `Email/SmtpEmailSenderTests` checks the real sender against a Mailpit container.
 - **File storage** goes through `IFileStorage` (Application), implemented by `Infrastructure/Storage/S3FileStorage` (AWSSDK.S3) and configured by the `Storage` section (`ServiceUrl`, `Region`, `Bucket`, `AccessKey`, `SecretKey`, `ForcePathStyle`, `CreateBucketIfMissing`), validated at startup. Any S3-compatible service works (AWS S3, R2, B2): production only changes the configuration and makes the bucket ahead of time. In development it is **RustFS** from `docker-compose.yml` (S3 API on http://localhost:9000, console on http://localhost:9001, dev credentials `rustfsadmin`/`rustfsadmin`, bucket `partnr` created on first use); MinIO no longer publishes images. `DeleteAsync` never throws (it logs), `OpenReadAsync` throws `NotFoundException` for a missing key. Integration tests replace the storage with `InMemoryFileStorage` (`ApiFactory.Files`); `Storage/S3FileStorageTests` checks the real adapter against a RustFS container.
 - Migrations are created in Infrastructure, started from Api (commands work in any shell):
 
 ```bash
-dotnet ef migrations add <Name> --project src/Partnr.Infrastructure --startup-project src/Partnr.Api --output-dir Persistence/Migrations
-dotnet ef database update --project src/Partnr.Infrastructure --startup-project src/Partnr.Api
+dotnet ef migrations add <Name> --project src/Services/Workspaces/Partnr.Workspaces.Infrastructure --startup-project src/Services/Workspaces/Partnr.Workspaces.Api --output-dir Persistence/Migrations
+dotnet ef database update --project src/Services/Workspaces/Partnr.Workspaces.Infrastructure --startup-project src/Services/Workspaces/Partnr.Workspaces.Api
 ```
 
 ## Common commands
@@ -129,8 +131,8 @@ dotnet ef database update --project src/Partnr.Infrastructure --startup-project 
 docker compose up -d                                              # Postgres + Mailpit (http://localhost:8025) + RustFS (S3 on :9000, console :9001)
 dotnet build                                                      # must be 0 warnings
 dotnet test
-dotnet run --project src/Partnr.Api --launch-profile http   # http://localhost:5051
-dotnet run --project src/Partnr.Api --launch-profile http -- --seed   # test data, then exits
+dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http   # http://localhost:5051
+dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http -- --seed   # test data, then exits
 ```
 
 - **Test data (development only):** `-- --seed` (VS Code task `db-seed`) applies pending migrations and adds demo accounts, workspaces and clients, then exits. It is never automatic, so the e2e and integration databases stay empty. It is safe to run again: when `demo@example.com` exists it does nothing. **F5 ("API" launch profile) reseeds on its own when the seed changed**: it sets `Seed__ReseedOnChange=true`, and at startup the API compares a fingerprint of the seed's source (`SeedFingerprint`: `DevelopmentSeed.cs` and `DevelopmentDataSeeder.cs`, embedded in the assembly at build) with the one stored as the database's own comment (`COMMENT ON DATABASE`, no table). If they differ, or the database has demo data but no fingerprint, **every table is dropped (`DROP SCHEMA public CASCADE`), recreated by the migrations and seeded again, so anything entered by hand is lost**; it refuses a database that is not on localhost. It is off by default because the integration and e2e runs are in Development too; `dotnet run` without that variable never recreates anything (use `-- --seed` by hand). Seeding writes files to the storage, so RustFS must be running. Stop the running API first (a debugger locks the DLLs `dotnet run` has to rebuild). The accounts (`demo@example.com`, password `demo-password`, and others) and everything the seed creates are listed in `.claude/docs/features/seed-data.md`; keep that list in step with `DevelopmentDataSeeder.cs`.

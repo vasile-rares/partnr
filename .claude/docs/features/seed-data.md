@@ -1,6 +1,6 @@
 # Development seed data
 
-How to seed and reseed is in `backend/CLAUDE.md` ("Test data"). This file lists what the seed puts in the database. The data lives in `backend/src/Partnr.Infrastructure/Persistence/Seeding/DevelopmentDataSeeder.cs`; add to it when a new feature needs something to click through, and update this list.
+How to seed and reseed is in `backend/CLAUDE.md` ("Test data"). This file lists what the seed puts in the database. The data lives in `backend/src/Services/Workspaces/Partnr.Workspaces.Infrastructure/Persistence/Seeding/DevelopmentDataSeeder.cs`; add to it when a new feature needs something to click through, and update this list.
 
 - Accounts (password `demo-password`): `demo@example.com` (owner of "Studio Pop" and "Side Project"), `member@example.com` (a plain member of "Studio Pop"), `client@example.com` (a client of "Studio Pop" who accepted an invitation).
 - Elena's card has two projects: "Elena Design website" (Active, with four stages: two Done, one In progress, one To do) and "Brand refresh" (Planning, so hidden from her portal).

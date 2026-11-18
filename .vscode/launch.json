@@ -6,8 +6,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build-api",
-      "program": "${workspaceFolder}/backend/src/Partnr.Api/bin/Debug/net10.0/Partnr.Api.dll",
-      "cwd": "${workspaceFolder}/backend/src/Partnr.Api",
+      "program": "${workspaceFolder}/backend/src/Services/Workspaces/Partnr.Workspaces.Api/bin/Debug/net10.0/Partnr.Workspaces.Api.dll",
+      "cwd": "${workspaceFolder}/backend/src/Services/Workspaces/Partnr.Workspaces.Api",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:5051",

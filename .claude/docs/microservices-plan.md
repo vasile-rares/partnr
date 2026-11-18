@@ -67,7 +67,7 @@ Se detaliază la începutul fiecărui pas. Deschis:
 
 Schiță, fiecare pas se face separat, cu `dotnet build` fără warning-uri, `dotnet test` verde și e2e verde înainte de următorul. Se detaliază la începutul fiecărui pas.
 
-- [ ] **0a. Mutare și redenumire.** Proiectele de azi se mută în `Services/Workspaces` și devin `Partnr.Workspaces.*`. Doar redenumire, comportament identic.
+- [x] **0a. Mutare și redenumire.** Proiectele de azi se mută în `Services/Workspaces` și devin `Partnr.Workspaces.*`. Doar redenumire, comportament identic. Făcut: sursele în `backend/src/Services/Workspaces/`, testele în `backend/tests/Workspaces/`, namespace-urile (inclusiv numele de tip din snapshot-ul migrărilor) redenumite; schema bazei nu s-a schimbat.
 - [ ] **0b. Gateway.** `Partnr.Gateway` (YARP) în fața monolitului; sesiune și acces validate de gateway (gRPC către monolit la fiecare cerere, încă un singur proces) și JWT intern; `BACKEND_URL` arată spre gateway; harness-ul e2e pornește și gateway-ul. Niciun serviciu nu se separă încă.
 - [ ] **1. Fundația evenimentelor.** Aspire (AppHost, ServiceDefaults), `Partnr.Contracts`, RabbitMQ, Wolverine cu outbox în monolit, un prim eveniment publicat și un consumator de probă.
 - [ ] **2. Integrations.** Serviciu nou cu baza lui: conexiunea Google (rutele `/api/integrations/google`, inclusiv callback-ul OAuth prin gateway), tokenurile criptate, `MeetingSyncWorker`; întâlnirile ajung la el prin evenimente, iar rezultatul se întoarce tot prin eveniment. Datele se mută din baza monolitului. Se actualizează `google-calendar.md` și `meetings.md`.
