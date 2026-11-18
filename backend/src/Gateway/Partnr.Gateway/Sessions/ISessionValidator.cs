@@ -14,4 +14,5 @@ internal enum SessionOutcome
     Unavailable,
 }
 
-internal readonly record struct SessionCheck(SessionOutcome Outcome, string? UserId = null);
+/// <param name="SetCookies">What the session check wants the browser to get: a renewed cookie, or the removal of one that no longer counts.</param>
+internal sealed record SessionCheck(SessionOutcome Outcome, string? UserId = null, IReadOnlyList<string>? SetCookies = null);

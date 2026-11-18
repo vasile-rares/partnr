@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Partnr.Gateway.Sessions;
+namespace Partnr.Contracts;
 
-internal sealed class InternalAuthOptions
+/// <summary>The key the gateway signs the internal JWT with and the services check it with (HS256: the same secret on both sides).</summary>
+public sealed class InternalAuthOptions
 {
     public const int MinimumKeyBytes = 32;
 

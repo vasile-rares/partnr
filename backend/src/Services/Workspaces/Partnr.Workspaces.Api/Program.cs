@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Partnr.Workspaces.Api;
+using Partnr.Workspaces.Api.Authentication;
 using Partnr.Workspaces.Api.Internal;
 using Partnr.Workspaces.Api.Middleware;
 using Partnr.Workspaces.Api.Realtime;
@@ -16,7 +17,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddApplication()
-    .AddInfrastructure(builder.Configuration);
+    .AddInfrastructure(builder.Configuration)
+    .AddInternalAuthentication();
 
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());

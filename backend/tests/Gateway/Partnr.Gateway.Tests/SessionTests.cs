@@ -108,6 +108,24 @@ public sealed class SessionTests : IAsyncLifetime
         Assert.Equal(0, _api.Requests);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task What_the_session_check_wants_the_browser_to_get_comes_before_the_cookies_of_the_api(bool valid)
+    {
+        _sessions.Next = valid
+            ? new SessionCheck(SessionOutcome.Valid, AccountId, ["session=renewed; path=/"])
+            : new SessionCheck(SessionOutcome.Invalid, SetCookies: ["session=renewed; path=/"]);
+        using var gateway = GatewayHost.For(_api.Address, _sessions);
+        using var client = GatewayHost.ClientOf(gateway);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        request.Headers.Add("Cookie", SessionCookie);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(["session=renewed; path=/", "session=from-api; path=/; httponly"], response.Headers.GetValues("Set-Cookie"));
+    }
+
     private async Task<Received> Get(string? cookie, string? authorization = null)
     {
         using var gateway = GatewayHost.For(_api.Address, _sessions);

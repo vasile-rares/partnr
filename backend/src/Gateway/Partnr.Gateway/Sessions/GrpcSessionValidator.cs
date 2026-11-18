@@ -11,10 +11,14 @@ internal sealed class GrpcSessionValidator(SessionValidation.SessionValidationCl
     {
         try
         {
-            var reply = await client.ValidateAsync(
+            using var call = client.ValidateAsync(
                 new ValidateRequest(), new Metadata { { "cookie", cookieHeader } }, DateTime.UtcNow.Add(Deadline), cancellationToken);
 
-            return reply.Valid ? new SessionCheck(SessionOutcome.Valid, reply.UserId) : new SessionCheck(SessionOutcome.Invalid);
+            var reply = await call.ResponseAsync;
+            var headers = await call.ResponseHeadersAsync;
+            var setCookies = headers.Where(entry => entry.Key == "set-cookie").Select(entry => entry.Value).ToList();
+
+            return reply.Valid ? new SessionCheck(SessionOutcome.Valid, reply.UserId, setCookies) : new SessionCheck(SessionOutcome.Invalid, SetCookies: setCookies);
         }
         catch (RpcException)
         {

@@ -16,6 +16,9 @@ internal sealed class FakeApi : IAsyncDisposable
 
     public int Requests => _requests;
 
+    /// <summary>The host (without the port) of the last request: the gateway's own when it passes the original Host on.</summary>
+    public string? LastHost { get; private set; }
+
     public static async Task<FakeApi> StartAsync()
     {
         var builder = WebApplication.CreateSlimBuilder();
@@ -26,6 +29,7 @@ internal sealed class FakeApi : IAsyncDisposable
         app.Map("/{**path}", async (HttpContext context) =>
         {
             Interlocked.Increment(ref api._requests);
+            api.LastHost = context.Request.Host.Host;
 
             long length = 0;
             var buffer = new byte[81920];

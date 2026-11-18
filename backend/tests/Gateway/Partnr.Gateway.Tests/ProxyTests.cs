@@ -64,6 +64,21 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("/scalar/v1")]
+    [InlineData("/openapi/v1.json")]
+    public async Task In_development_the_api_docs_are_reachable_with_the_gateways_own_address_as_the_host(string path)
+    {
+        using var gateway = GatewayHost.For(_api.Address);
+        using var client = GatewayHost.ClientOf(gateway);
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(path, (await response.Content.ReadFromJsonAsync<Received>())!.PathAndQuery);
+        Assert.Equal("localhost", _api.LastHost);
+    }
+
     [Fact]
     public async Task Answers_bad_gateway_when_the_api_is_down()
     {

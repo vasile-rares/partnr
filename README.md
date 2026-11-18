@@ -108,7 +108,7 @@ With the demo data, sign in with password `demo-password` as:
 | `member@example.com` | Member of "Studio Pop"                  |
 | `client@example.com` | Client of "Studio Pop" (the portal)     |
 
-Useful local addresses: API docs at http://localhost:5051/scalar/v1, caught emails at http://localhost:8025, storage console at http://localhost:9001.
+Useful local addresses: API docs at http://localhost:5050/scalar/v1 (through the gateway; sign in to the app first and "Try it" works), caught emails at http://localhost:8025, storage console at http://localhost:9001.
 
 > [!NOTE]
 > The credentials in `docker-compose.yml` and `appsettings.Development.json` are for local development only.

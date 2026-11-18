@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 
 namespace Partnr.Gateway.Sessions;
@@ -31,6 +32,16 @@ internal sealed class SessionMiddleware(RequestDelegate next, ISessionValidator 
             await Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "The service is not available right now.")
                 .ExecuteAsync(context);
             return;
+        }
+
+        if (check.SetCookies is { Count: > 0 } setCookies)
+        {
+            context.Response.OnStarting(() =>
+            {
+                // First, so a cookie the service sets itself in the same answer (a sign-out, a new sign-in) is the one the browser keeps.
+                context.Response.Headers.SetCookie = new StringValues([.. setCookies, .. context.Response.Headers.SetCookie.ToArray()]);
+                return Task.CompletedTask;
+            });
         }
 
         if (check is { Outcome: SessionOutcome.Valid, UserId: { } userId })

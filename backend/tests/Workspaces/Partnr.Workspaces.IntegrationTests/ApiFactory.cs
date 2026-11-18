@@ -1,4 +1,5 @@
 using Partnr.Workspaces.Application.Interfaces.Services;
+using Partnr.Workspaces.IntegrationTests.Gateway;
 using Partnr.Workspaces.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -52,8 +53,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // Tests run the email service themselves, so what they see does not depend on a timer.
         builder.UseSetting("Notifications:EmailWorkerEnabled", "false");
         builder.UseSetting("Google:SyncWorkerEnabled", "false");
+        builder.UseSetting("InternalAuth:SigningKey", InternalTokens.SigningKey);
         builder.ConfigureServices(services =>
         {
+            // The API only accepts the gateway's JWT; this turns the cookie the tests sign in with into one, like the gateway does.
+            services.AddSingleton<IStartupFilter, GatewayEmulatorStartupFilter>();
             services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
             services.Replace(ServiceDescriptor.Singleton<IFileStorage>(Files));
             services.Replace(ServiceDescriptor.Singleton<IGoogleOAuthClient>(Google));
