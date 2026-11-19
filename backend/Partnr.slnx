@@ -6,6 +6,12 @@
   <Folder Name="/src/Gateway/">
     <Project Path="src/Gateway/Partnr.Gateway/Partnr.Gateway.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Integrations/">
+    <Project Path="src/Services/Integrations/Partnr.Integrations.Api/Partnr.Integrations.Api.csproj" />
+    <Project Path="src/Services/Integrations/Partnr.Integrations.Application/Partnr.Integrations.Application.csproj" />
+    <Project Path="src/Services/Integrations/Partnr.Integrations.Domain/Partnr.Integrations.Domain.csproj" />
+    <Project Path="src/Services/Integrations/Partnr.Integrations.Infrastructure/Partnr.Integrations.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Workspaces/">
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj" />
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Application/Partnr.Workspaces.Application.csproj" />
@@ -14,6 +20,11 @@
   </Folder>
   <Folder Name="/tests/Gateway/">
     <Project Path="tests/Gateway/Partnr.Gateway.Tests/Partnr.Gateway.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Integrations/">
+    <Project Path="tests/Integrations/Partnr.Integrations.ArchitectureTests/Partnr.Integrations.ArchitectureTests.csproj" />
+    <Project Path="tests/Integrations/Partnr.Integrations.IntegrationTests/Partnr.Integrations.IntegrationTests.csproj" />
+    <Project Path="tests/Integrations/Partnr.Integrations.UnitTests/Partnr.Integrations.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tests/Workspaces/">
     <Project Path="tests/Workspaces/Partnr.Workspaces.ArchitectureTests/Partnr.Workspaces.ArchitectureTests.csproj" />
