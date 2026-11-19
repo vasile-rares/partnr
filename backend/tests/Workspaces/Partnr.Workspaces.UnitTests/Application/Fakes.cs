@@ -1,5 +1,4 @@
 using Partnr.Workspaces.Application.DTOs.Auth;
-using Partnr.Workspaces.Application.DTOs.Email;
 using Partnr.Workspaces.Application.Exceptions;
 using Partnr.Workspaces.Application.Interfaces.Repositories;
 using Partnr.Workspaces.Application.Interfaces.Services;
@@ -272,25 +271,6 @@ internal sealed class FakeClientInvitationRepository : IClientInvitationReposito
     public void Add(ClientInvitation invitation) => Items.Add(invitation);
 }
 
-internal sealed class FakeEmailSender : IEmailSender
-{
-    public List<EmailMessage> Sent { get; } = [];
-
-    /// <summary>Addresses the "SMTP server" refuses, to test that one failure does not stop the others.</summary>
-    public HashSet<string> FailFor { get; } = [];
-
-    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
-    {
-        if (FailFor.Contains(message.To))
-        {
-            throw new InvalidOperationException("SMTP is down.");
-        }
-
-        Sent.Add(message);
-        return Task.CompletedTask;
-    }
-}
-
 internal sealed class FakeAppLinks : IAppLinks
 {
     public string InvitationUrl(string token) => $"https://app.test/invite/{token}";
@@ -307,6 +287,10 @@ internal sealed class FakeNotificationPublisher : INotificationPublisher
     public List<ClientInvitation> Accepted { get; } = [];
 
     public List<Guid> Withdrawn { get; } = [];
+
+    public List<InvitationSent> Invited { get; } = [];
+
+    public List<PasswordResetSent> PasswordResets { get; } = [];
 
     public Task ApprovalRequestedAsync(string workspaceName, Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken)
     {
@@ -326,12 +310,28 @@ internal sealed class FakeNotificationPublisher : INotificationPublisher
         return Task.CompletedTask;
     }
 
+    public Task ClientInvitedAsync(string workspaceName, Client client, ClientInvitation invitation, string token, CancellationToken cancellationToken)
+    {
+        Invited.Add(new InvitationSent(workspaceName, client, invitation, token));
+        return Task.CompletedTask;
+    }
+
+    public Task PasswordResetRequestedAsync(CurrentUserResponse account, string token, CancellationToken cancellationToken)
+    {
+        PasswordResets.Add(new PasswordResetSent(account, token));
+        return Task.CompletedTask;
+    }
+
     public Task ApprovalRequestWithdrawnAsync(Guid approvalRequestId, CancellationToken cancellationToken)
     {
         Withdrawn.Add(approvalRequestId);
         return Task.CompletedTask;
     }
 }
+
+internal sealed record InvitationSent(string WorkspaceName, Client Client, ClientInvitation Invitation, string Token);
+
+internal sealed record PasswordResetSent(CurrentUserResponse Account, string Token);
 
 internal sealed class FakeTimeProvider : TimeProvider
 {
@@ -500,13 +500,6 @@ internal sealed class FakeMeetingRepository : IMeetingRepository
             .ToList());
 
     public void Add(Meeting meeting) => Items.Add(meeting);
-}
-
-internal sealed class FakeBackgroundEmailQueue : IBackgroundEmailQueue
-{
-    public List<EmailMessage> Queued { get; } = [];
-
-    public void Enqueue(EmailMessage message) => Queued.Add(message);
 }
 
 internal sealed class FakeConversationReadRepository : IConversationReadRepository

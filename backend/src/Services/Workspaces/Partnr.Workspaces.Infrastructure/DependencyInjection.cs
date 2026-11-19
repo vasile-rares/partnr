@@ -5,7 +5,6 @@ using Partnr.Contracts.Integrations;
 using Partnr.Workspaces.Application.Interfaces.Repositories;
 using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure.Authentication;
-using Partnr.Workspaces.Infrastructure.Email;
 using Partnr.Workspaces.Infrastructure.Events;
 using Partnr.Workspaces.Infrastructure.Integrations;
 using Partnr.Workspaces.Infrastructure.Persistence;
@@ -50,15 +49,6 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddScoped<IAppLinks, AppLinks>();
-
-        services.AddOptions<EmailOptions>()
-            .Bind(configuration.GetSection(EmailOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-        services.AddScoped<IEmailSender, SmtpEmailSender>();
-        services.AddSingleton<BackgroundEmailQueue>();
-        services.AddSingleton<IBackgroundEmailQueue>(sp => sp.GetRequiredService<BackgroundEmailQueue>());
-        services.AddHostedService(sp => sp.GetRequiredService<BackgroundEmailQueue>());
 
         // Google belongs to the Integrations service: this only asks it, over gRPC, whether an account is connected.
         var integrationsAddress = configuration["Services:Integrations:GrpcAddress"]

@@ -33,3 +33,15 @@ public static class ConversationChangedHandler
     public static Task Handle(ConversationChanged message, INotificationEventService events, CancellationToken cancellationToken) =>
         events.ApplyAsync(message, cancellationToken);
 }
+
+public static class ClientInvitedHandler
+{
+    public static Task Handle(ClientInvited message, ITransactionalEmailService emails, CancellationToken cancellationToken) =>
+        emails.SendAsync(message, cancellationToken);
+}
+
+public static class PasswordResetRequestedHandler
+{
+    public static Task Handle(PasswordResetRequested message, ITransactionalEmailService emails, CancellationToken cancellationToken) =>
+        emails.SendAsync(message, cancellationToken);
+}

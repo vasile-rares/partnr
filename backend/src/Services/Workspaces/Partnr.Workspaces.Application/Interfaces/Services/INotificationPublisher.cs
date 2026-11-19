@@ -1,3 +1,4 @@
+using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Domain.Entities;
 
 namespace Partnr.Workspaces.Application.Interfaces.Services;
@@ -18,6 +19,12 @@ public interface INotificationPublisher
 
     /// <summary>Tells the member who sent the invitation, if they are still in the workspace.</summary>
     Task InvitationAcceptedAsync(Workspace workspace, Client client, ClientInvitation invitation, Guid accountId, CancellationToken cancellationToken);
+
+    /// <summary>Sends the invitation link to the client's address; <paramref name="token"/> is the plain one, which only the email carries.</summary>
+    Task ClientInvitedAsync(string workspaceName, Client client, ClientInvitation invitation, string token, CancellationToken cancellationToken);
+
+    /// <summary>Sends the reset link to the account's address; <paramref name="token"/> is the plain one, which only the email carries.</summary>
+    Task PasswordResetRequestedAsync(CurrentUserResponse account, string token, CancellationToken cancellationToken);
 
     /// <summary>The request was taken back: what was said about it no longer holds.</summary>
     Task ApprovalRequestWithdrawnAsync(Guid approvalRequestId, CancellationToken cancellationToken);

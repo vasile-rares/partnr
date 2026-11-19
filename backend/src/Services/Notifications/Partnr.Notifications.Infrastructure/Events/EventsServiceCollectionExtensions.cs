@@ -2,6 +2,7 @@ using JasperFx.CodeGeneration.Model;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Wolverine;
+using Wolverine.ErrorHandling;
 using Wolverine.RabbitMQ;
 
 namespace Partnr.Notifications.Infrastructure.Events;
@@ -22,6 +23,9 @@ internal static class EventsServiceCollectionExtensions
             wolverine.ServiceName = options.ServiceName;
             // The use-case services are internal on purpose (see the architecture tests): generated handler code cannot build them, so it asks the container.
             wolverine.ServiceLocationPolicy = ServiceLocationPolicy.AlwaysAllowed;
+
+            // An email that cannot be sent (the SMTP server is down) is tried again a few times before it goes to the dead-letter queue.
+            wolverine.OnException<Exception>().RetryWithCooldown(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(2));
 
             if (!string.IsNullOrWhiteSpace(options.RabbitMqUri))
             {

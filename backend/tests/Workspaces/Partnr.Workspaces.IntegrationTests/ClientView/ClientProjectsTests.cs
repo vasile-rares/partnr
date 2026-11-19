@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Partnr.Workspaces.Application.DTOs.Approvals;
 using Partnr.Workspaces.Application.DTOs.Clients;
 using Partnr.Workspaces.Application.DTOs.Deliverables;
@@ -324,9 +323,6 @@ public sealed partial class ClientProjectsTests(ApiFactory factory)
 
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 
-    [GeneratedRegex("/invite/([A-Za-z0-9_-]+)")]
-    private static partial Regex InviteLink();
-
     private async Task<StudioSession> Studio()
     {
         var http = factory.CreateClient();
@@ -356,7 +352,7 @@ public sealed partial class ClientProjectsTests(ApiFactory factory)
 
             var invited = await Http.PostAsync($"/api/workspaces/{WorkspaceId}/clients/{client.Id}/invitation", null);
             Assert.Equal(HttpStatusCode.OK, invited.StatusCode);
-            var token = InviteLink().Match(factory.Emails.SentTo(email)[^1].TextBody).Groups[1].Value;
+            var token = factory.Emails.InvitationsTo(email)[^1].Token;
 
             var clientHttp = factory.CreateClient();
             var accepted = await clientHttp.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = name, password = Password });

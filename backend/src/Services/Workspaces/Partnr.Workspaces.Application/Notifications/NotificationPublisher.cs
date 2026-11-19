@@ -118,6 +118,29 @@ internal sealed class NotificationPublisher(
             cancellationToken);
     }
 
+    public async Task ClientInvitedAsync(
+        string workspaceName,
+        Client client,
+        ClientInvitation invitation,
+        string token,
+        CancellationToken cancellationToken)
+    {
+        var inviter = await identity.FindByIdAsync(invitation.InvitedByUserId, cancellationToken);
+
+        await events.PublishAsync(
+            new ClientInvited(
+                invitation.Email,
+                client.Name ?? string.Empty,
+                workspaceName,
+                inviter?.FullName ?? string.Empty,
+                token,
+                invitation.ExpiresAtUtc),
+            cancellationToken);
+    }
+
+    public Task PasswordResetRequestedAsync(CurrentUserResponse account, string token, CancellationToken cancellationToken) =>
+        events.PublishAsync(new PasswordResetRequested(account.Email, account.FullName, token), cancellationToken).AsTask();
+
     public Task ApprovalRequestWithdrawnAsync(Guid approvalRequestId, CancellationToken cancellationToken) =>
         events.PublishAsync(new ApprovalRequestWithdrawn(approvalRequestId), cancellationToken).AsTask();
 

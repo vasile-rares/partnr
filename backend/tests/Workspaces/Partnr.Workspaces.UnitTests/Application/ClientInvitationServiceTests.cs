@@ -13,7 +13,7 @@ public class ClientInvitationServiceTests
     private readonly FakeClientRepository _clients = new();
     private readonly FakeClientInvitationRepository _invitations = new();
     private readonly FakeIdentityService _identity = new();
-    private readonly FakeEmailSender _email = new();
+    private readonly FakeNotificationPublisher _notifications = new();
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeTimeProvider _time = new();
@@ -32,9 +32,7 @@ public class ClientInvitationServiceTests
         _service = new ClientInvitationService(
             _clients,
             _invitations,
-            _identity,
-            _email,
-            new FakeAppLinks(),
+            _notifications,
             new WorkspaceAccess(_workspaces, new FakeCurrentUser(_me)),
             new ClientResponseBuilder(_identity, _invitations, _time),
             _unitOfWork,
@@ -42,7 +40,7 @@ public class ClientInvitationServiceTests
     }
 
     [Fact]
-    public async Task Invite_StoresOnlyTheHashOfTheToken_AndEmailsTheLinkToTheClientAddress()
+    public async Task Invite_StoresOnlyTheHashOfTheToken_AndSendsTheTokenToTheClientAddress()
     {
         var response = await _service.InviteAsync(_workspace.Id, _client.Id, CancellationToken.None);
 
@@ -51,13 +49,11 @@ public class ClientInvitationServiceTests
         Assert.Equal(_me, invitation.InvitedByUserId);
         Assert.Equal(_time.Now.UtcDateTime.AddDays(7), invitation.ExpiresAtUtc);
 
-        var message = Assert.Single(_email.Sent);
-        Assert.Equal("elena@acme.com", message.To);
-        Assert.Contains("Studio Pop", message.Subject);
-        Assert.Contains("Ana Pop", message.TextBody);
-        var token = message.TextBody.Split("https://app.test/invite/")[1].Split(['\r', '\n'])[0];
-        Assert.Equal(ClientInvitation.HashToken(token), invitation.TokenHash);
-        Assert.DoesNotContain(token, invitation.TokenHash);
+        var sent = Assert.Single(_notifications.Invited);
+        Assert.Equal("Studio Pop", sent.WorkspaceName);
+        Assert.Same(invitation, sent.Invitation);
+        Assert.Equal(ClientInvitation.HashToken(sent.Token), invitation.TokenHash);
+        Assert.DoesNotContain(sent.Token, invitation.TokenHash);
 
         Assert.Equal("Invited", response.Portal.Status);
         Assert.Equal(invitation.ExpiresAtUtc, response.Portal.ExpiresAtUtc);
@@ -77,7 +73,7 @@ public class ClientInvitationServiceTests
         Assert.NotNull(first.CancelledAtUtc);
         Assert.Null(second.CancelledAtUtc);
         Assert.NotEqual(first.TokenHash, second.TokenHash);
-        Assert.Equal(2, _email.Sent.Count);
+        Assert.Equal(2, _notifications.Invited.Count);
     }
 
     [Fact]
@@ -100,7 +96,7 @@ public class ClientInvitationServiceTests
         await Assert.ThrowsAsync<ConflictException>(() => _service.InviteAsync(_workspace.Id, _client.Id, CancellationToken.None));
 
         Assert.Empty(_invitations.Items);
-        Assert.Empty(_email.Sent);
+        Assert.Empty(_notifications.Invited);
     }
 
     [Fact]
@@ -110,7 +106,7 @@ public class ClientInvitationServiceTests
 
         await Assert.ThrowsAsync<ConflictException>(() => _service.InviteAsync(_workspace.Id, _client.Id, CancellationToken.None));
 
-        Assert.Empty(_email.Sent);
+        Assert.Empty(_notifications.Invited);
     }
 
     [Fact]
@@ -119,9 +115,7 @@ public class ClientInvitationServiceTests
         var stranger = new ClientInvitationService(
             _clients,
             _invitations,
-            _identity,
-            _email,
-            new FakeAppLinks(),
+            _notifications,
             new WorkspaceAccess(_workspaces, new FakeCurrentUser(Guid.NewGuid())),
             new ClientResponseBuilder(_identity, _invitations, _time),
             _unitOfWork,
@@ -130,7 +124,7 @@ public class ClientInvitationServiceTests
         await Assert.ThrowsAsync<NotFoundException>(() => stranger.InviteAsync(_workspace.Id, _client.Id, CancellationToken.None));
 
         Assert.Empty(_invitations.Items);
-        Assert.Empty(_email.Sent);
+        Assert.Empty(_notifications.Invited);
     }
 
     [Fact]

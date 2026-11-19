@@ -68,7 +68,7 @@ if (!database?.endsWith("_e2e")) {
   process.exit(1);
 }
 
-// Invitations send real SMTP, so a missing Mailpit would fail the tests with a confusing 500. Say so up front instead.
+// The Notifications service sends the emails (invitations, resets, notifications) over real SMTP, so a missing Mailpit would fail the tests with a timeout. Say so up front instead.
 try {
   const response = await fetch(`${mailpitUrl}/livez`);
   if (!response.ok) {

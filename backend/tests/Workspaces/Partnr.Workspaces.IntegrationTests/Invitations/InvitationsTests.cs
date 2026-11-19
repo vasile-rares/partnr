@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.RegularExpressions;
 using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Application.DTOs.Clients;
 using Partnr.Workspaces.Application.DTOs.Invitations;
@@ -14,12 +13,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Partnr.Workspaces.IntegrationTests.Invitations;
 
 [Collection(ApiCollection.Name)]
-public sealed partial class InvitationsTests(ApiFactory factory)
+public sealed class InvitationsTests(ApiFactory factory)
 {
     private const string Password = "correct horse";
 
     [Fact]
-    public async Task Invite_EmailsALinkToTheClientAddress_AndTheClientShowsAsInvited()
+    public async Task Invite_SendsTheTokenToTheClientAddress_AndTheClientShowsAsInvited()
     {
         var (studio, workspaceId, client) = await StudioWithClient();
 
@@ -31,9 +30,8 @@ public sealed partial class InvitationsTests(ApiFactory factory)
         Assert.NotNull(invited.Portal.ExpiresAtUtc);
         Assert.True(invited.DetailsLocked);
 
-        var message = Assert.Single(factory.Emails.SentTo(client.Email));
-        Assert.Contains("http://localhost:3000/invite/", message.TextBody);
-        Assert.Contains(client.Email, message.TextBody);
+        var sent = Assert.Single(factory.Emails.InvitationsTo(client.Email));
+        Assert.False(string.IsNullOrEmpty(sent.Token));
     }
 
     [Fact]
@@ -248,7 +246,7 @@ public sealed partial class InvitationsTests(ApiFactory factory)
 
         Assert.Equal(HttpStatusCode.NotFound, invite.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, cancel.StatusCode);
-        Assert.Empty(factory.Emails.SentTo(client.Email));
+        Assert.Empty(factory.Emails.InvitationsTo(client.Email));
         var seen = await studio.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{client.Id}");
         Assert.Equal("NotInvited", seen!.Portal.Status);
     }
@@ -320,9 +318,6 @@ public sealed partial class InvitationsTests(ApiFactory factory)
 
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 
-    [GeneratedRegex("/invite/([A-Za-z0-9_-]+)")]
-    private static partial Regex InviteLink();
-
     private async Task<(HttpClient Http, Guid WorkspaceId)> SignedInWithWorkspace()
     {
         var (http, _, _) = await SignedInWithEmail();
@@ -367,14 +362,14 @@ public sealed partial class InvitationsTests(ApiFactory factory)
 
     private async Task<string> Invite(HttpClient studio, Guid workspaceId, ClientResponse client)
     {
-        var before = factory.Emails.SentTo(client.Email).Count;
+        var before = factory.Emails.InvitationsTo(client.Email).Count;
         var response = await studio.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/invitation", null);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var sent = factory.Emails.SentTo(client.Email);
+        var sent = factory.Emails.InvitationsTo(client.Email);
         Assert.Equal(before + 1, sent.Count);
 
-        return InviteLink().Match(sent[^1].TextBody).Groups[1].Value;
+        return sent[^1].Token;
     }
 
     private async Task AddMember(Guid workspaceId, Guid userId)

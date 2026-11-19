@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationEmailService, NotificationEmailService>();
         services.AddScoped<INotificationEventService, NotificationEventService>();
+        services.AddScoped<ITransactionalEmailService, TransactionalEmailService>();
 
         return services;
     }

@@ -1,13 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.RegularExpressions;
 using Partnr.Workspaces.Application.DTOs.Auth;
-using Partnr.Workspaces.Application.DTOs.Email;
+using Partnr.Contracts.Events;
 
 namespace Partnr.Workspaces.IntegrationTests.Auth;
 
 [Collection(ApiCollection.Name)]
-public sealed partial class PasswordResetTests(ApiFactory factory)
+public sealed class PasswordResetTests(ApiFactory factory)
 {
     private const string Password = "correct horse";
     private const string NewPassword = "battery staple";
@@ -19,7 +18,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
         var device = factory.CreateClient();
 
         var asked = await device.PostAsJsonAsync("/api/auth/forgot-password", new { email });
-        var token = TokenIn(await EmailTo(email));
+        var token = (await EmailTo(email)).Token;
 
         Assert.Equal(HttpStatusCode.NoContent, asked.StatusCode);
         var preview = await device.GetFromJsonAsync<PasswordResetPreviewResponse>($"/api/auth/reset-password/{token}");
@@ -41,7 +40,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.OK, (await laptop.PostAsJsonAsync("/api/auth/login", new { email, password = Password })).StatusCode);
 
         await factory.CreateClient().PostAsJsonAsync("/api/auth/forgot-password", new { email });
-        var token = TokenIn(await EmailTo(email));
+        var token = (await EmailTo(email)).Token;
         await factory.CreateClient().PostAsJsonAsync("/api/auth/reset-password", new { token, password = NewPassword });
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await laptop.GetAsync("/api/auth/me")).StatusCode);
@@ -53,7 +52,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
         var email = await Register();
         var client = factory.CreateClient();
         await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
-        var token = TokenIn(await EmailTo(email));
+        var token = (await EmailTo(email)).Token;
         await client.PostAsJsonAsync("/api/auth/reset-password", new { token, password = NewPassword });
 
         var again = await client.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "something else" });
@@ -70,8 +69,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
         var asked = await factory.CreateClient().PostAsJsonAsync("/api/auth/forgot-password", new { email = nobody });
 
         Assert.Equal(HttpStatusCode.NoContent, asked.StatusCode);
-        await Task.Delay(300); // the queue would have sent it by now
-        Assert.Empty(factory.Emails.SentTo(nobody));
+        Assert.Empty(factory.Emails.ResetsTo(nobody));
     }
 
     [Fact]
@@ -83,10 +81,9 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
         await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
         await EmailTo(email);
         var second = await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
-        await Task.Delay(300);
-
+        
         Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);
-        Assert.Single(factory.Emails.SentTo(email));
+        Assert.Single(factory.Emails.ResetsTo(email));
     }
 
     [Fact]
@@ -95,7 +92,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
         var email = await Register();
         var client = factory.CreateClient();
         await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
-        var token = TokenIn(await EmailTo(email));
+        var token = (await EmailTo(email)).Token;
 
         var tooShort = await client.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "short" });
 
@@ -126,26 +123,8 @@ public sealed partial class PasswordResetTests(ApiFactory factory)
     private Task<HttpResponseMessage> Login(string email, string password) =>
         factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { email, password });
 
-    // The email leaves from a background queue, after the request answered.
-    private async Task<EmailMessage> EmailTo(string address)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (true)
-        {
-            var sent = factory.Emails.SentTo(address);
-            if (sent.Count > 0 || DateTime.UtcNow > deadline)
-            {
-                return Assert.Single(sent);
-            }
-
-            await Task.Delay(25);
-        }
-    }
-
-    private static string TokenIn(EmailMessage email) => ResetLink().Match(email.TextBody).Groups[1].Value;
+    private Task<PasswordResetRequested> EmailTo(string address) =>
+        Task.FromResult(Assert.Single(factory.Emails.ResetsTo(address)));
 
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
-
-    [GeneratedRegex("/reset-password/([A-Za-z0-9_-]+)")]
-    private static partial Regex ResetLink();
 }

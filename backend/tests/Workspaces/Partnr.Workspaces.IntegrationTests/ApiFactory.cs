@@ -16,7 +16,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17").Build();
 
-    public FakeEmailSender Emails { get; } = new();
+    public RecordedEmailEvents Emails { get; } = new();
 
     public InMemoryFileStorage Files { get; } = new();
 
@@ -53,15 +53,15 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Events:RabbitMqUri", "");
         builder.UseSetting("ConnectionStrings:Postgres", postgres.GetConnectionString());
 
-        // Tests run the email service themselves, so what they see does not depend on a timer.
-        builder.UseSetting("Notifications:EmailWorkerEnabled", "false");
         builder.UseSetting("Services:Integrations:GrpcAddress", "http://localhost:1");
         builder.UseSetting("InternalAuth:SigningKey", InternalTokens.SigningKey);
         builder.ConfigureServices(services =>
         {
             // The API only accepts the gateway's JWT; this turns the cookie the tests sign in with into one, like the gateway does.
             services.AddSingleton<IStartupFilter, GatewayEmulatorStartupFilter>();
-            services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
+            var publisher = services.Single(d => d.ServiceType == typeof(IEventPublisher)).ImplementationType!;
+            services.Replace(ServiceDescriptor.Scoped<IEventPublisher>(sp =>
+                new RecordingEventPublisher((IEventPublisher)ActivatorUtilities.CreateInstance(sp, publisher), Emails)));
             services.Replace(ServiceDescriptor.Singleton<IFileStorage>(Files));
             services.Replace(ServiceDescriptor.Singleton<IGoogleConnectionStatus>(Google));
         });

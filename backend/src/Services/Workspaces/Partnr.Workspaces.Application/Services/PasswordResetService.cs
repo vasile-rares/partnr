@@ -1,6 +1,4 @@
-using Partnr.Workspaces.Application.Common;
 using Partnr.Workspaces.Application.DTOs.Auth;
-using Partnr.Workspaces.Application.DTOs.Email;
 using Partnr.Workspaces.Application.Exceptions;
 using Partnr.Workspaces.Application.Interfaces.Repositories;
 using Partnr.Workspaces.Application.Interfaces.Services;
@@ -12,8 +10,7 @@ namespace Partnr.Workspaces.Application.Services;
 internal sealed class PasswordResetService(
     IIdentityService identity,
     IPasswordResetTokenRepository tokens,
-    IBackgroundEmailQueue emails,
-    IAppLinks links,
+    INotificationPublisher notifications,
     IUnitOfWork unitOfWork,
     TimeProvider time) : IPasswordResetService
 {
@@ -43,9 +40,8 @@ internal sealed class PasswordResetService(
 
         var (token, hash) = SecureToken.New();
         tokens.Add(PasswordResetToken.Create(account.Id, hash, now));
+        await notifications.PasswordResetRequestedAsync(account, token, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        emails.Enqueue(BuildEmail(account, links.Url($"/reset-password/{Uri.EscapeDataString(token)}")));
     }
 
     public async Task<PasswordResetPreviewResponse> CheckAsync(string token, CancellationToken cancellationToken)
@@ -101,25 +97,6 @@ internal sealed class PasswordResetService(
         }
 
         return reset;
-    }
-
-    private static EmailMessage BuildEmail(CurrentUserResponse account, string link)
-    {
-        var greeting = string.IsNullOrWhiteSpace(account.FullName) ? "Hi," : $"Hi {account.FullName},";
-
-        return new EmailMessage(
-            account.Email,
-            $"Reset your {AppInfo.Name} password",
-            $"""
-            {greeting}
-
-            Someone asked to reset the password of your {AppInfo.Name} account ({account.Email}).
-
-            Choose a new password here:
-            {link}
-
-            The link works once, for one hour. If you did not ask for this, ignore this email: your password stays as it is.
-            """);
     }
 
     private DateTime Now() => time.GetUtcNow().UtcDateTime;

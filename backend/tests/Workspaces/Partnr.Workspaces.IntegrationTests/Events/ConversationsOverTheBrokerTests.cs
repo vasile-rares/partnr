@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Text.RegularExpressions;
 using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Application.DTOs.Clients;
@@ -9,7 +8,7 @@ using Partnr.Workspaces.Application.DTOs.Workspaces;
 namespace Partnr.Workspaces.IntegrationTests.Events;
 
 // The live push of a conversation is the Notifications service's now; this service only says who has to hear about a change.
-public sealed partial class ConversationsOverTheBrokerTests(BrokerApiFactory factory) : IClassFixture<BrokerApiFactory>
+public sealed class ConversationsOverTheBrokerTests(BrokerApiFactory factory) : IClassFixture<BrokerApiFactory>
 {
     [Fact]
     public async Task AMessage_SaysConversationChanged_ToEveryoneWhoReadsIt()
@@ -23,7 +22,7 @@ public sealed partial class ConversationsOverTheBrokerTests(BrokerApiFactory fac
 
         // A conversation needs a client with an account: the invitation is how they get one.
         (await http.PostAsync($"/api/workspaces/{workspace.Id}/clients/{client.Id}/invitation", null)).EnsureSuccessStatusCode();
-        var token = InviteLink().Match(factory.Emails.SentTo(clientEmail)[^1].TextBody).Groups[1].Value;
+        var token = factory.Emails.InvitationsTo(clientEmail)[^1].Token;
         var clientHttp = factory.CreateClient();
         (await clientHttp.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = "Elena", password = "correct horse" })).EnsureSuccessStatusCode();
         var elena = (await clientHttp.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me"))!;
@@ -38,9 +37,6 @@ public sealed partial class ConversationsOverTheBrokerTests(BrokerApiFactory fac
         Assert.Contains(me.Id, changed.UserIds);
         Assert.Contains(elena.Id, changed.UserIds);
     }
-
-    [GeneratedRegex("/invite/([A-Za-z0-9_-]+)")]
-    private static partial Regex InviteLink();
 
     private static async Task<T> Created<T>(HttpResponseMessage response)
     {

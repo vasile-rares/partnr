@@ -29,6 +29,21 @@ public sealed class NotificationsOverTheBrokerTests(NotificationsBrokerFactory f
     }
 
     [Fact]
+    public async Task AnInvitation_AndAPasswordReset_ArriveOverTheBroker_AsEmailsWithTheirLinks()
+    {
+        var invited = $"elena-{Guid.NewGuid():N}@example.com";
+        var account = $"ana-{Guid.NewGuid():N}@example.com";
+
+        await Publish(new ClientInvited(invited, "Elena", "Studio", "Ana Pop", "invite-token", DateTime.UtcNow.AddDays(7)));
+        await Publish(new PasswordResetRequested(account, "Ana Pop", "reset-token"));
+
+        var invitation = (await Eventually(() => Task.FromResult(factory.Emails.SentTo(invited).FirstOrDefault())))!;
+        Assert.Contains("/invite/invite-token", invitation.TextBody);
+        var reset = (await Eventually(() => Task.FromResult(factory.Emails.SentTo(account).FirstOrDefault())))!;
+        Assert.Contains("/reset-password/reset-token", reset.TextBody);
+    }
+
+    [Fact]
     public async Task TheClientsAnswer_AndAnAcceptedInvitation_ArriveTheSameWay()
     {
         var ana = Guid.NewGuid();

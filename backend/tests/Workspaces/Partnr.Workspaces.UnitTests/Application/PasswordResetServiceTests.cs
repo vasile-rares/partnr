@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Application.Exceptions;
 using Partnr.Workspaces.Application.Services;
@@ -6,38 +5,35 @@ using Partnr.Workspaces.Domain.Common;
 
 namespace Partnr.Workspaces.UnitTests.Application;
 
-public partial class PasswordResetServiceTests
+public class PasswordResetServiceTests
 {
     private const string Email = "ana@example.com";
 
     private readonly FakeIdentityService _identity = new();
     private readonly FakePasswordResetTokenRepository _tokens = new();
-    private readonly FakeBackgroundEmailQueue _emails = new();
+    private readonly FakeNotificationPublisher _emails = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeTimeProvider _time = new();
     private readonly PasswordResetService _service;
 
     public PasswordResetServiceTests()
     {
-        _service = new PasswordResetService(_identity, _tokens, _emails, new FakeAppLinks(), _unitOfWork, _time);
+        _service = new PasswordResetService(_identity, _tokens, _emails, _unitOfWork, _time);
     }
 
     [Fact]
-    public async Task Request_ForAnAccount_StoresOnlyTheHash_AndQueuesAnEmailWithTheLink()
+    public async Task Request_ForAnAccount_StoresOnlyTheHash_AndSendsTheToken()
     {
         var account = _identity.AddAccount(Email, "old password", "Ana Pop");
 
         await _service.RequestAsync(new ForgotPasswordRequest { Email = "  ANA@example.com " }, CancellationToken.None);
 
         var stored = Assert.Single(_tokens.Items);
-        var message = Assert.Single(_emails.Queued);
-        var token = TokenIn(message.TextBody);
+        var sent = Assert.Single(_emails.PasswordResets);
         Assert.Equal(account.Id, stored.UserId);
-        Assert.Equal(SecureToken.Hash(token), stored.TokenHash);
-        Assert.DoesNotContain(stored.TokenHash, message.TextBody);
-        Assert.Equal(Email, message.To);
-        Assert.Equal("Reset your Partnr password", message.Subject);
-        Assert.StartsWith("Hi Ana Pop,", message.TextBody);
+        Assert.Equal(SecureToken.Hash(sent.Token), stored.TokenHash);
+        Assert.DoesNotContain(stored.TokenHash, sent.Token);
+        Assert.Equal(account, sent.Account);
     }
 
     [Fact]
@@ -46,7 +42,7 @@ public partial class PasswordResetServiceTests
         await _service.RequestAsync(new ForgotPasswordRequest { Email = "nobody@example.com" }, CancellationToken.None);
 
         Assert.Empty(_tokens.Items);
-        Assert.Empty(_emails.Queued);
+        Assert.Empty(_emails.PasswordResets);
     }
 
     [Fact]
@@ -59,7 +55,7 @@ public partial class PasswordResetServiceTests
         await Request();
 
         Assert.Single(_tokens.Items);
-        Assert.Single(_emails.Queued);
+        Assert.Single(_emails.PasswordResets);
     }
 
     [Fact]
@@ -67,12 +63,12 @@ public partial class PasswordResetServiceTests
     {
         _identity.AddAccount(Email, "old password");
         await Request();
-        var first = TokenIn(_emails.Queued[0].TextBody);
+        var first = _emails.PasswordResets[0].Token;
 
         _time.Now = _time.Now.AddMinutes(2);
         await Request();
 
-        Assert.Equal(2, _emails.Queued.Count);
+        Assert.Equal(2, _emails.PasswordResets.Count);
         Assert.NotNull(_tokens.Items[0].CancelledAtUtc);
         Assert.True(_tokens.Items[1].IsOpen);
         var replaced = await Assert.ThrowsAsync<ConflictException>(() => _service.CheckAsync(first, CancellationToken.None));
@@ -85,7 +81,7 @@ public partial class PasswordResetServiceTests
         _identity.AddAccount(Email, "old password");
         await Request();
 
-        var preview = await _service.CheckAsync(TokenIn(_emails.Queued[0].TextBody), CancellationToken.None);
+        var preview = await _service.CheckAsync(_emails.PasswordResets[0].Token, CancellationToken.None);
 
         Assert.Equal(Email, preview.Email);
     }
@@ -105,7 +101,7 @@ public partial class PasswordResetServiceTests
         _time.Now = _time.Now.AddHours(1);
 
         var expired = await Assert.ThrowsAsync<ConflictException>(() =>
-            _service.CheckAsync(TokenIn(_emails.Queued[0].TextBody), CancellationToken.None));
+            _service.CheckAsync(_emails.PasswordResets[0].Token, CancellationToken.None));
         Assert.Contains("expired", expired.Message);
     }
 
@@ -114,7 +110,7 @@ public partial class PasswordResetServiceTests
     {
         var account = _identity.AddAccount(Email, "old password");
         await Request();
-        var token = TokenIn(_emails.Queued[0].TextBody);
+        var token = _emails.PasswordResets[0].Token;
 
         var signedIn = await _service.ResetAsync(new ResetPasswordRequest { Token = token, Password = "new password 1" }, CancellationToken.None);
 
@@ -132,7 +128,7 @@ public partial class PasswordResetServiceTests
     {
         _identity.AddAccount(Email, "old password");
         await Request();
-        var token = TokenIn(_emails.Queued[0].TextBody);
+        var token = _emails.PasswordResets[0].Token;
         _identity.RejectNewPasswords = true;
 
         await Assert.ThrowsAsync<ValidationFailedException>(() =>
@@ -143,9 +139,4 @@ public partial class PasswordResetServiceTests
     }
 
     private Task Request() => _service.RequestAsync(new ForgotPasswordRequest { Email = Email }, CancellationToken.None);
-
-    private static string TokenIn(string text) => ResetLink().Match(text).Groups[1].Value;
-
-    [GeneratedRegex("/reset-password/([A-Za-z0-9_-]+)")]
-    private static partial Regex ResetLink();
 }

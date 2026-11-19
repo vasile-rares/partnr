@@ -1,14 +1,14 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using Partnr.Workspaces.Application.DTOs.Email;
-using Partnr.Workspaces.Application.Interfaces.Services;
-using Partnr.Workspaces.Infrastructure;
+using Partnr.Notifications.Application.DTOs.Email;
+using Partnr.Notifications.Application.Interfaces.Services;
+using Partnr.Notifications.Infrastructure;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Partnr.Workspaces.IntegrationTests.Email;
+namespace Partnr.Notifications.IntegrationTests.Email;
 
 /// <summary>Checks the real SMTP sender against a throwaway Mailpit container.</summary>
 public sealed class SmtpEmailSenderTests : IAsyncLifetime
@@ -49,7 +49,7 @@ public sealed class SmtpEmailSenderTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Postgres"] = "Host=unused", // required by AddInfrastructure, never opened here
-                ["Services:Integrations:GrpcAddress"] = "http://localhost:1", // required by AddInfrastructure, never called here
+                ["App:FrontendUrl"] = "http://localhost:3000", // required by AddInfrastructure, never used here
                 ["Email:From"] = "Partnr <no-reply@partnr.test>",
                 ["Email:SmtpHost"] = mailpit.Hostname,
                 ["Email:SmtpPort"] = mailpit.GetMappedPublicPort(SmtpPort).ToString(),
