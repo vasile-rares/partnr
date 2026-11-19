@@ -1,4 +1,3 @@
-using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs;
 using Partnr.Workspaces.Application.DTOs.ClientView;
@@ -21,7 +20,6 @@ internal sealed class ProjectService(
     WorkspaceAccess access,
     ClientAccess clientAccess,
     CallerAccess callers,
-    IEventPublisher events,
     IUnitOfWork unitOfWork) : IProjectService
 {
     public async Task<ProjectResponse> CreateAsync(
@@ -41,7 +39,6 @@ internal sealed class ProjectService(
 
         var project = Project.Create(workspaceId, client.Id, request.Name, request.Description, request.StartDate, request.DueDate);
         projects.Add(project);
-        await events.PublishAsync(new ProjectCreated(project.Id, workspaceId, client.Id, project.Name, project.CreatedAtUtc), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(project, cancellationToken);

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using Partnr.Workspaces.Application.DTOs.Google;
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.DTOs.Meetings;
 using Partnr.Workspaces.Application.Exceptions;
 using Partnr.Workspaces.Application.Interfaces.Services;
@@ -10,143 +10,114 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Partnr.Workspaces.IntegrationTests.ClientView;
 
-// Sending meetings to Google. The background worker is off in these tests: they run the sync themselves, against the real database.
+// What people see of a meeting's Google event. The sending itself is the Integrations service's: here its answers are played by hand,
+// through the service the event handlers call (the whole trip over a broker is in Events/MeetingsOverTheBrokerTests).
 public sealed partial class ClientProjectsTests
 {
     [Fact]
-    public async Task AMeeting_IsSentToGoogle_ChangedThere_AndDeletedThere_AndTheClientSeesTheMeetLink()
+    public async Task TheStateOfTheGoogleEvent_AndTheMeetLink_FollowTheAnswersOfTheIntegrationsService()
     {
         var studio = await Studio();
-        var token = await ConnectGoogle(studio.Http);
+        await ConnectGoogle(studio.Http);
         var elena = await studio.AddClient("Elena");
 
         var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
         Assert.Equal(("Pending", null), (meeting.SyncStatus, meeting.MeetUrl));
         Assert.Null((await ClientMeetings(elena, studio))[0].MeetUrl);
 
-        await SyncAll();
+        await Answer(new MeetingSynced(meeting.Id, 1, MeetingSyncOutcome.Synced, "https://meet.google.com/abc-defg-hij"));
 
         var sent = await GetMeeting(studio, meeting.Id);
-        Assert.Equal("Synced", sent.SyncStatus);
-        Assert.StartsWith("https://meet.google.com/", sent.MeetUrl);
-        var create = Assert.Single(factory.Calendar.CallsFor(token));
-        Assert.Equal(("upsert", false, elena.Email), (create.Operation, create.Exists, create.Details!.AttendeeEmail));
+        Assert.Equal(("Synced", "https://meet.google.com/abc-defg-hij"), (sent.SyncStatus, sent.MeetUrl));
         Assert.Equal(sent.MeetUrl, (await ClientMeetings(elena, studio))[0].MeetUrl);
 
         var start = DateTimeOffset.UtcNow.AddDays(2);
         await studio.Http.PutAsJsonAsync($"{MeetingsUrl(studio)}/{meeting.Id}", new { title = "Moved", startsAt = start, endsAt = start.AddHours(1) });
         Assert.Equal("Pending", (await GetMeeting(studio, meeting.Id)).SyncStatus);
-        await SyncAll();
 
-        var update = factory.Calendar.CallsFor(token)[1];
-        Assert.Equal(("upsert", true, "Moved"), (update.Operation, update.Exists, update.Details!.Title));
-        Assert.Equal(meeting.Id.ToString("N"), update.EventId);
+        // An answer about the first version arrives late: it says nothing about the meeting as it is now.
+        await Answer(new MeetingSynced(meeting.Id, 1, MeetingSyncOutcome.Failed, null));
+        Assert.Equal("Pending", (await GetMeeting(studio, meeting.Id)).SyncStatus);
+
+        await Answer(new MeetingSynced(meeting.Id, 2, MeetingSyncOutcome.Synced, null));
+        Assert.Equal(("Synced", "https://meet.google.com/abc-defg-hij"), ((await GetMeeting(studio, meeting.Id)).SyncStatus, (await GetMeeting(studio, meeting.Id)).MeetUrl));
 
         await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/cancel", null);
-        await SyncAll();
+        await Answer(new MeetingSynced(meeting.Id, 3, MeetingSyncOutcome.Synced, "https://meet.google.com/abc-defg-hij"));
 
-        var delete = factory.Calendar.CallsFor(token)[2];
-        Assert.Equal(("delete", meeting.Id.ToString("N")), (delete.Operation, delete.EventId));
         Assert.Equal("Synced", (await GetMeeting(studio, meeting.Id)).SyncStatus);
         var seenByClient = (await ClientMeetings(elena, studio))[0];
         Assert.Equal(("Cancelled", null), (seenByClient.Status, seenByClient.MeetUrl));
     }
 
     [Fact]
-    public async Task AMeetingCancelledBeforeItWasSent_NeverReachesGoogle()
-    {
-        var studio = await Studio();
-        var token = await ConnectGoogle(studio.Http);
-        var elena = await studio.AddClient("Elena");
-        var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
-        await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/cancel", null);
-
-        await SyncAll();
-
-        Assert.Empty(factory.Calendar.CallsFor(token));
-        Assert.Equal("Synced", (await GetMeeting(studio, meeting.Id)).SyncStatus);
-    }
-
-    [Fact]
-    public async Task TwoWorkersAtOnce_NeverSendTheSameMeetingTwice()
-    {
-        var studio = await Studio();
-        var token = await ConnectGoogle(studio.Http);
-        var elena = await studio.AddClient("Elena");
-        await Schedule(studio, elena, "Kick-off", null, days: 1);
-        factory.Calendar.Delays[token] = TimeSpan.FromMilliseconds(400);
-
-        await Task.WhenAll(SyncAll(), SyncAll(), SyncAll());
-
-        Assert.Single(factory.Calendar.CallsFor(token));
-    }
-
-    [Fact]
-    public async Task WhenGoogleKeepsFailing_ItGivesUpAfterFiveTries_AndAMemberCanTryAgain()
-    {
-        var studio = await Studio();
-        var token = await ConnectGoogle(studio.Http);
-        var elena = await studio.AddClient("Elena");
-        var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
-        factory.Calendar.Failures[token] = new GoogleCalendarException("Google is down");
-
-        for (var attempt = 1; attempt <= 5; attempt++)
-        {
-            await SyncAll();
-            var state = await GetMeeting(studio, meeting.Id);
-            Assert.Equal(attempt < 5 ? "Pending" : "Failed", state.SyncStatus);
-            await MakeDue(meeting.Id);
-        }
-
-        Assert.Equal(5, factory.Calendar.CallsFor(token).Count);
-        await SyncAll();
-        Assert.Equal(5, factory.Calendar.CallsFor(token).Count); // given up: nothing more is tried on its own
-
-        factory.Calendar.Failures.TryRemove(token, out _);
-        var retried = await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/retry-sync", null);
-        Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
-        Assert.Equal("Pending", (await retried.Content.ReadFromJsonAsync<MeetingResponse>())!.SyncStatus);
-        await SyncAll();
-
-        Assert.Equal("Synced", (await GetMeeting(studio, meeting.Id)).SyncStatus);
-        Assert.Equal(HttpStatusCode.Conflict, (await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/retry-sync", null)).StatusCode);
-    }
-
-    [Fact]
-    public async Task WhenGoogleTakesThePermissionBack_NothingIsRetried_AndTheAccountAsksToReconnect()
-    {
-        var studio = await Studio();
-        var token = await ConnectGoogle(studio.Http);
-        var elena = await studio.AddClient("Elena");
-        var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
-        factory.Calendar.Failures[token] = new GoogleAccessRevokedException("revoked");
-
-        await SyncAll();
-
-        Assert.Equal("NeedsReconnect", (await GetMeeting(studio, meeting.Id)).SyncStatus);
-        Assert.Equal("NeedsReconnect", (await studio.Http.GetFromJsonAsync<GoogleConnectionResponse>("/api/integrations/google"))!.Status);
-        await MakeDue(meeting.Id);
-        await SyncAll();
-        Assert.Single(factory.Calendar.CallsFor(token));
-
-        // And no new meeting can be made until they connect again.
-        Assert.Equal(HttpStatusCode.Conflict, (await studio.Http.PostAsJsonAsync(MeetingsUrl(studio), NewMeeting(elena))).StatusCode);
-    }
-
-    [Fact]
-    public async Task DisconnectingGoogle_LeavesWhatWasSent_AndParksWhatWasNot()
+    public async Task WhenIntegrationsGivesUp_AMemberCanTryAgain_OnceOnly()
     {
         var studio = await Studio();
         await ConnectGoogle(studio.Http);
         var elena = await studio.AddClient("Elena");
+        var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
+        Assert.Equal(HttpStatusCode.Conflict, (await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/retry-sync", null)).StatusCode);
+
+        await Answer(new MeetingSynced(meeting.Id, 1, MeetingSyncOutcome.Failed, null));
+        Assert.Equal("Failed", (await GetMeeting(studio, meeting.Id)).SyncStatus);
+
+        var retried = await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/retry-sync", null);
+        Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
+        Assert.Equal("Pending", (await retried.Content.ReadFromJsonAsync<MeetingResponse>())!.SyncStatus);
+        Assert.Equal(HttpStatusCode.Conflict, (await studio.Http.PostAsync($"{MeetingsUrl(studio)}/{meeting.Id}/retry-sync", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task WhenTheGooglePermissionIsGone_TheMeetingAsksToReconnect_AndNoNewMeetingCanBeMade()
+    {
+        var studio = await Studio();
+        var me = await ConnectGoogle(studio.Http);
+        var elena = await studio.AddClient("Elena");
+        var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
+
+        await Answer(new MeetingSynced(meeting.Id, 1, MeetingSyncOutcome.NeedsReconnect, null));
+        factory.Google.Disconnect(me);
+
+        Assert.Equal("NeedsReconnect", (await GetMeeting(studio, meeting.Id)).SyncStatus);
+        Assert.Equal(HttpStatusCode.Conflict, (await studio.Http.PostAsJsonAsync(MeetingsUrl(studio), NewMeeting(elena))).StatusCode);
+    }
+
+    [Fact]
+    public async Task WhenIntegrationsCannotBeReached_ACreateIsServiceUnavailable_ButAnUpdateStillWorks()
+    {
+        var studio = await Studio();
+        var me = await ConnectGoogle(studio.Http);
+        var elena = await studio.AddClient("Elena");
+        var meeting = await Schedule(studio, elena, "Kick-off", null, days: 1);
+        factory.Google.Unreachable(me);
+
+        var refused = await studio.Http.PostAsJsonAsync(MeetingsUrl(studio), NewMeeting(elena));
+        var start = DateTimeOffset.UtcNow.AddDays(3);
+        var updated = await studio.Http.PutAsJsonAsync($"{MeetingsUrl(studio)}/{meeting.Id}", new { title = "Fixed", startsAt = start, endsAt = start.AddHours(1) });
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, refused.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+    }
+
+    [Fact]
+    public async Task DisconnectingGoogle_LeavesWhatWasSent_ParksWhatWasNot_AndReconnectingPutsItBack()
+    {
+        var studio = await Studio();
+        var me = await ConnectGoogle(studio.Http);
+        var elena = await studio.AddClient("Elena");
         var sent = await Schedule(studio, elena, "Sent", null, days: 1);
-        await SyncAll();
+        await Answer(new MeetingSynced(sent.Id, 1, MeetingSyncOutcome.Synced, "https://meet.google.com/abc"));
         var waiting = await Schedule(studio, elena, "Waiting", null, days: 2);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await studio.Http.DeleteAsync("/api/integrations/google")).StatusCode);
+        await Scoped(results => results.ParkAsync(me, CancellationToken.None));
 
         Assert.Equal("Synced", (await GetMeeting(studio, sent.Id)).SyncStatus);
         Assert.Equal("NeedsReconnect", (await GetMeeting(studio, waiting.Id)).SyncStatus);
+
+        await Scoped(results => results.ResumeAsync(me, CancellationToken.None));
+
+        Assert.Equal("Pending", (await GetMeeting(studio, waiting.Id)).SyncStatus);
     }
 
     [Fact]
@@ -173,27 +144,13 @@ public sealed partial class ClientProjectsTests
         Assert.Equal("First", (await GetMeeting(studio, meeting.Id)).Title);
     }
 
-    // The worker takes a few meetings at a time, and meetings of earlier tests may still be waiting: go round until none is due.
-    private async Task SyncAll()
-    {
-        for (var round = 0; round < 20; round++)
-        {
-            using var scope = factory.Services.CreateScope();
-            var run = await scope.ServiceProvider.GetRequiredService<IMeetingSyncService>().SyncDueAsync(CancellationToken.None);
-            if (run == new MeetingSyncRun(0, 0, 0))
-            {
-                return;
-            }
-        }
-    }
+    // What the handler of the event does when the answer of the Integrations service arrives.
+    private Task Answer(MeetingSynced answer) => Scoped(results => results.ApplyAsync(answer, CancellationToken.None));
 
-    // Skips the wait between tries.
-    private async Task MakeDue(Guid meetingId)
+    private async Task Scoped(Func<IMeetingSyncResultService, Task> action)
     {
         using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.Meetings.Where(m => m.Id == meetingId && m.NextSyncAtUtc != null)
-            .ExecuteUpdateAsync(s => s.SetProperty(m => m.NextSyncAtUtc, DateTime.UtcNow.AddSeconds(-1)));
+        await action(scope.ServiceProvider.GetRequiredService<IMeetingSyncResultService>());
     }
 
     private static async Task<MeetingResponse> GetMeeting(StudioSession studio, Guid id) =>

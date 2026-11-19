@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs;
 using Partnr.Workspaces.Application.DTOs.Meetings;
@@ -14,7 +15,8 @@ internal sealed class MeetingService(
     IMeetingRepository meetings,
     IClientRepository clients,
     IProjectRepository projects,
-    IGoogleConnectionRepository googleConnections,
+    IGoogleConnectionStatus googleConnection,
+    IEventPublisher events,
     MeetingResponseBuilder responses,
     WorkspaceAccess access,
     ClientAccess clientAccess,
@@ -39,8 +41,7 @@ internal sealed class MeetingService(
         await RequireProjectOfAsync(workspaceId, client.Id, request.ProjectId, cancellationToken);
 
         // The invitation and the reminders are Google's, so a meeting without a connected account would reach nobody.
-        var google = await googleConnections.GetForUserAsync(member.UserId, cancellationToken);
-        if (google is null || google.Status != GoogleConnectionStatus.Connected)
+        if (!await googleConnection.IsConnectedAsync(member.UserId, cancellationToken))
         {
             throw new ConflictException("Connect your Google account first: the client is invited, and reminded, through your Google Calendar.");
         }
@@ -56,6 +57,7 @@ internal sealed class MeetingService(
             request.EndsAt!.Value.UtcDateTime,
             Now());
         meetings.Add(meeting);
+        await events.PublishAsync(Changed(meeting, client.Email), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(meeting, cancellationToken);
@@ -121,6 +123,7 @@ internal sealed class MeetingService(
         await RequireProjectOfAsync(workspaceId, meeting.ClientId, request.ProjectId, cancellationToken);
 
         meeting.Update(request.ProjectId, request.Title, request.Description, request.StartsAt!.Value.UtcDateTime, request.EndsAt!.Value.UtcDateTime, Now());
+        await events.PublishAsync(Changed(meeting, client.Email), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(meeting, cancellationToken);
@@ -132,6 +135,9 @@ internal sealed class MeetingService(
         var meeting = await RequireOpenMeetingAsync(workspaceId, id, cancellationToken);
 
         meeting.Cancel(Now());
+        var client = await clients.GetByIdAsync(workspaceId, meeting.ClientId, cancellationToken)
+            ?? throw new NotFoundException($"The client with id '{meeting.ClientId}' was not found.");
+        await events.PublishAsync(Changed(meeting, client.Email), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(meeting, cancellationToken);
@@ -148,6 +154,7 @@ internal sealed class MeetingService(
 
         // A cancelled meeting can be retried too: its event may still be in Google.
         meeting.RetrySync(Now());
+        await events.PublishAsync(new MeetingSyncRetryRequested(meeting.Id), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await responses.BuildAsync(meeting, cancellationToken);
@@ -194,6 +201,10 @@ internal sealed class MeetingService(
             throw new ConflictException("This project is archived. Restore it before scheduling a meeting about it.");
         }
     }
+
+    // Everything the calendar needs, so the Integrations service never has to ask back.
+    private static MeetingChanged Changed(Meeting meeting, string clientEmail) =>
+        new(meeting.Id, meeting.Version, meeting.OrganizerUserId, meeting.Title, meeting.Description, meeting.StartsAtUtc, meeting.EndsAtUtc, clientEmail, meeting.IsCancelled);
 
     private DateTime Now() => time.GetUtcNow().UtcDateTime;
 }

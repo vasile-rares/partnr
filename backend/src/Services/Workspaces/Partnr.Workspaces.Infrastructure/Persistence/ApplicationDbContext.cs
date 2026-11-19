@@ -38,8 +38,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<ConversationRead> ConversationReads => Set<ConversationRead>();
 
-    public DbSet<GoogleConnection> GoogleConnections => Set<GoogleConnection>();
-
     public DbSet<Meeting> Meetings => Set<Meeting>();
 
     public override async Task<int> SaveChangesAsync(

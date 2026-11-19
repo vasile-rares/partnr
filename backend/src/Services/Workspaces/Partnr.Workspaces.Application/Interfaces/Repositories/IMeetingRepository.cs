@@ -13,12 +13,8 @@ public interface IMeetingRepository
     /// <summary>What an account sees as a client of one firm: meetings of its own, linked, non-archived card, starting at or after <paramref name="since"/>. Soonest first.</summary>
     Task<IReadOnlyList<Meeting>> ListForClientAccountAsync(Guid workspaceId, Guid userId, DateTime since, CancellationToken cancellationToken);
 
-    /// <summary>
-    /// Takes the meetings whose sync is due, for this worker only: it pushes their next try out by <paramref name="lease"/> in the same
-    /// statement, so two workers never take the same row, and one that dies halfway gives it back after the lease. The meetings
-    /// come back untracked, as a snapshot: the caller loads them again before it writes.
-    /// </summary>
-    Task<IReadOnlyList<Meeting>> ClaimDueForSyncAsync(DateTime nowUtc, TimeSpan lease, int limit, CancellationToken cancellationToken);
+    /// <summary>A meeting by its id alone (tracked), for what another service says about it: that message knows the meeting, not its workspace.</summary>
+    Task<Meeting?> FindAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>The organiser's meetings that have not ended and are not in step with Google (tracked).</summary>
     Task<IReadOnlyList<Meeting>> ListOpenUnsyncedForOrganizerAsync(Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken);

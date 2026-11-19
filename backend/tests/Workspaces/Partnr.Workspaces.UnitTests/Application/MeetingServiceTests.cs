@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs.Meetings;
 using Partnr.Workspaces.Application.Exceptions;
@@ -15,7 +16,8 @@ public class MeetingServiceTests
     private readonly FakeMeetingRepository _meetings = new();
     private readonly FakeClientRepository _clients = new();
     private readonly FakeProjectRepository _projects = new();
-    private readonly FakeGoogleConnectionRepository _google = new();
+    private readonly FakeGoogleConnectionStatus _google = new();
+    private readonly FakeEventPublisher _events = new();
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeUnitOfWork _unitOfWork = new();
@@ -31,7 +33,7 @@ public class MeetingServiceTests
         _workspaces.Items.Add(_workspace);
         _acme = Client.Register(_workspace.Id, "Acme", "contact@acme.com");
         _clients.Items.Add(_acme);
-        _google.Items.Add(GoogleConnection.Connect(_me, "ana@gmail.example", "sealed", _time.Now.UtcDateTime));
+        _google.Connected.Add(_me);
         _currentUser = new FakeCurrentUser(_me);
         _tomorrow = _time.Now.AddDays(1);
 
@@ -43,6 +45,7 @@ public class MeetingServiceTests
             _clients,
             _projects,
             _google,
+            _events,
             new MeetingResponseBuilder(_clients, clientResponses, _projects),
             access,
             clientAccess,
@@ -141,27 +144,35 @@ public class MeetingServiceTests
     }
 
     [Fact]
-    public async Task Create_WithoutAConnectedGoogleAccount_AsksToConnectFirst()
+    public async Task Create_WithoutAConnectedGoogleAccount_AsksToConnectFirst_AndPublishesNothing()
     {
-        _google.Items.Clear();
+        _google.Connected.Clear();
+
         var notConnected = await Assert.ThrowsAsync<ConflictException>(() => _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None));
+
         Assert.Contains("Connect your Google account", notConnected.Message);
-
-        var lapsed = GoogleConnection.Connect(_me, "ana@gmail.example", "sealed", _time.Now.UtcDateTime);
-        lapsed.MarkNeedsReconnect();
-        _google.Items.Add(lapsed);
-        await Assert.ThrowsAsync<ConflictException>(() => _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None));
-
         Assert.Empty(_meetings.Items);
+        Assert.Empty(_events.Published);
     }
 
     [Fact]
     public async Task Create_WithAnotherMembersGoogleAccountConnected_StillNeedsYourOwn()
     {
-        _google.Items.Clear();
-        _google.Items.Add(GoogleConnection.Connect(Guid.NewGuid(), "someone@gmail.example", "sealed", _time.Now.UtcDateTime));
+        _google.Connected.Clear();
+        _google.Connected.Add(Guid.NewGuid());
 
         await Assert.ThrowsAsync<ConflictException>(() => _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Create_WhenTheIntegrationsServiceIsDown_IsServiceUnavailable_NotAConflict()
+    {
+        _google.Down = true;
+
+        await Assert.ThrowsAsync<ServiceUnavailableException>(() => _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None));
+
+        Assert.Empty(_meetings.Items);
+        Assert.Empty(_events.Published);
     }
 
     [Fact]
@@ -275,7 +286,7 @@ public class MeetingServiceTests
     public async Task Update_DoesNotNeedGoogleAgain_SoAMeetingCanStillBeFixedAfterTheAccountLapsed()
     {
         var created = await _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None);
-        _google.Items.Clear();
+        _google.Connected.Clear();
 
         var changed = await _service.UpdateAsync(_workspace.Id, created.Id, Save() with { Title = "Renamed" }, CancellationToken.None);
 
@@ -305,48 +316,61 @@ public class MeetingServiceTests
     }
 
     [Fact]
-    public async Task EveryChange_QueuesTheMeetingForGoogle()
+    public async Task EveryChange_QueuesTheMeetingForGoogle_BySayingItChanged()
     {
         var created = await _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None);
         Assert.Equal(("Pending", null), (created.SyncStatus, created.MeetUrl));
-        _meetings.Items[0].RecordSynced(1, "event", "https://meet.google.com/abc", Now());
+        var first = Assert.IsType<MeetingChanged>(Assert.Single(_events.Published));
+        Assert.Equal((created.Id, 1, _me, "Kick-off", "contact@acme.com", false), (first.MeetingId, first.Version, first.OrganizerUserId, first.Title, first.ClientEmail, first.Cancelled));
+        Assert.Equal((_tomorrow.UtcDateTime, _tomorrow.AddHours(1).UtcDateTime), (first.StartsAtUtc, first.EndsAtUtc));
+        _meetings.Items[0].ApplySyncResult(1, MeetingSyncStatus.Synced, "https://meet.google.com/abc");
 
         var changed = await _service.UpdateAsync(_workspace.Id, created.Id, Save() with { Title = "Renamed" }, CancellationToken.None);
         Assert.Equal(("Pending", "https://meet.google.com/abc"), (changed.SyncStatus, changed.MeetUrl));
-        _meetings.Items[0].RecordSynced(2, null, null, Now());
+        var second = Assert.IsType<MeetingChanged>(_events.Published[1]);
+        Assert.Equal((2, "Renamed", false), (second.Version, second.Title, second.Cancelled));
+        _meetings.Items[0].ApplySyncResult(2, MeetingSyncStatus.Synced, null);
 
         var cancelled = await _service.CancelAsync(_workspace.Id, created.Id, CancellationToken.None);
         Assert.Equal("Pending", cancelled.SyncStatus);
+        var third = Assert.IsType<MeetingChanged>(_events.Published[2]);
+        Assert.Equal((3, true), (third.Version, third.Cancelled));
     }
 
     [Fact]
-    public async Task RetrySync_AfterTheTriesRanOut_QueuesItAgain()
+    public async Task AChangeThatIsRefused_PublishesNothingMore()
     {
         var created = await _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None);
-        for (var i = 0; i < 5; i++)
-        {
-            _meetings.Items[0].RecordSyncFailure(1, Now());
-        }
+        _time.Now = _tomorrow.AddHours(2);
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.CancelAsync(_workspace.Id, created.Id, CancellationToken.None));
+
+        Assert.Single(_events.Published);
+    }
+
+    [Fact]
+    public async Task RetrySync_AfterTheTriesRanOut_QueuesItAgain_AndAsksIntegrationsForAnotherGo()
+    {
+        var created = await _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None);
+        _meetings.Items[0].ApplySyncResult(1, MeetingSyncStatus.Failed, null);
 
         var response = await _service.RetrySyncAsync(_workspace.Id, created.Id, CancellationToken.None);
 
         Assert.Equal("Pending", response.SyncStatus);
-        Assert.Equal(0, _meetings.Items[0].SyncAttempts);
+        Assert.Equal(new MeetingSyncRetryRequested(created.Id), _events.Published[^1]);
     }
 
     [Fact]
-    public async Task RetrySync_WhenThereIsNothingToRetry_OrTheMeetingIsOver_ThrowsConflict()
+    public async Task RetrySync_WhenThereIsNothingToRetry_OrTheMeetingIsOver_ThrowsConflict_AndAsksForNothing()
     {
         var created = await _service.CreateAsync(_workspace.Id, Create(), CancellationToken.None);
         await Assert.ThrowsAsync<ConflictException>(() => _service.RetrySyncAsync(_workspace.Id, created.Id, CancellationToken.None));
 
-        for (var i = 0; i < 5; i++)
-        {
-            _meetings.Items[0].RecordSyncFailure(1, Now());
-        }
-
+        _meetings.Items[0].ApplySyncResult(1, MeetingSyncStatus.Failed, null);
         _time.Now = _tomorrow.AddHours(2);
         await Assert.ThrowsAsync<ConflictException>(() => _service.RetrySyncAsync(_workspace.Id, created.Id, CancellationToken.None));
+
+        Assert.Single(_events.Published);
     }
 
     [Fact]

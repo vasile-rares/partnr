@@ -20,9 +20,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public InMemoryFileStorage Files { get; } = new();
 
-    public FakeGoogleOAuthClient Google { get; } = new();
-
-    public FakeGoogleCalendarClient Calendar { get; } = new();
+    public FakeGoogleConnectionStatus Google { get; } = new();
 
     public virtual async Task InitializeAsync()
     {
@@ -57,7 +55,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         // Tests run the email service themselves, so what they see does not depend on a timer.
         builder.UseSetting("Notifications:EmailWorkerEnabled", "false");
-        builder.UseSetting("Google:SyncWorkerEnabled", "false");
+        builder.UseSetting("Services:Integrations:GrpcAddress", "http://localhost:1");
         builder.UseSetting("InternalAuth:SigningKey", InternalTokens.SigningKey);
         builder.ConfigureServices(services =>
         {
@@ -65,8 +63,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddSingleton<IStartupFilter, GatewayEmulatorStartupFilter>();
             services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
             services.Replace(ServiceDescriptor.Singleton<IFileStorage>(Files));
-            services.Replace(ServiceDescriptor.Singleton<IGoogleOAuthClient>(Google));
-            services.Replace(ServiceDescriptor.Singleton<IGoogleCalendarClient>(Calendar));
+            services.Replace(ServiceDescriptor.Singleton<IGoogleConnectionStatus>(Google));
         });
     }
 }

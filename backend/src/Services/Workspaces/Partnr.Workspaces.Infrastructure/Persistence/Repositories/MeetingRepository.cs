@@ -40,21 +40,8 @@ internal sealed class MeetingRepository(ApplicationDbContext dbContext) : IMeeti
             .ThenBy(m => m.Id)
             .ToListAsync(cancellationToken);
 
-    // One statement: the rows are chosen and their next try pushed out together, and SKIP LOCKED lets two workers each take different rows.
-    public async Task<IReadOnlyList<Meeting>> ClaimDueForSyncAsync(DateTime nowUtc, TimeSpan lease, int limit, CancellationToken cancellationToken) =>
-        await dbContext.Meetings
-            .FromSqlInterpolated($"""
-                UPDATE meetings SET "NextSyncAtUtc" = {nowUtc + lease}
-                WHERE "Id" IN (
-                    SELECT "Id" FROM meetings
-                    WHERE "SyncStatus" = 'Pending' AND "NextSyncAtUtc" <= {nowUtc}
-                    ORDER BY "NextSyncAtUtc"
-                    LIMIT {limit}
-                    FOR UPDATE SKIP LOCKED)
-                RETURNING *
-                """)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+    public Task<Meeting?> FindAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Meetings.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Meeting>> ListOpenUnsyncedForOrganizerAsync(Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken) =>
         await dbContext.Meetings

@@ -96,6 +96,7 @@ public sealed class S3FileStorageTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Postgres"] = "Host=unused", // required by AddInfrastructure, never opened here
+                ["Services:Integrations:GrpcAddress"] = "http://localhost:1", // required by AddInfrastructure, never called here
                 ["Email:From"] = "Partnr <no-reply@partnr.test>",
                 ["Email:SmtpHost"] = "unused",
                 ["Storage:ServiceUrl"] = serviceUrl ?? $"http://{rustfs.Hostname}:{rustfs.GetMappedPublicPort(S3Port)}",

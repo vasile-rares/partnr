@@ -1,6 +1,7 @@
 using Partnr.Integrations.Application.Interfaces.Repositories;
 using Partnr.Integrations.Application.Interfaces.Services;
 using Partnr.Integrations.Domain.Entities;
+using Partnr.Integrations.Domain.Enums;
 
 namespace Partnr.Integrations.UnitTests.Application;
 
@@ -67,4 +68,77 @@ internal sealed class FakeSecretProtector : ISecretProtector
         protectedValue.StartsWith($"{purpose}:", StringComparison.Ordinal)
             ? protectedValue[(purpose.Length + 1)..].Replace('~', '|')
             : null;
+}
+
+internal sealed class FakeGoogleCalendarClient : IGoogleCalendarClient
+{
+    public sealed record Call(string Operation, string Token, string EventId, bool Exists, GoogleEventDetails? Details);
+
+    public List<Call> Calls { get; } = [];
+
+    /// <summary>Thrown by the next calls (instead of answering) until it is cleared.</summary>
+    public Exception? Throw { get; set; }
+
+    /// <summary>Runs while "Google" is answering: a member changing the meeting at that very moment.</summary>
+    public Action? DuringCall { get; set; }
+
+    public Task<GoogleEventResult> UpsertEventAsync(string refreshToken, string eventId, bool exists, GoogleEventDetails details, CancellationToken cancellationToken)
+    {
+        Calls.Add(new Call("upsert", refreshToken, eventId, exists, details));
+        Answer();
+
+        return Task.FromResult(new GoogleEventResult(eventId, $"https://meet.google.com/{eventId[..3]}-meet"));
+    }
+
+    public Task DeleteEventAsync(string refreshToken, string eventId, CancellationToken cancellationToken)
+    {
+        Calls.Add(new Call("delete", refreshToken, eventId, true, null));
+        Answer();
+
+        return Task.CompletedTask;
+    }
+
+    private void Answer()
+    {
+        DuringCall?.Invoke();
+        if (Throw is not null)
+        {
+            throw Throw;
+        }
+    }
+}
+
+internal sealed class FakeMeetingSyncRepository : IMeetingSyncRepository
+{
+    public List<MeetingSync> Items { get; } = [];
+
+    public Task<MeetingSync?> GetByIdAsync(Guid meetingId, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(m => m.Id == meetingId));
+
+    // The real one picks and pushes in one statement; here the rows come back as copies would, so the caller must load them again.
+    public Task<IReadOnlyList<MeetingSync>> ClaimDueAsync(DateTime nowUtc, TimeSpan lease, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<MeetingSync>>(Items
+            .Where(m => m.Status == MeetingSyncStatus.Pending && m.NextSyncAtUtc <= nowUtc)
+            .OrderBy(m => m.NextSyncAtUtc)
+            .Take(limit)
+            .ToList());
+
+    public Task<IReadOnlyList<MeetingSync>> ListOpenUnsyncedForOrganizerAsync(Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<MeetingSync>>(Items
+            .Where(m => m.OrganizerUserId == organizerUserId && m.EndsAtUtc > nowUtc && m.Status != MeetingSyncStatus.Synced)
+            .ToList());
+
+    public void Add(MeetingSync meetingSync) => Items.Add(meetingSync);
+}
+
+internal sealed class FakeEventPublisher : IEventPublisher
+{
+    public List<object> Published { get; } = [];
+
+    public ValueTask PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+        where TEvent : notnull
+    {
+        Published.Add(@event);
+        return ValueTask.CompletedTask;
+    }
 }

@@ -49,6 +49,7 @@ public sealed class SmtpEmailSenderTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Postgres"] = "Host=unused", // required by AddInfrastructure, never opened here
+                ["Services:Integrations:GrpcAddress"] = "http://localhost:1", // required by AddInfrastructure, never called here
                 ["Email:From"] = "Partnr <no-reply@partnr.test>",
                 ["Email:SmtpHost"] = mailpit.Hostname,
                 ["Email:SmtpPort"] = mailpit.GetMappedPublicPort(SmtpPort).ToString(),

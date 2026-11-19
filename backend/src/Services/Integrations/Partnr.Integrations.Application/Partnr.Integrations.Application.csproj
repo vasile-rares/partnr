@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Partnr.Contracts\Partnr.Contracts.csproj" />
     <ProjectReference Include="..\Partnr.Integrations.Domain\Partnr.Integrations.Domain.csproj" />
   </ItemGroup>
 

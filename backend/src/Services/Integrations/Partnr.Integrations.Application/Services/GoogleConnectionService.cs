@@ -1,4 +1,5 @@
 using System.Globalization;
+using Partnr.Contracts.Events;
 using Partnr.Integrations.Application.DTOs.Google;
 using Partnr.Integrations.Application.Exceptions;
 using Partnr.Integrations.Application.Interfaces.Repositories;
@@ -11,6 +12,8 @@ namespace Partnr.Integrations.Application.Services;
 internal sealed class GoogleConnectionService(
     ICurrentUser currentUser,
     IGoogleConnectionRepository connections,
+    IMeetingSyncRepository syncs,
+    IEventPublisher events,
     IGoogleOAuthClient google,
     ISecretProtector protector,
     IUnitOfWork unitOfWork,
@@ -86,6 +89,13 @@ internal sealed class GoogleConnectionService(
             existing.Reconnect(grant.Email, protectedToken, now);
         }
 
+        // What waited for this permission goes back in the queue, and the service that owns the meetings is told.
+        foreach (var row in await syncs.ListOpenUnsyncedForOrganizerAsync(userId, now, cancellationToken))
+        {
+            row.Resume(now);
+        }
+
+        await events.PublishAsync(new GoogleConnected(userId), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return GoogleConnectOutcome.Connected;
@@ -106,8 +116,22 @@ internal sealed class GoogleConnectionService(
             await google.RevokeAsync(token, cancellationToken);
         }
 
+        // Events already in Google stay there; what was still waiting to be sent now waits for a new connection.
+        foreach (var row in await syncs.ListOpenUnsyncedForOrganizerAsync(userId, time.GetUtcNow().UtcDateTime, cancellationToken))
+        {
+            row.MarkNeedsReconnect();
+        }
+
         connections.Remove(connection);
+        await events.PublishAsync(new GoogleDisconnected(userId), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string> StatusOfAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var connection = await connections.GetForUserAsync(userId, cancellationToken);
+
+        return connection is null ? "NotConnected" : connection.Status.ToString();
     }
 
     private bool StateIsOurs(string? state, Guid userId)

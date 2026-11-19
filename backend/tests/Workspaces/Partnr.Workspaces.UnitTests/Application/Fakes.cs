@@ -528,13 +528,8 @@ internal sealed class FakeMeetingRepository : IMeetingRepository
             .OrderBy(m => m.StartsAtUtc)
             .ToList());
 
-    // The real one picks and pushes in one statement; here the rows come back as copies would, so the caller must load them again.
-    public Task<IReadOnlyList<Meeting>> ClaimDueForSyncAsync(DateTime nowUtc, TimeSpan lease, int limit, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<Meeting>>(Items
-            .Where(m => m.SyncStatus == MeetingSyncStatus.Pending && m.NextSyncAtUtc <= nowUtc)
-            .OrderBy(m => m.NextSyncAtUtc)
-            .Take(limit)
-            .ToList());
+    public Task<Meeting?> FindAsync(Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(m => m.Id == id));
 
     public Task<IReadOnlyList<Meeting>> ListOpenUnsyncedForOrganizerAsync(Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<Meeting>>(Items
@@ -542,87 +537,6 @@ internal sealed class FakeMeetingRepository : IMeetingRepository
             .ToList());
 
     public void Add(Meeting meeting) => Items.Add(meeting);
-}
-
-internal sealed class FakeGoogleConnectionRepository : IGoogleConnectionRepository
-{
-    public List<GoogleConnection> Items { get; } = [];
-
-    public Task<GoogleConnection?> GetForUserAsync(Guid userId, CancellationToken cancellationToken) =>
-        Task.FromResult(Items.FirstOrDefault(c => c.UserId == userId));
-
-    public void Add(GoogleConnection connection) => Items.Add(connection);
-
-    public void Remove(GoogleConnection connection) => Items.Remove(connection);
-}
-
-internal sealed class FakeGoogleOAuthClient : IGoogleOAuthClient
-{
-    public bool IsConfigured { get; set; } = true;
-
-    /// <summary>What Google answers to a code; null is a refusal.</summary>
-    public GoogleGrant? Grant { get; set; } = new("refresh-1", "ana@gmail.example", true);
-
-    public List<string> Revoked { get; } = [];
-
-    public string AuthorizationUrl(string state) => $"https://google.test/consent?state={state}";
-
-    public Task<GoogleGrant?> ExchangeCodeAsync(string code, CancellationToken cancellationToken) => Task.FromResult(Grant);
-
-    public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
-    {
-        Revoked.Add(refreshToken);
-        return Task.CompletedTask;
-    }
-}
-
-internal sealed class FakeGoogleCalendarClient : IGoogleCalendarClient
-{
-    public sealed record Call(string Operation, string Token, string EventId, bool Exists, GoogleEventDetails? Details);
-
-    public List<Call> Calls { get; } = [];
-
-    /// <summary>Thrown by the next calls (instead of answering) until it is cleared.</summary>
-    public Exception? Throw { get; set; }
-
-    /// <summary>Runs while "Google" is answering: a member changing the meeting at that very moment.</summary>
-    public Action? DuringCall { get; set; }
-
-    public Task<GoogleEventResult> UpsertEventAsync(string refreshToken, string eventId, bool exists, GoogleEventDetails details, CancellationToken cancellationToken)
-    {
-        Calls.Add(new Call("upsert", refreshToken, eventId, exists, details));
-        Answer();
-
-        return Task.FromResult(new GoogleEventResult(eventId, $"https://meet.google.com/{eventId[..3]}-meet"));
-    }
-
-    public Task DeleteEventAsync(string refreshToken, string eventId, CancellationToken cancellationToken)
-    {
-        Calls.Add(new Call("delete", refreshToken, eventId, true, null));
-        Answer();
-
-        return Task.CompletedTask;
-    }
-
-    private void Answer()
-    {
-        DuringCall?.Invoke();
-        if (Throw is not null)
-        {
-            throw Throw;
-        }
-    }
-}
-
-/// <summary>Reversible and checks the purpose, like the real one, without the cryptography.</summary>
-internal sealed class FakeSecretProtector : ISecretProtector
-{
-    public string Protect(string purpose, string plaintext) => $"{purpose}:{plaintext}".Replace('|', '~');
-
-    public string? Unprotect(string purpose, string protectedValue) =>
-        protectedValue.StartsWith($"{purpose}:", StringComparison.Ordinal)
-            ? protectedValue[(purpose.Length + 1)..].Replace('~', '|')
-            : null;
 }
 
 internal sealed class FakeBackgroundEmailQueue : IBackgroundEmailQueue
@@ -700,4 +614,18 @@ internal sealed class FakeConversationPublisher : IConversationPublisher
 
         return Task.CompletedTask;
     }
+}
+
+internal sealed class FakeGoogleConnectionStatus : IGoogleConnectionStatus
+{
+    /// <summary>The accounts that "have Google connected".</summary>
+    public HashSet<Guid> Connected { get; } = [];
+
+    /// <summary>Set to make the service "unreachable".</summary>
+    public bool Down { get; set; }
+
+    public Task<bool> IsConnectedAsync(Guid userId, CancellationToken cancellationToken) =>
+        Down
+            ? throw new ServiceUnavailableException("Integrations is down (fake).")
+            : Task.FromResult(Connected.Contains(userId));
 }

@@ -1,10 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052).
+// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052 / 5053 / 5054).
 const WEB_PORT = 3100;
 const GATEWAY_PORT = 5150;
 const API_PORT = 5151;
 const API_GRPC_PORT = 5152;
+const INTEGRATIONS_PORT = 5153;
+const INTEGRATIONS_GRPC_PORT = 5154;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,7 +26,17 @@ export default defineConfig({
       // Compiles the API, recreates the test database and runs the API against it (see e2e/start-api.mjs).
       command: "node e2e/start-api.mjs",
       url: `http://localhost:${API_PORT}/api/auth/me`, // answers 401 once the API is up, which counts as ready
-      env: { E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT) },
+      env: { E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT), E2E_INTEGRATIONS_GRPC_PORT: String(INTEGRATIONS_GRPC_PORT) },
+      reuseExistingServer: false,
+      timeout: 240_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      // Google: the connection and the sending of meetings (see e2e/start-integrations.mjs).
+      command: "node e2e/start-integrations.mjs",
+      url: `http://localhost:${INTEGRATIONS_PORT}/health`,
+      env: { E2E_INTEGRATIONS_PORT: String(INTEGRATIONS_PORT), E2E_INTEGRATIONS_GRPC_PORT: String(INTEGRATIONS_GRPC_PORT) },
       reuseExistingServer: false,
       timeout: 240_000,
       stdout: "pipe",
@@ -34,7 +46,12 @@ export default defineConfig({
       // The only door to the backend, like in the real thing: the web app's /api rewrite points here (see e2e/start-gateway.mjs).
       command: "node e2e/start-gateway.mjs",
       url: `http://localhost:${GATEWAY_PORT}/api/auth/me`, // 401 through the proxy: the gateway and the API are both up
-      env: { E2E_GATEWAY_PORT: String(GATEWAY_PORT), E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT) },
+      env: {
+        E2E_GATEWAY_PORT: String(GATEWAY_PORT),
+        E2E_API_PORT: String(API_PORT),
+        E2E_API_GRPC_PORT: String(API_GRPC_PORT),
+        E2E_INTEGRATIONS_PORT: String(INTEGRATIONS_PORT),
+      },
       reuseExistingServer: false,
       timeout: 240_000,
       stdout: "pipe",

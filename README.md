@@ -86,13 +86,14 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
    dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http -- --seed
    ```
 
-3. Start the gateway (http://localhost:5050), the only door the frontend talks to, in a second terminal:
+3. Start the Integrations service (http://localhost:5053; Google: the connection and the sending of meetings; it creates its own database `partnr_integrations`), and the gateway (http://localhost:5050), the only door the frontend talks to, each in its own terminal:
 
    ```bash
+   dotnet run --project src/Services/Integrations/Partnr.Integrations.Api --launch-profile http
    dotnet run --project src/Gateway/Partnr.Gateway --launch-profile http
    ```
 
-   Optional: `aspire run` in `backend/` starts both with the [Aspire](https://aspire.dev) dashboard (logs, metrics and traces of the backend); it needs the Aspire CLI (`dotnet tool install -g Aspire.Cli`) and replaces steps 2 and 3, except for loading demo data.
+   Optional: `aspire run` in `backend/` starts the three with the [Aspire](https://aspire.dev) dashboard (logs, metrics and traces of the backend); it needs the Aspire CLI (`dotnet tool install -g Aspire.Cli`) and replaces steps 2 and 3, except for loading demo data.
 
 4. Start the frontend (http://localhost:3000):
 

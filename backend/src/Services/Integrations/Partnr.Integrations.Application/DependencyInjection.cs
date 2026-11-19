@@ -11,6 +11,8 @@ public static class DependencyInjection
     {
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IGoogleConnectionService, GoogleConnectionService>();
+        services.AddScoped<IMeetingSyncService, MeetingSyncService>();
+        services.AddScoped<IMeetingQueueService, MeetingQueueService>();
 
         return services;
     }

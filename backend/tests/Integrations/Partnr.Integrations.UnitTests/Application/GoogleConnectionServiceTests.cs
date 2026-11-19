@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Partnr.Contracts.Events;
 using Partnr.Integrations.Application.DTOs.Google;
 using Partnr.Integrations.Application.Exceptions;
 using Partnr.Integrations.Application.Interfaces.Services;
@@ -13,6 +14,8 @@ public partial class GoogleConnectionServiceTests
     private readonly Guid _userId = Guid.NewGuid();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeGoogleConnectionRepository _connections = new();
+    private readonly FakeMeetingSyncRepository _syncs = new();
+    private readonly FakeEventPublisher _events = new();
     private readonly FakeGoogleOAuthClient _google = new();
     private readonly FakeSecretProtector _protector = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
@@ -22,7 +25,87 @@ public partial class GoogleConnectionServiceTests
     public GoogleConnectionServiceTests()
     {
         _currentUser = new FakeCurrentUser(_userId);
-        _service = new GoogleConnectionService(_currentUser, _connections, _google, _protector, _unitOfWork, _time);
+        _service = new GoogleConnectionService(_currentUser, _connections, _syncs, _events, _google, _protector, _unitOfWork, _time);
+    }
+
+    [Fact]
+    public async Task Disconnect_LeavesWhatIsAlreadyInGoogle_ParksWhatWasStillWaiting_AndTellsTheOtherServices()
+    {
+        await _service.CompleteAsync("code", await NewState(), null, CancellationToken.None);
+        _events.Published.Clear();
+        var waiting = NewRow(_userId);
+        var failed = NewRow(_userId);
+        failed.RecordSyncFailure(failed.Version, _time.Now.UtcDateTime.AddMinutes(1)); // one more try is left: still Pending
+        var inStep = NewRow(_userId);
+        inStep.RecordSynced(inStep.Version, "event", "https://meet.google.com/x", _time.Now.UtcDateTime);
+        var someoneElses = NewRow(Guid.NewGuid());
+
+        await _service.DisconnectAsync(CancellationToken.None);
+
+        Assert.Equal(MeetingSyncStatus.NeedsReconnect, waiting.Status);
+        Assert.Equal(MeetingSyncStatus.NeedsReconnect, failed.Status);
+        Assert.Equal(MeetingSyncStatus.Synced, inStep.Status);
+        Assert.Equal(MeetingSyncStatus.Pending, someoneElses.Status);
+        Assert.Equal(new GoogleDisconnected(_userId), Assert.Single(_events.Published));
+    }
+
+    [Fact]
+    public async Task Complete_PutsWhatWaitedForTheReconnectBackInTheQueue_AndTellsTheOtherServices()
+    {
+        var waiting = NewRow(_userId);
+        waiting.MarkNeedsReconnect();
+        var inStep = NewRow(_userId);
+        inStep.RecordSynced(inStep.Version, "event", null, _time.Now.UtcDateTime);
+        var someoneElses = NewRow(Guid.NewGuid());
+        someoneElses.MarkNeedsReconnect();
+
+        await _service.CompleteAsync("code", await NewState(), null, CancellationToken.None);
+
+        Assert.Equal(MeetingSyncStatus.Pending, waiting.Status);
+        Assert.Equal(_time.Now.UtcDateTime, waiting.NextSyncAtUtc);
+        Assert.Equal(MeetingSyncStatus.Synced, inStep.Status);
+        Assert.Equal(MeetingSyncStatus.NeedsReconnect, someoneElses.Status);
+        Assert.Equal(new GoogleConnected(_userId), Assert.Single(_events.Published));
+    }
+
+    [Fact]
+    public async Task Complete_DoesNotRevive_AMeetingThatAlreadyEnded()
+    {
+        var over = NewRow(_userId);
+        over.MarkNeedsReconnect();
+        _time.Now = new DateTimeOffset(over.EndsAtUtc.AddMinutes(1), TimeSpan.Zero);
+
+        await _service.CompleteAsync("code", await NewState(), null, CancellationToken.None);
+
+        Assert.Equal(MeetingSyncStatus.NeedsReconnect, over.Status);
+    }
+
+    [Theory]
+    [InlineData(null, "NotConnected")]
+    [InlineData("connected", "Connected")]
+    [InlineData("needs-reconnect", "NeedsReconnect")]
+    public async Task StatusOf_AnyAccount_SaysWhereItsConnectionStands(string? setup, string expected)
+    {
+        if (setup is not null)
+        {
+            await _service.CompleteAsync("code", await NewState(), null, CancellationToken.None);
+            if (setup == "needs-reconnect")
+            {
+                _connections.Items.Single().MarkNeedsReconnect();
+            }
+        }
+
+        Assert.Equal(expected, await _service.StatusOfAsync(_userId, CancellationToken.None));
+    }
+
+    private MeetingSync NewRow(Guid organizer)
+    {
+        var start = _time.Now.UtcDateTime.AddDays(1);
+        var row = MeetingSync.Create(Guid.NewGuid());
+        row.Apply(1, organizer, "Kick-off", null, start, start.AddHours(1), "contact@acme.com", false, _time.Now.UtcDateTime);
+        _syncs.Items.Add(row);
+
+        return row;
     }
 
     [Fact]

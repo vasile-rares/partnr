@@ -11,11 +11,12 @@ internal static class GatewayHost
     // 32 bytes, base64; only ever used by these tests.
     public const string SigningKey = "dGVzdC1rZXktdGVzdC1rZXktdGVzdC1rZXktdGVzdCE=";
 
-    public static WebApplicationFactory<Program> For(string apiAddress, ISessionValidator? sessions = null) =>
+    public static WebApplicationFactory<Program> For(string apiAddress, ISessionValidator? sessions = null, string? integrationsAddress = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("ReverseProxy:Clusters:workspaces:Destinations:api:Address", apiAddress);
             builder.UseSetting("InternalAuth:SigningKey", SigningKey);
+            builder.UseSetting("ReverseProxy:Clusters:integrations:Destinations:api:Address", integrationsAddress ?? apiAddress);
 
             if (sessions is not null)
             {

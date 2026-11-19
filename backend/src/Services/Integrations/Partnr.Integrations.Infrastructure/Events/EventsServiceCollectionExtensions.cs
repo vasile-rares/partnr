@@ -1,7 +1,9 @@
+using JasperFx.CodeGeneration.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Partnr.Integrations.Application.Interfaces.Repositories;
+using Partnr.Integrations.Application.Interfaces.Services;
 using Partnr.Integrations.Infrastructure.Persistence;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
@@ -24,6 +26,8 @@ internal static class EventsServiceCollectionExtensions
         services.AddWolverine(wolverine =>
         {
             wolverine.ServiceName = options.ServiceName;
+            // The use-case services are internal on purpose (see the architecture tests): generated handler code cannot build them, so it asks the container.
+            wolverine.ServiceLocationPolicy = ServiceLocationPolicy.AlwaysAllowed;
             wolverine.PersistMessagesWithPostgresql(connectionString, "wolverine");
             wolverine.UseEntityFrameworkCoreTransactions();
             wolverine.Policies.UseDurableOutboxOnAllSendingEndpoints();
@@ -43,6 +47,7 @@ internal static class EventsServiceCollectionExtensions
         services.AddDbContextWithWolverineIntegration<IntegrationsDbContext>(
             (serviceProvider, builder) => builder.UseNpgsql(connectionString));
         services.AddScoped<IUnitOfWork, OutboxUnitOfWork>();
+        services.AddScoped<IEventPublisher, OutboxEventPublisher>();
 
         return services;
     }

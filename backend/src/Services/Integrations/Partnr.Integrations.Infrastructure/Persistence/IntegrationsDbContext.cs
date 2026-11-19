@@ -11,6 +11,8 @@ public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext
 
     public DbSet<GoogleConnection> GoogleConnections => Set<GoogleConnection>();
 
+    public DbSet<MeetingSync> MeetingSyncs => Set<MeetingSync>();
+
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         try

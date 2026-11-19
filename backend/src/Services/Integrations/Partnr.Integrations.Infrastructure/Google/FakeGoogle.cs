@@ -27,3 +27,16 @@ internal sealed class FakeGoogleOAuthClient(IOptions<GoogleOptions> options) : I
 
     public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken) => Task.CompletedTask;
 }
+
+/// <summary>Every event works and gets a Meet link, except for a meeting whose title contains <see cref="FailureMarker"/>: Google is "down" for it.</summary>
+internal sealed class FakeGoogleCalendarClient : IGoogleCalendarClient
+{
+    public const string FailureMarker = "[google-down]";
+
+    public Task<GoogleEventResult> UpsertEventAsync(string refreshToken, string eventId, bool exists, GoogleEventDetails details, CancellationToken cancellationToken) =>
+        details.Title.Contains(FailureMarker, StringComparison.Ordinal)
+            ? throw new GoogleCalendarException("Google is down (fake).")
+            : Task.FromResult(new GoogleEventResult(eventId, $"https://meet.google.com/{eventId[..3]}-{eventId[3..7]}-{eventId[7..10]}"));
+
+    public Task DeleteEventAsync(string refreshToken, string eventId, CancellationToken cancellationToken) => Task.CompletedTask;
+}

@@ -21,6 +21,7 @@ public static class DependencyInjection
 
         services.AddEvents(configuration, connectionString);
         services.AddScoped<IGoogleConnectionRepository, GoogleConnectionRepository>();
+        services.AddScoped<IMeetingSyncRepository, MeetingSyncRepository>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
@@ -39,11 +40,15 @@ public static class DependencyInjection
         if (configuration.GetSection(GoogleOptions.SectionName).GetValue<bool>(nameof(GoogleOptions.Fake)))
         {
             services.AddSingleton<IGoogleOAuthClient, FakeGoogleOAuthClient>();
+            services.AddSingleton<IGoogleCalendarClient, FakeGoogleCalendarClient>();
         }
         else
         {
             services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
+            services.AddHttpClient<IGoogleCalendarClient, GoogleCalendarClient>(client => client.Timeout = TimeSpan.FromSeconds(30));
         }
+
+        services.AddHostedService<MeetingSyncWorker>();
 
         return services;
     }

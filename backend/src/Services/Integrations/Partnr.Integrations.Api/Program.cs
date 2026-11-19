@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Partnr.Integrations.Api.Internal;
 using Partnr.Integrations.Api.Middleware;
 using Partnr.Integrations.Application;
 using Partnr.Integrations.Infrastructure;
@@ -21,6 +22,7 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.ConfigureWolverine(wolverine => wolverine.Discovery.IncludeAssembly(typeof(Program).Assembly));
 
 builder.Services.AddControllers();
+builder.Services.AddGrpc();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
@@ -36,6 +38,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGrpcService<GoogleConnectionsGrpcService>();
 app.MapDefaultEndpoints();
 
 app.Run();

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option csharp_namespace = "Partnr.Contracts.Integrations";
+
+package partnr.integrations.v1;
+
+// Served by Integrations, which owns the Google connections. Asked when a person is waiting for an answer, e.g. before a
+// meeting is created; background work gets what it needs through events instead.
+service GoogleConnections {
+  rpc GetStatus (GetStatusRequest) returns (GetStatusReply);
+}
+
+message GetStatusRequest {
+  // The account's id.
+  string user_id = 1;
+}
+
+enum ConnectionState {
+  NOT_CONNECTED = 0;
+  CONNECTED = 1;
+  NEEDS_RECONNECT = 2;
+}
+
+message GetStatusReply {
+  ConnectionState state = 1;
+}

@@ -2,10 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Application.DTOs.Meetings;
-using Partnr.Workspaces.Application.Interfaces.Services;
-using Partnr.Workspaces.Domain.Entities;
-using Partnr.Workspaces.Infrastructure.Persistence;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Partnr.Workspaces.IntegrationTests.ClientView;
 
@@ -181,19 +177,12 @@ public sealed partial class ClientProjectsTests
         return (await response.Content.ReadFromJsonAsync<MeetingResponse>())!;
     }
 
-    // The OAuth round trip has its own tests (GoogleConnectionTests); here the account is just given a connected Google.
-    // Returns the refresh token, which is also how the fake calendar tells organisers apart.
-    private async Task<string> ConnectGoogle(HttpClient http)
+    // Google belongs to the Integrations service (its own tests cover the OAuth round trip): here the account is just given a connected one.
+    private async Task<Guid> ConnectGoogle(HttpClient http)
     {
         var me = (await http.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me"))!;
-        var refreshToken = $"1//{Guid.NewGuid():N}";
+        factory.Google.Connect(me.Id);
 
-        using var scope = factory.Services.CreateScope();
-        var protectedToken = scope.ServiceProvider.GetRequiredService<ISecretProtector>().Protect("google-refresh-token", refreshToken);
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        db.GoogleConnections.Add(GoogleConnection.Connect(me.Id, $"ana-{Guid.NewGuid():N}@gmail.example", protectedToken, DateTime.UtcNow));
-        await db.SaveChangesAsync();
-
-        return refreshToken;
+        return me.Id;
     }
 }

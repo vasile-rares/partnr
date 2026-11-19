@@ -11,12 +11,8 @@ public sealed class Meeting : Entity
 {
     public const int TitleMaxLength = 200;
     public const int DescriptionMaxLength = 2000;
-    public const int MaxSyncAttempts = 5;
     public static readonly TimeSpan MinDuration = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan MaxDuration = TimeSpan.FromHours(8);
-
-    // The wait after the 1st, 2nd, 3rd and 4th failed try; the 5th gives up.
-    private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(60)];
 
     private Meeting()
     {
@@ -54,27 +50,17 @@ public sealed class Meeting : Entity
 
     public DateTime? CancelledAtUtc { get; private set; }
 
-    /// <summary>Counts the changes a member made. A sync that started at one version must not mark a later one as done, and it is also the concurrency token.</summary>
+    /// <summary>Counts the changes a member made. An answer about the Google event is about one version and must not mark a later one as done; it is also the concurrency token.</summary>
     public int Version { get; private set; }
 
+    /// <summary>Where the Google event stands, as the Integrations service last said (it owns the queue and the tokens).</summary>
     public MeetingSyncStatus SyncStatus { get; private set; }
-
-    public int SyncAttempts { get; private set; }
-
-    /// <summary>When the worker may try next; null unless <see cref="SyncStatus"/> is Pending.</summary>
-    public DateTime? NextSyncAtUtc { get; private set; }
-
-    /// <summary>Null until the event exists in Google. It is made from the meeting's id, so a try that Google answered but we never saw cannot make a second event.</summary>
-    public string? GoogleEventId { get; private set; }
 
     public string? MeetUrl { get; private set; }
 
     public bool IsCancelled => Status == MeetingStatus.Cancelled;
 
     public bool HasEndedAt(DateTime nowUtc) => EndsAtUtc <= nowUtc;
-
-    /// <summary>What the event is called in Google.</summary>
-    public string EventId => Id.ToString("N");
 
     public static Meeting Schedule(
         Guid workspaceId,
@@ -94,7 +80,7 @@ public sealed class Meeting : Entity
 
         var meeting = new Meeting(workspaceId, clientId, organizerUserId, nowUtc);
         meeting.Apply(projectId, title, description, startsAtUtc, endsAtUtc, nowUtc, timeChanged: true);
-        meeting.Changed(nowUtc);
+        meeting.Changed();
 
         return meeting;
     }
@@ -104,7 +90,7 @@ public sealed class Meeting : Entity
     {
         EnsureOpen(nowUtc);
         Apply(projectId, title, description, startsAtUtc, endsAtUtc, nowUtc, timeChanged: startsAtUtc != StartsAtUtc || endsAtUtc != EndsAtUtc);
-        Changed(nowUtc);
+        Changed();
     }
 
     public void Cancel(DateTime nowUtc)
@@ -112,10 +98,10 @@ public sealed class Meeting : Entity
         EnsureOpen(nowUtc);
         Status = MeetingStatus.Cancelled;
         CancelledAtUtc = nowUtc;
-        Changed(nowUtc);
+        Changed();
     }
 
-    /// <summary>A member asks for another go after the tries ran out.</summary>
+    /// <summary>A member asks for another go after the tries ran out; the Integrations service is told separately.</summary>
     public void RetrySync(DateTime nowUtc)
     {
         if (SyncStatus != MeetingSyncStatus.Failed || HasEndedAt(nowUtc))
@@ -123,15 +109,15 @@ public sealed class Meeting : Entity
             throw new DomainException("There is nothing to retry.");
         }
 
-        Queue(nowUtc);
+        SyncStatus = MeetingSyncStatus.Pending;
     }
 
-    /// <summary>The organiser connected Google again: what waited for it goes back in the queue.</summary>
+    /// <summary>The organiser connected Google again: what waited for it is in the queue again.</summary>
     public void ResumeSync(DateTime nowUtc)
     {
         if (SyncStatus == MeetingSyncStatus.NeedsReconnect && !HasEndedAt(nowUtc))
         {
-            Queue(nowUtc);
+            SyncStatus = MeetingSyncStatus.Pending;
         }
     }
 
@@ -141,61 +127,31 @@ public sealed class Meeting : Entity
         if (SyncStatus is MeetingSyncStatus.Pending or MeetingSyncStatus.Failed)
         {
             SyncStatus = MeetingSyncStatus.NeedsReconnect;
-            NextSyncAtUtc = null;
         }
     }
 
     /// <summary>
-    /// What Google answered for the version that was sent. The event is kept either way; the meeting counts as in step only if
-    /// nobody changed it meanwhile, otherwise it goes round again.
+    /// What the Integrations service answered for one version of the meeting. An answer about an older version says nothing about
+    /// what the meeting is now, so it is refused (false); the Meet link of the current one is kept.
     /// </summary>
-    public void RecordSynced(int syncedVersion, string? googleEventId, string? meetUrl, DateTime nowUtc)
+    public bool ApplySyncResult(int version, MeetingSyncStatus status, string? meetUrl)
     {
-        GoogleEventId = googleEventId ?? GoogleEventId;
+        if (version != Version)
+        {
+            return false;
+        }
+
+        SyncStatus = status;
         MeetUrl = meetUrl ?? MeetUrl;
 
-        if (syncedVersion != Version)
-        {
-            Queue(nowUtc);
-            return;
-        }
-
-        SyncStatus = MeetingSyncStatus.Synced;
-        SyncAttempts = 0;
-        NextSyncAtUtc = null;
+        return true;
     }
 
-    public void RecordSyncFailure(int syncedVersion, DateTime nowUtc)
-    {
-        if (syncedVersion != Version)
-        {
-            Queue(nowUtc);
-            return;
-        }
-
-        SyncAttempts++;
-        if (SyncAttempts >= MaxSyncAttempts || HasEndedAt(nowUtc))
-        {
-            SyncStatus = MeetingSyncStatus.Failed;
-            NextSyncAtUtc = null;
-            return;
-        }
-
-        SyncStatus = MeetingSyncStatus.Pending;
-        NextSyncAtUtc = nowUtc + RetryDelays[SyncAttempts - 1];
-    }
-
-    private void Changed(DateTime nowUtc)
+    // Every change makes the Google event out of date: the Integrations service is told (the event is published with the save).
+    private void Changed()
     {
         Version++;
-        Queue(nowUtc);
-    }
-
-    private void Queue(DateTime nowUtc)
-    {
         SyncStatus = MeetingSyncStatus.Pending;
-        SyncAttempts = 0;
-        NextSyncAtUtc = nowUtc;
     }
 
     private void EnsureOpen(DateTime nowUtc)

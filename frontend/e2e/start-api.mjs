@@ -22,6 +22,7 @@ const apiDll = path.join(artifactsPath, "bin", "Partnr.Workspaces.Api", "debug",
 const TEST_DATABASE = "partnr_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
 const apiGrpcPort = process.env.E2E_API_GRPC_PORT ?? "5152";
+const integrationsGrpcPort = process.env.E2E_INTEGRATIONS_GRPC_PORT ?? "5154";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
 const storageUrl = process.env.E2E_STORAGE_URL ?? "http://localhost:9000";
 const storageBucket = process.env.E2E_STORAGE_BUCKET ?? "partnr-e2e";
@@ -121,9 +122,8 @@ const env = {
   Kestrel__Endpoints__Grpc__Url: `http://localhost:${apiGrpcPort}`,
   // Links in emails must open the frontend that the tests run against (see playwright.config.ts), not the dev one on :3000.
   App__FrontendUrl: process.env.E2E_FRONTEND_URL ?? "http://localhost:3100",
-  // No Google account is needed: a stand-in walks the same flows (Development only, the API refuses it anywhere else).
-  Google__Fake: "true",
-  Google__RedirectUri: `${process.env.E2E_FRONTEND_URL ?? "http://localhost:3100"}/api/integrations/google/callback`,
+  // Google belongs to the Integrations service (see e2e/start-integrations.mjs): the API asks it over gRPC.
+  Services__Integrations__GrpcAddress: `http://localhost:${integrationsGrpcPort}`,
 };
 
 function dotnet(args, { cwd = backendDir } = {}) {

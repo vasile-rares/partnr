@@ -117,90 +117,49 @@ public class MeetingTests
     {
         var meeting = NewMeeting();
 
-        Assert.Equal((MeetingSyncStatus.Pending, 1, Now, 0), (meeting.SyncStatus, meeting.Version, meeting.NextSyncAtUtc, meeting.SyncAttempts));
-        Assert.Null(meeting.GoogleEventId);
-        Assert.Equal(meeting.Id.ToString("N"), meeting.EventId);
+        Assert.Equal((MeetingSyncStatus.Pending, 1, (string?)null), (meeting.SyncStatus, meeting.Version, meeting.MeetUrl));
     }
 
     [Fact]
-    public void EveryChange_CountsAVersion_AndQueuesTheMeetingAgain()
+    public void EveryChange_CountsAVersion_AndWaitsToBeSentAgain()
     {
         var meeting = NewMeeting();
-        meeting.RecordSynced(1, "event", "https://meet.google.com/abc", Now);
+        meeting.ApplySyncResult(1, MeetingSyncStatus.Synced, "https://meet.google.com/abc");
 
         meeting.Update(null, "Renamed", null, Start, Start.AddHours(1), Now.AddMinutes(1));
 
-        Assert.Equal((MeetingSyncStatus.Pending, 2, Now.AddMinutes(1)), (meeting.SyncStatus, meeting.Version, meeting.NextSyncAtUtc));
+        Assert.Equal((MeetingSyncStatus.Pending, 2), (meeting.SyncStatus, meeting.Version));
 
-        meeting.RecordSynced(2, null, null, Now.AddMinutes(2));
+        meeting.ApplySyncResult(2, MeetingSyncStatus.Synced, null);
         meeting.Cancel(Now.AddMinutes(3));
 
-        Assert.Equal((MeetingSyncStatus.Pending, 3), (meeting.SyncStatus, meeting.Version));
-        Assert.Equal("event", meeting.GoogleEventId);
+        Assert.Equal((MeetingSyncStatus.Pending, 3, "https://meet.google.com/abc"), (meeting.SyncStatus, meeting.Version, meeting.MeetUrl));
     }
 
     [Fact]
-    public void ASyncOfTheCurrentVersion_MarksItInStep_AndKeepsTheEventAndTheLinkLater()
+    public void AnAnswerForTheCurrentVersion_IsKept_AndALaterOneWithoutTheLinkDoesNotLoseIt()
     {
         var meeting = NewMeeting();
 
-        meeting.RecordSynced(1, "event", "https://meet.google.com/abc", Now);
-        meeting.RecordSynced(1, "event", null, Now); // a later answer without the link does not lose it
+        Assert.True(meeting.ApplySyncResult(1, MeetingSyncStatus.Synced, "https://meet.google.com/abc"));
+        Assert.True(meeting.ApplySyncResult(1, MeetingSyncStatus.Synced, null));
 
-        Assert.Equal((MeetingSyncStatus.Synced, "event", "https://meet.google.com/abc"), (meeting.SyncStatus, meeting.GoogleEventId, meeting.MeetUrl));
-        Assert.Null(meeting.NextSyncAtUtc);
+        Assert.Equal((MeetingSyncStatus.Synced, "https://meet.google.com/abc"), (meeting.SyncStatus, meeting.MeetUrl));
     }
 
-    [Fact]
-    public void ASyncOfAnOlderVersion_KeepsTheEvent_ButGoesRoundAgain()
+    [Theory]
+    [InlineData(MeetingSyncStatus.Synced)]
+    [InlineData(MeetingSyncStatus.Failed)]
+    [InlineData(MeetingSyncStatus.NeedsReconnect)]
+    public void AnAnswerAboutAnOlderVersion_SaysNothingAboutTheMeetingAsItIsNow(MeetingSyncStatus answered)
     {
         var meeting = NewMeeting();
         meeting.Update(null, "Changed while sending", null, Start, Start.AddHours(1), Now);
 
-        meeting.RecordSynced(1, "event", "https://meet.google.com/abc", Now.AddSeconds(5));
+        var applied = meeting.ApplySyncResult(1, answered, "https://meet.google.com/abc");
 
-        Assert.Equal((MeetingSyncStatus.Pending, "event", Now.AddSeconds(5)), (meeting.SyncStatus, meeting.GoogleEventId, meeting.NextSyncAtUtc));
-    }
-
-    [Fact]
-    public void Failures_BackOffThenGiveUp()
-    {
-        var meeting = NewMeeting();
-        var waits = new List<TimeSpan>();
-
-        for (var i = 0; i < 4; i++)
-        {
-            meeting.RecordSyncFailure(1, Now);
-            waits.Add(meeting.NextSyncAtUtc!.Value - Now);
-        }
-
-        Assert.Equal([TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(60)], waits);
-
-        meeting.RecordSyncFailure(1, Now);
-
-        Assert.Equal((MeetingSyncStatus.Failed, 5), (meeting.SyncStatus, meeting.SyncAttempts));
-        Assert.Null(meeting.NextSyncAtUtc);
-    }
-
-    [Fact]
-    public void AFailureOfAnOlderVersion_DoesNotCount_ItGoesRoundAgain()
-    {
-        var meeting = NewMeeting();
-        meeting.Update(null, "Changed", null, Start, Start.AddHours(1), Now);
-
-        meeting.RecordSyncFailure(1, Now.AddSeconds(5));
-
-        Assert.Equal((MeetingSyncStatus.Pending, 0), (meeting.SyncStatus, meeting.SyncAttempts));
-    }
-
-    [Fact]
-    public void AMeetingThatIsOver_GivesUpAtTheFirstFailure()
-    {
-        var meeting = NewMeeting();
-
-        meeting.RecordSyncFailure(1, Start.AddHours(2));
-
-        Assert.Equal(MeetingSyncStatus.Failed, meeting.SyncStatus);
+        Assert.False(applied);
+        Assert.Equal((MeetingSyncStatus.Pending, (string?)null), (meeting.SyncStatus, meeting.MeetUrl));
     }
 
     [Fact]
@@ -209,15 +168,11 @@ public class MeetingTests
         var meeting = NewMeeting();
         Assert.Throws<DomainException>(() => meeting.RetrySync(Now));
 
-        for (var i = 0; i < 5; i++)
-        {
-            meeting.RecordSyncFailure(1, Now);
-        }
-
+        meeting.ApplySyncResult(1, MeetingSyncStatus.Failed, null);
         meeting.RetrySync(Now.AddHours(1));
-        Assert.Equal((MeetingSyncStatus.Pending, 0, Now.AddHours(1)), (meeting.SyncStatus, meeting.SyncAttempts, meeting.NextSyncAtUtc));
+        Assert.Equal(MeetingSyncStatus.Pending, meeting.SyncStatus);
 
-        meeting.RecordSyncFailure(1, Start.AddHours(2));
+        meeting.ApplySyncResult(1, MeetingSyncStatus.Failed, null);
         Assert.Throws<DomainException>(() => meeting.RetrySync(Start.AddHours(2)));
     }
 
@@ -226,18 +181,18 @@ public class MeetingTests
     {
         var waiting = NewMeeting();
         var inStep = NewMeeting();
-        inStep.RecordSynced(1, "event", null, Now);
+        inStep.ApplySyncResult(1, MeetingSyncStatus.Synced, null);
 
         waiting.MarkNeedsReconnect();
         inStep.MarkNeedsReconnect();
 
-        Assert.Equal((MeetingSyncStatus.NeedsReconnect, (DateTime?)null), (waiting.SyncStatus, waiting.NextSyncAtUtc));
+        Assert.Equal(MeetingSyncStatus.NeedsReconnect, waiting.SyncStatus);
         Assert.Equal(MeetingSyncStatus.Synced, inStep.SyncStatus);
 
         waiting.ResumeSync(Now.AddHours(1));
         inStep.ResumeSync(Now.AddHours(1));
 
-        Assert.Equal((MeetingSyncStatus.Pending, Now.AddHours(1)), (waiting.SyncStatus, waiting.NextSyncAtUtc));
+        Assert.Equal(MeetingSyncStatus.Pending, waiting.SyncStatus);
         Assert.Equal(MeetingSyncStatus.Synced, inStep.SyncStatus);
     }
 

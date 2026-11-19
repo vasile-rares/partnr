@@ -11,6 +11,12 @@ builder.AddDotnetProject("workspaces", "../Services/Workspaces/Partnr.Workspaces
 })
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
+builder.AddDotnetProject("integrations", "../Services/Integrations/Partnr.Integrations.Api/Partnr.Integrations.Api.csproj", project =>
+{
+    project.ExcludeLaunchProfile = true;
+})
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+
 builder.AddDotnetProject("gateway", "../Gateway/Partnr.Gateway/Partnr.Gateway.csproj", project =>
 {
     project.ExcludeLaunchProfile = true;

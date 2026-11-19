@@ -32,10 +32,9 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ConversationThreads>();
         services.AddScoped<IMessageService, MessageService>();
-        services.AddScoped<IGoogleConnectionService, GoogleConnectionService>();
         services.AddScoped<MeetingResponseBuilder>();
         services.AddScoped<IMeetingService, MeetingService>();
-        services.AddScoped<IMeetingSyncService, MeetingSyncService>();
+        services.AddScoped<IMeetingSyncResultService, MeetingSyncResultService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<WorkspaceAccess>();

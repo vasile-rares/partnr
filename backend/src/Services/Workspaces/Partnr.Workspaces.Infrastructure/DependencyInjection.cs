@@ -1,12 +1,13 @@
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
+using Partnr.Contracts.Integrations;
 using Partnr.Workspaces.Application.Interfaces.Repositories;
 using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure.Authentication;
 using Partnr.Workspaces.Infrastructure.Email;
 using Partnr.Workspaces.Infrastructure.Events;
-using Partnr.Workspaces.Infrastructure.Google;
+using Partnr.Workspaces.Infrastructure.Integrations;
 using Partnr.Workspaces.Infrastructure.Notifications;
 using Partnr.Workspaces.Infrastructure.Persistence;
 using Partnr.Workspaces.Infrastructure.Persistence.Repositories;
@@ -45,7 +46,6 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConversationReadRepository, ConversationReadRepository>();
-        services.AddScoped<IGoogleConnectionRepository, GoogleConnectionRepository>();
         services.AddScoped<IMeetingRepository, MeetingRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
         services.AddIdentityAuthentication();
@@ -73,23 +73,11 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddHostedService<NotificationEmailWorker>();
 
-        services.AddOptions<GoogleOptions>()
-            .Bind(configuration.GetSection(GoogleOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-        services.AddSingleton<IValidateOptions<GoogleOptions>, GoogleOptionsValidator>();
-        services.AddSingleton<ISecretProtector, SecretProtector>();
-        if (configuration.GetSection(GoogleOptions.SectionName).GetValue<bool>(nameof(GoogleOptions.Fake)))
-        {
-            services.AddSingleton<IGoogleOAuthClient, FakeGoogleOAuthClient>();
-            services.AddSingleton<IGoogleCalendarClient, FakeGoogleCalendarClient>();
-        }
-        else
-        {
-            services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
-            services.AddHttpClient<IGoogleCalendarClient, GoogleCalendarClient>(client => client.Timeout = TimeSpan.FromSeconds(30));
-        }
-        services.AddHostedService<MeetingSyncWorker>();
+        // Google belongs to the Integrations service: this only asks it, over gRPC, whether an account is connected.
+        var integrationsAddress = configuration["Services:Integrations:GrpcAddress"]
+            ?? throw new InvalidOperationException("Services:Integrations:GrpcAddress is not configured.");
+        services.AddGrpcClient<GoogleConnections.GoogleConnectionsClient>(options => options.Address = new Uri(integrationsAddress));
+        services.AddScoped<IGoogleConnectionStatus, GrpcGoogleConnectionStatus>();
 
         services.AddOptions<StorageOptions>()
             .Bind(configuration.GetSection(StorageOptions.SectionName))

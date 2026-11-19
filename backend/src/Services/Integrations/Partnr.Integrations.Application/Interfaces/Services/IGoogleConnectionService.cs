@@ -13,4 +13,7 @@ public interface IGoogleConnectionService
     Task<GoogleConnectOutcome> CompleteAsync(string? code, string? state, string? error, CancellationToken cancellationToken);
 
     Task DisconnectAsync(CancellationToken cancellationToken);
+
+    /// <summary>NotConnected, Connected or NeedsReconnect, for any account: asked by other services (over gRPC), not by the person.</summary>
+    Task<string> StatusOfAsync(Guid userId, CancellationToken cancellationToken);
 }

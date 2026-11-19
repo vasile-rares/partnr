@@ -229,7 +229,7 @@ internal sealed class DevelopmentDataSeeder(
         Meeting Plan(Guid? project, string title, string? note, DateTime start, TimeSpan length, DateTime plannedAt, string meetUrl)
         {
             var meeting = Meeting.Schedule(workspaceId, clientId, organizerId, project, title, note, start, start + length, plannedAt);
-            meeting.RecordSynced(meeting.Version, meeting.EventId, meetUrl, plannedAt);
+            meeting.ApplySyncResult(meeting.Version, MeetingSyncStatus.Synced, meetUrl);
             meetings.Add(meeting);
 
             return meeting;
@@ -238,7 +238,7 @@ internal sealed class DevelopmentDataSeeder(
         Plan(projectId, "Design review", "Walk through the homepage mockups together.", tomorrow, TimeSpan.FromMinutes(45), now, "https://meet.google.com/abc-defg-hij");
         var calledOff = Plan(null, "Branding chat", null, now.Date.AddDays(3).AddHours(14), TimeSpan.FromMinutes(30), now, "https://meet.google.com/klm-nopq-rst");
         calledOff.Cancel(now);
-        calledOff.RecordSynced(calledOff.Version, null, null, now);
+        calledOff.ApplySyncResult(calledOff.Version, MeetingSyncStatus.Synced, null);
         Plan(projectId, "Kick-off call", "Goals, audience and the pages we need.", now.Date.AddDays(-2).AddHours(10), TimeSpan.FromHours(1), now.AddDays(-5), "https://meet.google.com/uvw-xyza-bcd");
     }
 

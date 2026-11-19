@@ -80,6 +80,22 @@ public sealed class ProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Sends_the_integrations_routes_to_the_integrations_service_and_everything_else_to_the_api()
+    {
+        await using var integrations = await FakeApi.StartAsync();
+        using var gateway = GatewayHost.For(_api.Address, integrationsAddress: integrations.Address);
+        using var client = GatewayHost.ClientOf(gateway);
+
+        await client.GetAsync("/api/integrations/google");
+        await client.GetAsync("/api/integrations/google/callback?code=c&state=s");
+        await client.GetAsync("/api/workspaces/abc/meetings");
+        await client.GetAsync("/api/auth/me");
+
+        Assert.Equal(2, integrations.Requests);
+        Assert.Equal(2, _api.Requests);
+    }
+
+    [Fact]
     public async Task Answers_its_own_health_check_without_asking_the_api()
     {
         using var gateway = GatewayHost.For("http://127.0.0.1:1");
