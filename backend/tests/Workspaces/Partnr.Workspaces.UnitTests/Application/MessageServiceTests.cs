@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Application.DTOs.Messages;
@@ -18,7 +19,7 @@ public class MessageServiceTests
     private readonly FakeProjectRepository _projects;
     private readonly FakeConversationReadRepository _reads = new();
     private readonly FakeMessageRepository _messages;
-    private readonly FakeConversationPublisher _publisher = new();
+    private readonly FakeEventPublisher _events = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly FakeTimeProvider _time = new();
     private readonly MessageService _service;
@@ -46,7 +47,7 @@ public class MessageServiceTests
 
         var access = new WorkspaceAccess(_workspaces, _currentUser);
         var clientAccess = new ClientAccess(_projects, _workspaces);
-        var threads = new ConversationThreads(_messages, _reads, _identity, _publisher, new FakeUnitOfWork(), _time);
+        var threads = new ConversationThreads(_messages, _reads, _identity, _events, new FakeUnitOfWork(), _time);
         _service = new MessageService(_projects, _clients, threads, clientAccess, new CallerAccess(access, clientAccess));
     }
 
@@ -158,7 +159,7 @@ public class MessageServiceTests
 
         Assert.True(sent.IsMine);
         Assert.True(sent.FromClient);
-        var push = Assert.Single(_publisher.Pushes);
+        var push = Assert.IsType<ConversationChanged>(Assert.Single(_events.Published));
         Assert.Equal(_website.Id, push.ProjectId);
         Assert.Contains(_ana.Id, push.UserIds);
         Assert.Contains(_elena.Id, push.UserIds);

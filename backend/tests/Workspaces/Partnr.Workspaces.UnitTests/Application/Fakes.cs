@@ -298,44 +298,7 @@ internal sealed class FakeAppLinks : IAppLinks
     public string Url(string path) => $"https://app.test{path}";
 }
 
-internal sealed class FakeNotificationRepository : INotificationRepository
-{
-    public List<Notification> Items { get; } = [];
-
-    public Task<Notification?> GetApprovalRequestedAsync(Guid approvalRequestId, CancellationToken cancellationToken) =>
-        Task.FromResult(Items.FirstOrDefault(n =>
-            n.ApprovalRequestId == approvalRequestId
-            && n.Type == NotificationType.ApprovalRequested
-            && n.ObsoleteAtUtc is null));
-
-    private IEnumerable<Notification> Inbox(Guid userId) =>
-        Items.Where(n => n.RecipientUserId == userId && n.ObsoleteAtUtc is null);
-
-    public Task<IReadOnlyList<Notification>> ListInboxAsync(Guid userId, int limit, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<Notification>>(Inbox(userId).OrderByDescending(n => n.CreatedAtUtc).Take(limit).ToList());
-
-    public Task<int> CountUnreadAsync(Guid userId, CancellationToken cancellationToken) =>
-        Task.FromResult(Inbox(userId).Count(n => !n.IsRead));
-
-    public Task<Notification?> GetInboxItemAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
-        Task.FromResult(Inbox(userId).FirstOrDefault(n => n.Id == id));
-
-    public Task<IReadOnlyList<Notification>> ListUnreadAsync(Guid userId, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<Notification>>(Inbox(userId).Where(n => !n.IsRead).ToList());
-
-    // The real one also pushes the next attempt forward; here a notification that was handled leaves Pending or gets a later date, which is enough.
-    public Task<IReadOnlyList<Notification>> ClaimDueEmailsAsync(DateTime nowUtc, TimeSpan lease, int limit, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<Notification>>(Items
-            .Where(n => n.EmailStatus == NotificationEmailStatus.Pending && n.EmailNextAttemptAtUtc <= nowUtc)
-            .OrderBy(n => n.EmailNextAttemptAtUtc)
-            .Take(limit)
-            .ToList());
-
-    public void Add(Notification notification) => Items.Add(notification);
-}
-
-/// <summary>Records what the services asked to be told; the rules of who gets what are tested on the real writer.</summary>
-internal sealed class FakeNotificationWriter : INotificationWriter
+internal sealed class FakeNotificationPublisher : INotificationPublisher
 {
     public List<ApprovalRequest> Requested { get; } = [];
 
@@ -602,18 +565,6 @@ internal sealed class FakeMessageRepository(FakeConversationReadRepository reads
     }
 
     public void Add(Message message) => Items.Add(message);
-}
-
-internal sealed class FakeConversationPublisher : IConversationPublisher
-{
-    public List<(IReadOnlyCollection<Guid> UserIds, Guid ProjectId)> Pushes { get; } = [];
-
-    public Task ConversationChangedAsync(IReadOnlyCollection<Guid> userIds, Guid projectId, CancellationToken cancellationToken)
-    {
-        Pushes.Add((userIds, projectId));
-
-        return Task.CompletedTask;
-    }
 }
 
 internal sealed class FakeGoogleConnectionStatus : IGoogleConnectionStatus

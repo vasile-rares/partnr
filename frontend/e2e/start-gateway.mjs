@@ -16,6 +16,7 @@ const gatewayPort = process.env.E2E_GATEWAY_PORT ?? "5150";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
 const apiGrpcPort = process.env.E2E_API_GRPC_PORT ?? "5152";
 const integrationsPort = process.env.E2E_INTEGRATIONS_PORT ?? "5153";
+const notificationsPort = process.env.E2E_NOTIFICATIONS_PORT ?? "5155";
 
 const env = {
   ...process.env,
@@ -25,6 +26,7 @@ const env = {
   ReverseProxy__Clusters__workspaces__Destinations__api__Address: `http://localhost:${apiPort}`,
   Services__Workspaces__GrpcAddress: `http://localhost:${apiGrpcPort}`,
   ReverseProxy__Clusters__integrations__Destinations__api__Address: `http://localhost:${integrationsPort}`,
+  ReverseProxy__Clusters__notifications__Destinations__api__Address: `http://localhost:${notificationsPort}`,
 };
 
 console.log("[e2e] building the gateway");

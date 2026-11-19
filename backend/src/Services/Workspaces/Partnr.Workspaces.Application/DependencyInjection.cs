@@ -27,9 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IProjectUpdateService, ProjectUpdateService>();
         services.AddScoped<IProjectFileService, ProjectFileService>();
-        services.AddScoped<INotificationWriter, NotificationWriter>();
-        services.AddScoped<INotificationEmailService, NotificationEmailService>();
-        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<ConversationThreads>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<MeetingResponseBuilder>();

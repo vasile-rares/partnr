@@ -8,7 +8,7 @@ Details and reasons: `decisions.md`, "Mesaje".
 - A conversation exists only while the client can open the project (`Project.IsOpenToClient`, the portal's rule), otherwise 404.
 - Plain text up to 4000 characters; the author edits or deletes within 10 minutes (403 for someone else, 409 after or once deleted; a deleted message loses its text and keeps its place).
 - Read marks are per person, set from the id of the newest message shown and never moved back.
-- Changes push `conversationChanged` with the project id over the notifications hub (`IConversationPublisher`).
+- A new, edited or deleted message and a read mark publish `ConversationChanged` (project id and the accounts that read the conversation, before the save, like every event); the Notifications service pushes `conversationChanged` with the project id over its hub ([notifications.md](notifications.md)).
 
 ## Web app
 

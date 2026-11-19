@@ -12,7 +12,8 @@ test("registering creates the account and asks for a first workspace", async ({ 
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Create account" }).click();
 
-  await expect(page).toHaveURL("/workspaces/new");
+  // The first registration of a run hits a cold stack (password hashing, the first server render), so it gets more than 5 s.
+  await expect(page).toHaveURL("/workspaces/new", { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "Create your workspace" })).toBeVisible();
 });
 

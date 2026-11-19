@@ -37,24 +37,25 @@ public sealed class BrokerApiFactory : ApiFactory
 
 public sealed class ReceivedEvents
 {
-    private readonly List<MeetingChanged> _meetingsChanged = [];
+    private readonly List<object> _all = [];
 
-    public IReadOnlyList<MeetingChanged> MeetingsChanged
+    public IReadOnlyList<MeetingChanged> MeetingsChanged => Of<MeetingChanged>();
+
+    public IReadOnlyList<ConversationChanged> ConversationsChanged => Of<ConversationChanged>();
+
+    internal void Add(object received)
     {
-        get
+        lock (_all)
         {
-            lock (_meetingsChanged)
-            {
-                return [.. _meetingsChanged];
-            }
+            _all.Add(received);
         }
     }
 
-    internal void Add(MeetingChanged received)
+    private List<T> Of<T>()
     {
-        lock (_meetingsChanged)
+        lock (_all)
         {
-            _meetingsChanged.Add(received);
+            return [.. _all.OfType<T>()];
         }
     }
 }
@@ -62,4 +63,6 @@ public sealed class ReceivedEvents
 public static class CapturingHandler
 {
     public static void Handle(MeetingChanged received, ReceivedEvents sink) => sink.Add(received);
+
+    public static void Handle(ConversationChanged received, ReceivedEvents sink) => sink.Add(received);
 }

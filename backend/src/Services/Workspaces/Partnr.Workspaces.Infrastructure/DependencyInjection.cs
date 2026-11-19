@@ -8,7 +8,6 @@ using Partnr.Workspaces.Infrastructure.Authentication;
 using Partnr.Workspaces.Infrastructure.Email;
 using Partnr.Workspaces.Infrastructure.Events;
 using Partnr.Workspaces.Infrastructure.Integrations;
-using Partnr.Workspaces.Infrastructure.Notifications;
 using Partnr.Workspaces.Infrastructure.Persistence;
 using Partnr.Workspaces.Infrastructure.Persistence.Repositories;
 using Partnr.Workspaces.Infrastructure.Persistence.Seeding;
@@ -28,12 +27,7 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("Connection string 'Postgres' is not configured.");
 
-        services.TryAddSingleton<IInboxPublisher, NoopInboxPublisher>();
-        services.TryAddSingleton<IConversationPublisher, NoopConversationPublisher>();
-        services.AddSingleton<InboxPushInterceptor>();
-        services.AddEvents(configuration, connectionString, (options, sp) => options
-            .UseNpgsql(connectionString)
-            .AddInterceptors(sp.GetRequiredService<InboxPushInterceptor>()));
+        services.AddEvents(configuration, connectionString, (options, _) => options.UseNpgsql(connectionString));
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientInvitationRepository, ClientInvitationRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
@@ -42,7 +36,6 @@ public static class DependencyInjection
         services.AddScoped<IProjectUpdateRepository, ProjectUpdateRepository>();
         services.AddScoped<IProjectFileRepository, ProjectFileRepository>();
         services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
-        services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConversationReadRepository, ConversationReadRepository>();
@@ -66,12 +59,6 @@ public static class DependencyInjection
         services.AddSingleton<BackgroundEmailQueue>();
         services.AddSingleton<IBackgroundEmailQueue>(sp => sp.GetRequiredService<BackgroundEmailQueue>());
         services.AddHostedService(sp => sp.GetRequiredService<BackgroundEmailQueue>());
-
-        services.AddOptions<NotificationOptions>()
-            .Bind(configuration.GetSection(NotificationOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-        services.AddHostedService<NotificationEmailWorker>();
 
         // Google belongs to the Integrations service: this only asks it, over gRPC, whether an account is connected.
         var integrationsAddress = configuration["Services:Integrations:GrpcAddress"]

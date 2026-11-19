@@ -21,7 +21,6 @@ internal sealed class DevelopmentDataSeeder(
     IProjectFileRepository projectFiles,
     IFileStorage fileStorage,
     IApprovalRequestRepository approvals,
-    INotificationRepository notifications,
     IMessageRepository messages,
     IConversationReadRepository conversationReads,
     IMeetingRepository meetings,
@@ -147,16 +146,6 @@ internal sealed class DevelopmentDataSeeder(
         approvals.Add(firstRound);
         var secondRound = ApprovalRequest.Request(studio.Id, website.Id, mockups.Id, owner.Id, "The logo is bigger now. Ready for a final look?");
         approvals.Add(secondRound);
-
-        // Something in each inbox, already "emailed" so the worker leaves the demo data alone: Elena has an unread request, the owner a read answer.
-        var asked = Notification.ApprovalRequested(account.Id, studio.Id, studio.Name, website.Id, website.Name, mockups.Title, secondRound.Id);
-        asked.MarkEmailSent(DateTime.UtcNow);
-        notifications.Add(asked);
-        var answered = Notification.ApprovalDecided(
-            ApprovalStatus.ChangesRequested, owner.Id, studio.Id, studio.Name, website.Id, website.Name, mockups.Title, firstRound.Id, account.FullName);
-        answered.MarkEmailSent(DateTime.UtcNow);
-        answered.MarkRead(DateTime.UtcNow);
-        notifications.Add(answered);
 
         AddConversation(studio.Id, website.Id, owner.Id, member.Id, account.Id);
         AddMeetings(studio.Id, linked.Id, website.Id, owner.Id);

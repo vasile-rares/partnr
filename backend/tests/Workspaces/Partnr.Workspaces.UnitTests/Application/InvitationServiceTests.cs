@@ -19,7 +19,7 @@ public class InvitationServiceTests
     private readonly FakeCurrentUser _currentUser = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeTimeProvider _time = new();
-    private readonly FakeNotificationWriter _notifications = new();
+    private readonly FakeNotificationPublisher _notifications = new();
     private readonly Workspace _workspace;
     private readonly Client _client;
     private readonly ClientInvitation _invitation;

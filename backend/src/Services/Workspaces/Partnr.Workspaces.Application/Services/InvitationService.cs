@@ -14,7 +14,7 @@ internal sealed class InvitationService(
     IWorkspaceRepository workspaces,
     IIdentityService identity,
     ICurrentUser currentUser,
-    INotificationWriter notifications,
+    INotificationPublisher notifications,
     IUnitOfWork unitOfWork,
     TimeProvider time) : IInvitationService
 {

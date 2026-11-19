@@ -14,7 +14,7 @@ internal sealed class DeliverableService(
     ProjectAccess projectAccess,
     IApprovalRequestRepository approvals,
     DeliverableResponseBuilder responses,
-    INotificationWriter notifications,
+    INotificationPublisher notifications,
     WorkspaceAccess access,
     IUnitOfWork unitOfWork) : IDeliverableService
 {

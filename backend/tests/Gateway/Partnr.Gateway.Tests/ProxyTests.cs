@@ -96,6 +96,22 @@ public sealed class ProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Sends_the_notifications_and_the_live_hub_to_the_notifications_service()
+    {
+        await using var notifications = await FakeApi.StartAsync();
+        using var gateway = GatewayHost.For(_api.Address, notificationsAddress: notifications.Address);
+        using var client = GatewayHost.ClientOf(gateway);
+
+        await client.GetAsync("/api/notifications");
+        await client.PostAsync("/api/notifications/read-all", null);
+        await client.PostAsync("/api/hubs/notifications/negotiate?negotiateVersion=1", null);
+        await client.GetAsync("/api/workspaces/abc/conversations");
+
+        Assert.Equal(3, notifications.Requests);
+        Assert.Equal(1, _api.Requests);
+    }
+
+    [Fact]
     public async Task Answers_its_own_health_check_without_asking_the_api()
     {
         using var gateway = GatewayHost.For("http://127.0.0.1:1");

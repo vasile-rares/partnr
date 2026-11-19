@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.DTOs.Auth;
 using Partnr.Workspaces.Application.DTOs.Messages;
 using Partnr.Workspaces.Application.Exceptions;
@@ -20,7 +21,7 @@ internal sealed class ConversationThreads(
     IMessageRepository messages,
     IConversationReadRepository reads,
     IIdentityService identity,
-    IConversationPublisher publisher,
+    IEventPublisher events,
     IUnitOfWork unitOfWork,
     TimeProvider time)
 {
@@ -86,8 +87,8 @@ internal sealed class ConversationThreads(
     {
         var message = Message.Write(door.Workspace.Id, door.Project.Id, door.UserId, body, Now());
         messages.Add(message);
+        await events.PublishAsync(new ConversationChanged(door.Project.Id, [.. door.Readers]), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await publisher.ConversationChangedAsync(door.Readers, door.Project.Id, cancellationToken);
 
         return await RespondAsync(message, door, cancellationToken);
     }
@@ -96,8 +97,8 @@ internal sealed class ConversationThreads(
     {
         var message = await RequireChangeableAsync(door, messageId, cancellationToken);
         message.Edit(door.UserId, body, Now());
+        await events.PublishAsync(new ConversationChanged(door.Project.Id, [.. door.Readers]), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await publisher.ConversationChangedAsync(door.Readers, door.Project.Id, cancellationToken);
 
         return await RespondAsync(message, door, cancellationToken);
     }
@@ -106,8 +107,8 @@ internal sealed class ConversationThreads(
     {
         var message = await RequireChangeableAsync(door, messageId, cancellationToken);
         message.Delete(door.UserId, Now());
+        await events.PublishAsync(new ConversationChanged(door.Project.Id, [.. door.Readers]), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await publisher.ConversationChangedAsync(door.Readers, door.Project.Id, cancellationToken);
     }
 
     public async Task MarkReadAsync(ConversationDoor door, Guid messageId, CancellationToken cancellationToken)
@@ -125,10 +126,10 @@ internal sealed class ConversationThreads(
             read.ReadUpTo(message.CreatedAtUtc);
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Only this person's count changed; their other tabs follow.
-        await publisher.ConversationChangedAsync([door.UserId], door.Project.Id, cancellationToken);
+        await events.PublishAsync(new ConversationChanged(door.Project.Id, [door.UserId]), cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<Message> RequireChangeableAsync(ConversationDoor door, Guid messageId, CancellationToken cancellationToken)

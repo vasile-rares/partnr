@@ -1,12 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052 / 5053 / 5054).
+// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052 / 5053 / 5054 / 5055).
 const WEB_PORT = 3100;
 const GATEWAY_PORT = 5150;
 const API_PORT = 5151;
 const API_GRPC_PORT = 5152;
 const INTEGRATIONS_PORT = 5153;
 const INTEGRATIONS_GRPC_PORT = 5154;
+const NOTIFICATIONS_PORT = 5155;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -43,6 +44,16 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
+      // The inbox, the notification emails and the live push (see e2e/start-notifications.mjs).
+      command: "node e2e/start-notifications.mjs",
+      url: `http://localhost:${NOTIFICATIONS_PORT}/health`,
+      env: { E2E_NOTIFICATIONS_PORT: String(NOTIFICATIONS_PORT) },
+      reuseExistingServer: false,
+      timeout: 240_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
       // The only door to the backend, like in the real thing: the web app's /api rewrite points here (see e2e/start-gateway.mjs).
       command: "node e2e/start-gateway.mjs",
       url: `http://localhost:${GATEWAY_PORT}/api/auth/me`, // 401 through the proxy: the gateway and the API are both up
@@ -51,6 +62,7 @@ export default defineConfig({
         E2E_API_PORT: String(API_PORT),
         E2E_API_GRPC_PORT: String(API_GRPC_PORT),
         E2E_INTEGRATIONS_PORT: String(INTEGRATIONS_PORT),
+        E2E_NOTIFICATIONS_PORT: String(NOTIFICATIONS_PORT),
       },
       reuseExistingServer: false,
       timeout: 240_000,

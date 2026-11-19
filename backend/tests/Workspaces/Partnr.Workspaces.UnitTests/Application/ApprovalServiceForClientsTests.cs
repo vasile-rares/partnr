@@ -20,7 +20,7 @@ public class ApprovalServiceForClientsTests
     private readonly FakeApprovalRequestRepository _approvals = new();
     private readonly FakeCurrentUser _currentUser = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
-    private readonly FakeNotificationWriter _notifications = new();
+    private readonly FakeNotificationPublisher _notifications = new();
     private readonly Workspace _studio;
     private readonly Client _client;
     private readonly Project _project;

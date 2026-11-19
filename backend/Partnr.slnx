@@ -12,6 +12,12 @@
     <Project Path="src/Services/Integrations/Partnr.Integrations.Domain/Partnr.Integrations.Domain.csproj" />
     <Project Path="src/Services/Integrations/Partnr.Integrations.Infrastructure/Partnr.Integrations.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Notifications/">
+    <Project Path="src/Services/Notifications/Partnr.Notifications.Api/Partnr.Notifications.Api.csproj" />
+    <Project Path="src/Services/Notifications/Partnr.Notifications.Application/Partnr.Notifications.Application.csproj" />
+    <Project Path="src/Services/Notifications/Partnr.Notifications.Domain/Partnr.Notifications.Domain.csproj" />
+    <Project Path="src/Services/Notifications/Partnr.Notifications.Infrastructure/Partnr.Notifications.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Workspaces/">
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj" />
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Application/Partnr.Workspaces.Application.csproj" />
@@ -25,6 +31,11 @@
     <Project Path="tests/Integrations/Partnr.Integrations.ArchitectureTests/Partnr.Integrations.ArchitectureTests.csproj" />
     <Project Path="tests/Integrations/Partnr.Integrations.IntegrationTests/Partnr.Integrations.IntegrationTests.csproj" />
     <Project Path="tests/Integrations/Partnr.Integrations.UnitTests/Partnr.Integrations.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Notifications/">
+    <Project Path="tests/Notifications/Partnr.Notifications.ArchitectureTests/Partnr.Notifications.ArchitectureTests.csproj" />
+    <Project Path="tests/Notifications/Partnr.Notifications.IntegrationTests/Partnr.Notifications.IntegrationTests.csproj" />
+    <Project Path="tests/Notifications/Partnr.Notifications.UnitTests/Partnr.Notifications.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tests/Workspaces/">
     <Project Path="tests/Workspaces/Partnr.Workspaces.ArchitectureTests/Partnr.Workspaces.ArchitectureTests.csproj" />

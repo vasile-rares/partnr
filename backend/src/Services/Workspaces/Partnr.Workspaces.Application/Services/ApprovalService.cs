@@ -16,7 +16,7 @@ internal sealed class ApprovalService(
     IDeliverableRepository deliverables,
     ProjectAccess projectAccess,
     DeliverableResponseBuilder responses,
-    INotificationWriter notifications,
+    INotificationPublisher notifications,
     WorkspaceAccess access,
     ClientAccess clientAccess,
     CallerAccess callers,

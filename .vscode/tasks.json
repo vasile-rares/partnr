@@ -28,6 +28,19 @@
       "problemMatcher": "$msCompile"
     },
     {
+      "label": "build-notifications",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/backend/src/Services/Notifications/Partnr.Notifications.Api/Partnr.Notifications.Api.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
       "label": "build-gateway",
       "type": "process",
       "command": "dotnet",

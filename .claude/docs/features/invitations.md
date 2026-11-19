@@ -12,7 +12,7 @@ How an invited client gets into a firm's workspace. What they see there is in [p
   - `POST accept` needs a signed-in account **with the invited address** (403 for another address).
   - `POST register` is public: it creates the account with the invited address (409 when one already exists: sign in instead), saves the profile (name, optional phone and company), accepts and signs in.
   - A used, cancelled or expired link answers 409 with the reason. A member of the workspace cannot also be its client, and an account already linked to a card of that workspace cannot be linked again (both 409).
-- **Accepting** links the client card to the account (`Client.LinkTo`), marks the invitation accepted, writes the "invitation accepted" notification for the member who sent it ([notifications.md](notifications.md)) and confirms the account's email (using the emailed link proves the address).
+- **Accepting** links the client card to the account (`Client.LinkTo`), marks the invitation accepted, tells the Notifications service (an `InvitationAccepted` event) so the member who sent it gets a notification ([notifications.md](notifications.md)) and confirms the account's email (using the emailed link proves the address).
 - **A card's details are locked** while an invitation is pending (so it keeps matching the address) and once the client has an account (the name, email, phone and company are then the account's own, and the card shows them). The update request may still send them back unchanged; only a real difference answers 409, and the notes always go through. `ClientResponse` carries `detailsLocked` and the portal status (`NotInvited`, `Invited` with its expiry, `Expired`, `Active`), built by `ClientResponseBuilder`.
 
 ## Web app

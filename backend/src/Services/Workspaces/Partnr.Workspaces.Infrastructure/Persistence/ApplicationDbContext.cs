@@ -30,8 +30,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
 
-    public DbSet<Notification> Notifications => Set<Notification>();
-
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     public DbSet<Message> Messages => Set<Message>();

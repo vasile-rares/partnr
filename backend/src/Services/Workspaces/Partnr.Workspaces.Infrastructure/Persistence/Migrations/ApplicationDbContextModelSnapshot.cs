@@ -434,89 +434,6 @@ namespace Partnr.Workspaces.Infrastructure.Persistence.Migrations
                     b.ToTable("messages", (string)null);
                 });
 
-            modelBuilder.Entity("Partnr.Workspaces.Domain.Entities.Notification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ActorName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid?>("ApprovalRequestId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ClientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeliverableTitle")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("EmailAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("EmailLastError")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("EmailNextAttemptAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EmailSentAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EmailStatus")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("ObsoleteAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ProjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ProjectName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("ReadAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("RecipientUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("WorkspaceName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.HasIndex(new[] { "ApprovalRequestId" }, "IX_notifications_ApprovalRequestId");
-
-                    b.HasIndex(new[] { "EmailNextAttemptAtUtc" }, "IX_notifications_email_due")
-                        .HasFilter("\"EmailStatus\" = 'Pending'");
-
-                    b.HasIndex(new[] { "RecipientUserId", "CreatedAtUtc" }, "IX_notifications_inbox");
-
-                    b.ToTable("notifications", (string)null);
-                });
-
             modelBuilder.Entity("Partnr.Workspaces.Domain.Entities.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1116,21 +1033,6 @@ namespace Partnr.Workspaces.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Partnr.Workspaces.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("Partnr.Workspaces.Infrastructure.Authentication.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("RecipientUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Partnr.Workspaces.Domain.Entities.Workspace", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

@@ -17,7 +17,7 @@ public class ApprovalServiceTests
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeUnitOfWork _unitOfWork = new();
-    private readonly FakeNotificationWriter _notifications = new();
+    private readonly FakeNotificationPublisher _notifications = new();
     private readonly Workspace _workspace;
     private readonly Project _project;
     private readonly ApprovalService _service;

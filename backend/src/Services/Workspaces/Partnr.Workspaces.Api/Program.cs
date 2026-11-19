@@ -3,7 +3,6 @@ using System.Threading.RateLimiting;
 using Partnr.Workspaces.Api;
 using Partnr.Workspaces.Api.Internal;
 using Partnr.Workspaces.Api.Middleware;
-using Partnr.Workspaces.Api.Realtime;
 using Partnr.Workspaces.Application;
 using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure;
@@ -52,11 +51,7 @@ builder.Services.AddRateLimiter(options =>
 // Wolverine looks for handlers in the assembly that called AddWolverine (Infrastructure); the consumers of events live here.
 builder.Services.ConfigureWolverine(wolverine => wolverine.Discovery.IncludeAssembly(typeof(Program).Assembly));
 
-builder.Services.AddSignalR();
 builder.Services.AddGrpc();
-// These replace the do-nothing ones AddInfrastructure leaves.
-builder.Services.AddSingleton<IInboxPublisher, SignalRInboxPublisher>();
-builder.Services.AddSingleton<IConversationPublisher, SignalRConversationPublisher>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -107,7 +102,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapDefaultEndpoints();
-app.MapHub<NotificationsHub>(NotificationsHub.Route);
 app.MapGrpcService<SessionValidationService>();
 
 app.Run();
