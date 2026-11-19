@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using System.Text;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs.ProjectFiles;
@@ -16,6 +17,7 @@ public class ProjectFileServiceTests
     private readonly FakeProjectRepository _projects = new();
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeFileStorage _storage = new();
+    private readonly FakeEventPublisher _events = new();
     private readonly FakeCurrentUser _currentUser;
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly Workspace _workspace;
@@ -30,7 +32,7 @@ public class ProjectFileServiceTests
         _projects.Items.Add(_project);
         _currentUser = new FakeCurrentUser(_me);
 
-        _service = new ProjectFileService(_files, new ProjectAccess(_projects), _storage, new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces), new CallerAccess(new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces)), _unitOfWork);
+        _service = new ProjectFileService(_files, new ProjectAccess(_projects), _storage, _events, new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces), new CallerAccess(new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces)), _unitOfWork);
     }
 
     [Fact]
@@ -64,6 +66,7 @@ public class ProjectFileServiceTests
             _files,
             new ProjectAccess(_projects),
             _storage,
+            _events,
             new WorkspaceAccess(_workspaces, _currentUser),
             new ClientAccess(_projects, _workspaces),
             new CallerAccess(new WorkspaceAccess(_workspaces, _currentUser), new ClientAccess(_projects, _workspaces)),
@@ -251,7 +254,7 @@ public class ProjectFileServiceTests
     }
 
     [Fact]
-    public async Task Delete_ADraft_RemovesTheRowAndTheBytes()
+    public async Task Delete_ADraft_RemovesTheRow_AndSaysTheBytesAreToGo()
     {
         var file = await AddFile("mockups.pdf");
         var saves = _unitOfWork.SaveCount;
@@ -259,7 +262,7 @@ public class ProjectFileServiceTests
         await _service.DeleteAsync(_workspace.Id, _project.Id, file.Id, CancellationToken.None);
 
         Assert.Empty(_files.Items);
-        Assert.Empty(_storage.Objects);
+        Assert.Equal(new ProjectFileRemoved(file.StorageKey), Assert.Single(_events.Published));
         Assert.Equal(saves + 1, _unitOfWork.SaveCount);
     }
 

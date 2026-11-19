@@ -2,20 +2,19 @@ using System.Net;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Util;
-using Partnr.Workspaces.Application.Exceptions;
-using Partnr.Workspaces.Application.Interfaces.Services;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Partnr.Storage.Application.Exceptions;
+using Partnr.Storage.Application.Interfaces.Services;
 
-namespace Partnr.Workspaces.Infrastructure.Storage;
+namespace Partnr.Storage.Infrastructure.Blobs;
 
-internal sealed class S3FileStorage(IAmazonS3 client, IOptions<StorageOptions> options, ILogger<S3FileStorage> logger) : IFileStorage
+internal sealed class S3BlobStore(IAmazonS3 client, IOptions<StorageOptions> options) : IBlobStore
 {
     private readonly StorageOptions _options = options.Value;
     private readonly SemaphoreSlim _bucketGate = new(1, 1);
     private bool _bucketReady;
 
-    public async Task SaveAsync(string key, Stream content, string contentType, CancellationToken cancellationToken)
+    public async Task PutAsync(string key, Stream content, string contentType, CancellationToken cancellationToken)
     {
         await EnsureBucketAsync(cancellationToken);
 
@@ -48,14 +47,10 @@ internal sealed class S3FileStorage(IAmazonS3 client, IOptions<StorageOptions> o
 
     public async Task DeleteAsync(string key, CancellationToken cancellationToken)
     {
-        try
-        {
-            await client.DeleteObjectAsync(_options.Bucket, key, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Could not delete object {Key} from bucket {Bucket}; it stays behind as an orphan.", key, _options.Bucket);
-        }
+        await EnsureBucketAsync(cancellationToken);
+
+        // S3 answers 204 for a key that is not there, so a repeated delete is not an error.
+        await client.DeleteObjectAsync(_options.Bucket, key, cancellationToken);
     }
 
     private async Task EnsureBucketAsync(CancellationToken cancellationToken)

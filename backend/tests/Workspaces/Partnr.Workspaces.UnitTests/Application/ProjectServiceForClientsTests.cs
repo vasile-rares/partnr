@@ -31,7 +31,7 @@ public class ProjectServiceForClientsTests
         _projects = new FakeProjectRepository { Clients = _clients };
         var access = new WorkspaceAccess(_workspaces, _currentUser);
         var clientAccess = new ClientAccess(_projects, _workspaces);
-        _fileService = new ProjectFileService(_files, new ProjectAccess(_projects), _storage, access, clientAccess, new CallerAccess(access, clientAccess), new FakeUnitOfWork());
+        _fileService = new ProjectFileService(_files, new ProjectAccess(_projects), _storage, new FakeEventPublisher(), access, clientAccess, new CallerAccess(access, clientAccess), new FakeUnitOfWork());
         _projectService = new ProjectService(
             _projects,
             new ProjectAccess(_projects),

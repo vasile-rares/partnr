@@ -23,6 +23,12 @@ builder.AddDotnetProject("notifications", "../Services/Notifications/Partnr.Noti
 })
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
+builder.AddDotnetProject("storage", "../Services/Storage/Partnr.Storage.Api/Partnr.Storage.Api.csproj", project =>
+{
+    project.ExcludeLaunchProfile = true;
+})
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+
 builder.AddDotnetProject("gateway", "../Gateway/Partnr.Gateway/Partnr.Gateway.csproj", project =>
 {
     project.ExcludeLaunchProfile = true;

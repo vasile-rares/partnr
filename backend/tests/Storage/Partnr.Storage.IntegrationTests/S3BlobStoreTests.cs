@@ -1,16 +1,16 @@
 using System.Text;
-using Partnr.Workspaces.Application.Exceptions;
-using Partnr.Workspaces.Application.Interfaces.Services;
-using Partnr.Workspaces.Infrastructure;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Partnr.Storage.Application.Exceptions;
+using Partnr.Storage.Application.Interfaces.Services;
+using Partnr.Storage.Infrastructure;
 
-namespace Partnr.Workspaces.IntegrationTests.Storage;
+namespace Partnr.Storage.IntegrationTests;
 
 /// <summary>Checks the real S3 adapter against a throwaway RustFS container.</summary>
-public sealed class S3FileStorageTests : IAsyncLifetime
+public sealed class S3BlobStoreTests : IAsyncLifetime
 {
     private const int S3Port = 9000;
     private const string AccessKey = "test-access";
@@ -31,15 +31,15 @@ public sealed class S3FileStorageTests : IAsyncLifetime
     public Task DisposeAsync() => rustfs.DisposeAsync().AsTask();
 
     [Fact]
-    public async Task SaveThenOpen_ReturnsTheSameBytes_AndCreatesTheBucket()
+    public async Task PutThenOpen_ReturnsTheSameBytes_AndCreatesTheBucket()
     {
-        var storage = BuildStorage();
+        var blobs = BuildBlobs();
         var key = $"{Guid.NewGuid()}/{Guid.NewGuid()}/{Guid.NewGuid()}";
         var bytes = Encoding.UTF8.GetBytes("hello from a deliverable");
 
-        await storage.SaveAsync(key, new MemoryStream(bytes), "application/pdf", CancellationToken.None);
+        await blobs.PutAsync(key, new MemoryStream(bytes), "application/pdf", CancellationToken.None);
 
-        await using var read = await storage.OpenReadAsync(key, CancellationToken.None);
+        await using var read = await blobs.OpenReadAsync(key, CancellationToken.None);
         using var copy = new MemoryStream();
         await read.CopyToAsync(copy);
         Assert.Equal(bytes, copy.ToArray());
@@ -48,14 +48,14 @@ public sealed class S3FileStorageTests : IAsyncLifetime
     [Fact]
     public async Task Open_ABigFile_ReturnsItWhole()
     {
-        var storage = BuildStorage();
+        var blobs = BuildBlobs();
         var key = $"big/{Guid.NewGuid()}";
         var bytes = new byte[8 * 1024 * 1024];
         Random.Shared.NextBytes(bytes);
 
-        await storage.SaveAsync(key, new MemoryStream(bytes), "application/zip", CancellationToken.None);
+        await blobs.PutAsync(key, new MemoryStream(bytes), "application/zip", CancellationToken.None);
 
-        await using var read = await storage.OpenReadAsync(key, CancellationToken.None);
+        await using var read = await blobs.OpenReadAsync(key, CancellationToken.None);
         using var copy = new MemoryStream();
         await read.CopyToAsync(copy);
         Assert.Equal(bytes, copy.ToArray());
@@ -64,41 +64,38 @@ public sealed class S3FileStorageTests : IAsyncLifetime
     [Fact]
     public async Task Open_AMissingKey_ThrowsNotFound()
     {
-        var storage = BuildStorage();
+        var blobs = BuildBlobs();
 
-        await Assert.ThrowsAsync<NotFoundException>(() => storage.OpenReadAsync($"missing/{Guid.NewGuid()}", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => blobs.OpenReadAsync($"missing/{Guid.NewGuid()}", CancellationToken.None));
     }
 
     [Fact]
-    public async Task Delete_RemovesTheObject_AndNeverThrowsForAMissingOne()
+    public async Task Delete_RemovesTheObject_AndIsNotAnErrorForAMissingOne()
     {
-        var storage = BuildStorage();
+        var blobs = BuildBlobs();
         var key = $"to-delete/{Guid.NewGuid()}";
-        await storage.SaveAsync(key, new MemoryStream([1, 2, 3]), "application/zip", CancellationToken.None);
+        await blobs.PutAsync(key, new MemoryStream([1, 2, 3]), "application/zip", CancellationToken.None);
 
-        await storage.DeleteAsync(key, CancellationToken.None);
-        await storage.DeleteAsync(key, CancellationToken.None);
+        await blobs.DeleteAsync(key, CancellationToken.None);
+        await blobs.DeleteAsync(key, CancellationToken.None);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => storage.OpenReadAsync(key, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => blobs.OpenReadAsync(key, CancellationToken.None));
     }
 
     [Fact]
-    public async Task Delete_WhenTheServiceIsUnreachable_DoesNotThrow()
+    public async Task Delete_WhenTheStoreIsUnreachable_Throws_SoTheCallerCanTryAgain()
     {
-        var storage = BuildStorage(serviceUrl: "http://127.0.0.1:1");
+        var blobs = BuildBlobs(serviceUrl: "http://127.0.0.1:1");
 
-        await storage.DeleteAsync("any/key", CancellationToken.None);
+        await Assert.ThrowsAnyAsync<Exception>(() => blobs.DeleteAsync("any/key", CancellationToken.None));
     }
 
-    private IFileStorage BuildStorage(string? serviceUrl = null)
+    private IBlobStore BuildBlobs(string? serviceUrl = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Postgres"] = "Host=unused", // required by AddInfrastructure, never opened here
-                ["Services:Integrations:GrpcAddress"] = "http://localhost:1", // required by AddInfrastructure, never called here
-                ["Email:From"] = "Partnr <no-reply@partnr.test>",
-                ["Email:SmtpHost"] = "unused",
                 ["Storage:ServiceUrl"] = serviceUrl ?? $"http://{rustfs.Hostname}:{rustfs.GetMappedPublicPort(S3Port)}",
                 ["Storage:Bucket"] = "partnr-test",
                 ["Storage:AccessKey"] = AccessKey,
@@ -108,6 +105,6 @@ public sealed class S3FileStorageTests : IAsyncLifetime
             .Build();
 
         var services = new ServiceCollection().AddLogging().AddInfrastructure(configuration);
-        return services.BuildServiceProvider().GetRequiredService<IFileStorage>();
+        return services.BuildServiceProvider().GetRequiredService<IBlobStore>();
     }
 }

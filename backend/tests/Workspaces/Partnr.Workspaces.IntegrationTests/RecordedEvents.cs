@@ -5,13 +5,17 @@ using Partnr.Workspaces.Application.Interfaces.Services;
 namespace Partnr.Workspaces.IntegrationTests;
 
 /// <summary>
-/// What the API said should be emailed (the Notifications service writes the email). Shared by all tests (they run in parallel), so
-/// tests look up events by recipient.
+/// What the API said happened that other services act on (an email to send, bytes to remove). Shared by all tests (they run in
+/// parallel), so tests look events up by recipient or key.
 /// </summary>
-public sealed class RecordedEmailEvents
+public sealed class RecordedEvents
 {
     private readonly ConcurrentQueue<ClientInvited> _invitations = new();
     private readonly ConcurrentQueue<PasswordResetRequested> _resets = new();
+    private readonly ConcurrentQueue<ProjectFileRemoved> _filesRemoved = new();
+
+    public IReadOnlyList<ProjectFileRemoved> FilesRemovedUnder(string keyPrefix) =>
+        _filesRemoved.Where(e => e.StorageKey.StartsWith(keyPrefix, StringComparison.Ordinal)).ToList();
 
     public IReadOnlyList<ClientInvited> InvitationsTo(string email) =>
         _invitations.Where(e => string.Equals(e.RecipientEmail, email, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -29,12 +33,15 @@ public sealed class RecordedEmailEvents
             case PasswordResetRequested reset:
                 _resets.Enqueue(reset);
                 break;
+            case ProjectFileRemoved removed:
+                _filesRemoved.Enqueue(removed);
+                break;
         }
     }
 }
 
-/// <summary>Passes every event on to the real publisher and keeps the ones about emails.</summary>
-internal sealed class RecordingEventPublisher(IEventPublisher inner, RecordedEmailEvents recorded) : IEventPublisher
+/// <summary>Passes every event on to the real publisher and keeps the ones the tests look at.</summary>
+internal sealed class RecordingEventPublisher(IEventPublisher inner, RecordedEvents recorded) : IEventPublisher
 {
     public ValueTask PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
         where TEvent : notnull

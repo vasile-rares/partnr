@@ -69,7 +69,7 @@ public sealed class PasswordResetTests(ApiFactory factory)
         var asked = await factory.CreateClient().PostAsJsonAsync("/api/auth/forgot-password", new { email = nobody });
 
         Assert.Equal(HttpStatusCode.NoContent, asked.StatusCode);
-        Assert.Empty(factory.Emails.ResetsTo(nobody));
+        Assert.Empty(factory.Recorded.ResetsTo(nobody));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class PasswordResetTests(ApiFactory factory)
         var second = await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
         
         Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);
-        Assert.Single(factory.Emails.ResetsTo(email));
+        Assert.Single(factory.Recorded.ResetsTo(email));
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class PasswordResetTests(ApiFactory factory)
         factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { email, password });
 
     private Task<PasswordResetRequested> EmailTo(string address) =>
-        Task.FromResult(Assert.Single(factory.Emails.ResetsTo(address)));
+        Task.FromResult(Assert.Single(factory.Recorded.ResetsTo(address)));
 
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@example.com";
 }

@@ -41,6 +41,19 @@
       "problemMatcher": "$msCompile"
     },
     {
+      "label": "build-storage",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/backend/src/Services/Storage/Partnr.Storage.Api/Partnr.Storage.Api.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
       "label": "build-gateway",
       "type": "process",
       "command": "dotnet",

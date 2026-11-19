@@ -1,3 +1,4 @@
+using Partnr.Contracts.Events;
 using Partnr.Workspaces.Application.Authorization;
 using Partnr.Workspaces.Application.DTOs.ProjectFiles;
 using Partnr.Workspaces.Application.Exceptions;
@@ -13,6 +14,7 @@ internal sealed class ProjectFileService(
     IProjectFileRepository files,
     ProjectAccess projectAccess,
     IFileStorage storage,
+    IEventPublisher events,
     WorkspaceAccess access,
     ClientAccess clientAccess,
     CallerAccess callers,
@@ -136,11 +138,10 @@ internal sealed class ProjectFileService(
 
         ProjectContentRules.EnsureDeletable(file.Status == ProjectFileStatus.Draft);
 
+        // The row goes first and the bytes follow from the event, which Storage keeps retrying: never a row pointing at nothing.
         files.Remove(file);
+        await events.PublishAsync(new ProjectFileRemoved(file.StorageKey), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // After the commit: if this fails the file is only an orphaned object, never a row pointing at nothing.
-        await storage.DeleteAsync(file.StorageKey, CancellationToken.None);
     }
 
     private async Task<FileDownload> OpenAsync(ProjectFile file, CancellationToken cancellationToken) =>

@@ -1,7 +1,5 @@
-using Amazon;
-using Amazon.Runtime;
-using Amazon.S3;
 using Partnr.Contracts.Integrations;
+using Partnr.Contracts.Storage;
 using Partnr.Workspaces.Application.Interfaces.Repositories;
 using Partnr.Workspaces.Application.Interfaces.Services;
 using Partnr.Workspaces.Infrastructure.Authentication;
@@ -15,7 +13,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 
 namespace Partnr.Workspaces.Infrastructure;
 
@@ -56,34 +53,11 @@ public static class DependencyInjection
         services.AddGrpcClient<GoogleConnections.GoogleConnectionsClient>(options => options.Address = new Uri(integrationsAddress));
         services.AddScoped<IGoogleConnectionStatus, GrpcGoogleConnectionStatus>();
 
-        services.AddOptions<StorageOptions>()
-            .Bind(configuration.GetSection(StorageOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-        services.AddSingleton<IAmazonS3>(sp =>
-        {
-            var storage = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
-            var config = new AmazonS3Config
-            {
-                ForcePathStyle = storage.ForcePathStyle,
-                // Newer SDKs add checksums that some S3-compatible services (R2, RustFS) do not accept on every call.
-                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
-            };
-
-            if (string.IsNullOrWhiteSpace(storage.ServiceUrl))
-            {
-                config.RegionEndpoint = RegionEndpoint.GetBySystemName(storage.Region);
-            }
-            else
-            {
-                config.ServiceURL = storage.ServiceUrl;
-                config.AuthenticationRegion = storage.Region;
-            }
-
-            return new AmazonS3Client(new BasicAWSCredentials(storage.AccessKey, storage.SecretKey), config);
-        });
-        services.AddSingleton<IFileStorage, S3FileStorage>();
+        // The bytes of the files belong to the Storage service: this only talks to it, over gRPC.
+        var storageAddress = configuration["Services:Storage:GrpcAddress"]
+            ?? throw new InvalidOperationException("Services:Storage:GrpcAddress is not configured.");
+        services.AddGrpcClient<Files.FilesClient>(options => options.Address = new Uri(storageAddress));
+        services.AddScoped<IFileStorage, GrpcFileStorage>();
 
         return services;
     }

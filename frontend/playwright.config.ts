@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052 / 5053 / 5054 / 5055).
+// Own ports, so the tests never collide with the dev servers (3000 / 5050 / 5051 / 5052 / 5053 / 5054 / 5055 / 5056 / 5057).
 const WEB_PORT = 3100;
 const GATEWAY_PORT = 5150;
 const API_PORT = 5151;
@@ -8,6 +8,8 @@ const API_GRPC_PORT = 5152;
 const INTEGRATIONS_PORT = 5153;
 const INTEGRATIONS_GRPC_PORT = 5154;
 const NOTIFICATIONS_PORT = 5155;
+const STORAGE_PORT = 5156;
+const STORAGE_GRPC_PORT = 5157;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -27,7 +29,7 @@ export default defineConfig({
       // Compiles the API, recreates the test database and runs the API against it (see e2e/start-api.mjs).
       command: "node e2e/start-api.mjs",
       url: `http://localhost:${API_PORT}/api/auth/me`, // answers 401 once the API is up, which counts as ready
-      env: { E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT), E2E_INTEGRATIONS_GRPC_PORT: String(INTEGRATIONS_GRPC_PORT) },
+      env: { E2E_API_PORT: String(API_PORT), E2E_API_GRPC_PORT: String(API_GRPC_PORT), E2E_INTEGRATIONS_GRPC_PORT: String(INTEGRATIONS_GRPC_PORT), E2E_STORAGE_GRPC_PORT: String(STORAGE_GRPC_PORT) },
       reuseExistingServer: false,
       timeout: 240_000,
       stdout: "pipe",
@@ -48,6 +50,16 @@ export default defineConfig({
       command: "node e2e/start-notifications.mjs",
       url: `http://localhost:${NOTIFICATIONS_PORT}/health`,
       env: { E2E_NOTIFICATIONS_PORT: String(NOTIFICATIONS_PORT) },
+      reuseExistingServer: false,
+      timeout: 240_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      // The bytes of the uploaded files (see e2e/start-storage.mjs).
+      command: "node e2e/start-storage.mjs",
+      url: `http://localhost:${STORAGE_PORT}/health`,
+      env: { E2E_STORAGE_PORT: String(STORAGE_PORT), E2E_STORAGE_GRPC_PORT: String(STORAGE_GRPC_PORT) },
       reuseExistingServer: false,
       timeout: 240_000,
       stdout: "pipe",

@@ -352,7 +352,7 @@ public sealed partial class ClientProjectsTests(ApiFactory factory)
 
             var invited = await Http.PostAsync($"/api/workspaces/{WorkspaceId}/clients/{client.Id}/invitation", null);
             Assert.Equal(HttpStatusCode.OK, invited.StatusCode);
-            var token = factory.Emails.InvitationsTo(email)[^1].Token;
+            var token = factory.Recorded.InvitationsTo(email)[^1].Token;
 
             var clientHttp = factory.CreateClient();
             var accepted = await clientHttp.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = name, password = Password });

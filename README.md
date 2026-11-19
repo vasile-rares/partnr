@@ -78,22 +78,24 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
    docker compose up -d
    ```
 
-2. Start the API (http://localhost:5051), and optionally load demo data:
+2. Start the Storage service first (http://localhost:5056, gRPC 5057; the bytes of the uploaded files; it creates its own database `partnr_storage`), then the API (http://localhost:5051), and optionally load demo data (the demo files are saved through Storage, so it has to be running):
 
    ```bash
+   dotnet run --project src/Services/Storage/Partnr.Storage.Api --launch-profile http
    dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http
    # demo data, then exits (safe to run again)
    dotnet run --project src/Services/Workspaces/Partnr.Workspaces.Api --launch-profile http -- --seed
    ```
 
-3. Start the Integrations service (http://localhost:5053; Google: the connection and the sending of meetings; it creates its own database `partnr_integrations`), and the gateway (http://localhost:5050), the only door the frontend talks to, each in its own terminal:
+3. Start the Integrations service (http://localhost:5053; Google: the connection and the sending of meetings; it creates its own database `partnr_integrations`), the Notifications service (http://localhost:5055; the inbox, the emails and the live push; database `partnr_notifications`) and the gateway (http://localhost:5050), the only door the frontend talks to, each in its own terminal:
 
    ```bash
    dotnet run --project src/Services/Integrations/Partnr.Integrations.Api --launch-profile http
+   dotnet run --project src/Services/Notifications/Partnr.Notifications.Api --launch-profile http
    dotnet run --project src/Gateway/Partnr.Gateway --launch-profile http
    ```
 
-   Optional: `aspire run` in `backend/` starts the three with the [Aspire](https://aspire.dev) dashboard (logs, metrics and traces of the backend); it needs the Aspire CLI (`dotnet tool install -g Aspire.Cli`) and replaces steps 2 and 3, except for loading demo data.
+   Optional: `aspire run` in `backend/` starts all of them with the [Aspire](https://aspire.dev) dashboard (logs, metrics and traces of the backend); it needs the Aspire CLI (`dotnet tool install -g Aspire.Cli`) and replaces steps 2 and 3, except for loading demo data.
 
 4. Start the frontend (http://localhost:3000):
 

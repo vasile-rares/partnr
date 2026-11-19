@@ -30,7 +30,7 @@ public sealed class InvitationsTests(ApiFactory factory)
         Assert.NotNull(invited.Portal.ExpiresAtUtc);
         Assert.True(invited.DetailsLocked);
 
-        var sent = Assert.Single(factory.Emails.InvitationsTo(client.Email));
+        var sent = Assert.Single(factory.Recorded.InvitationsTo(client.Email));
         Assert.False(string.IsNullOrEmpty(sent.Token));
     }
 
@@ -246,7 +246,7 @@ public sealed class InvitationsTests(ApiFactory factory)
 
         Assert.Equal(HttpStatusCode.NotFound, invite.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, cancel.StatusCode);
-        Assert.Empty(factory.Emails.InvitationsTo(client.Email));
+        Assert.Empty(factory.Recorded.InvitationsTo(client.Email));
         var seen = await studio.GetFromJsonAsync<ClientResponse>($"/api/workspaces/{workspaceId}/clients/{client.Id}");
         Assert.Equal("NotInvited", seen!.Portal.Status);
     }
@@ -362,11 +362,11 @@ public sealed class InvitationsTests(ApiFactory factory)
 
     private async Task<string> Invite(HttpClient studio, Guid workspaceId, ClientResponse client)
     {
-        var before = factory.Emails.InvitationsTo(client.Email).Count;
+        var before = factory.Recorded.InvitationsTo(client.Email).Count;
         var response = await studio.PostAsync($"/api/workspaces/{workspaceId}/clients/{client.Id}/invitation", null);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var sent = factory.Emails.InvitationsTo(client.Email);
+        var sent = factory.Recorded.InvitationsTo(client.Email);
         Assert.Equal(before + 1, sent.Count);
 
         return sent[^1].Token;

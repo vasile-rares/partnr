@@ -22,7 +22,7 @@ public sealed class ConversationsOverTheBrokerTests(BrokerApiFactory factory) : 
 
         // A conversation needs a client with an account: the invitation is how they get one.
         (await http.PostAsync($"/api/workspaces/{workspace.Id}/clients/{client.Id}/invitation", null)).EnsureSuccessStatusCode();
-        var token = factory.Emails.InvitationsTo(clientEmail)[^1].Token;
+        var token = factory.Recorded.InvitationsTo(clientEmail)[^1].Token;
         var clientHttp = factory.CreateClient();
         (await clientHttp.PostAsJsonAsync($"/api/invitations/{token}/register", new { fullName = "Elena", password = "correct horse" })).EnsureSuccessStatusCode();
         var elena = (await clientHttp.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me"))!;

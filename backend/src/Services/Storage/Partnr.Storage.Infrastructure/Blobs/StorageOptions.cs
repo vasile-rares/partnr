@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Partnr.Workspaces.Infrastructure.Storage;
+namespace Partnr.Storage.Infrastructure.Blobs;
 
-/// <summary>The "Storage" configuration section: any S3-compatible service. Validated at startup, like <c>EmailOptions</c>.</summary>
+/// <summary>The "Storage" configuration section: any S3-compatible service. Validated at startup, so a missing setting fails fast.</summary>
 public sealed class StorageOptions
 {
     public const string SectionName = "Storage";

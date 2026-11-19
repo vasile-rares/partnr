@@ -187,7 +187,8 @@ public sealed class ProjectFilesTests(ApiFactory factory)
 
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync(url)).StatusCode);
-        Assert.False(factory.Files.Contains($"{workspaceId}/{project.Id}/{created.Id}"));
+        // The bytes leave through the event: Storage removes them.
+        Assert.Single(factory.Recorded.FilesRemovedUnder($"{workspaceId}/{project.Id}/{created.Id}"));
     }
 
     [Fact]

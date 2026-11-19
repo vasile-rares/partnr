@@ -36,6 +36,17 @@
       }
     },
     {
+      "name": "Storage",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-storage",
+      "program": "${workspaceFolder}/backend/src/Services/Storage/Partnr.Storage.Api/bin/Debug/net10.0/Partnr.Storage.Api.dll",
+      "cwd": "${workspaceFolder}/backend/src/Services/Storage/Partnr.Storage.Api",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
       "name": "Gateway",
       "type": "coreclr",
       "request": "launch",
@@ -51,7 +62,7 @@
   "compounds": [
     {
       "name": "Full stack",
-      "configurations": ["API", "Integrations", "Notifications", "Gateway"],
+      "configurations": ["API", "Integrations", "Notifications", "Storage", "Gateway"],
       "preLaunchTask": "frontend",
       "stopAll": true
     }

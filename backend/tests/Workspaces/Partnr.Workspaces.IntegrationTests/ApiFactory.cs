@@ -16,7 +16,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17").Build();
 
-    public RecordedEmailEvents Emails { get; } = new();
+    public RecordedEvents Recorded { get; } = new();
 
     public InMemoryFileStorage Files { get; } = new();
 
@@ -54,6 +54,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Postgres", postgres.GetConnectionString());
 
         builder.UseSetting("Services:Integrations:GrpcAddress", "http://localhost:1");
+        builder.UseSetting("Services:Storage:GrpcAddress", "http://localhost:1");
         builder.UseSetting("InternalAuth:SigningKey", InternalTokens.SigningKey);
         builder.ConfigureServices(services =>
         {
@@ -61,7 +62,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddSingleton<IStartupFilter, GatewayEmulatorStartupFilter>();
             var publisher = services.Single(d => d.ServiceType == typeof(IEventPublisher)).ImplementationType!;
             services.Replace(ServiceDescriptor.Scoped<IEventPublisher>(sp =>
-                new RecordingEventPublisher((IEventPublisher)ActivatorUtilities.CreateInstance(sp, publisher), Emails)));
+                new RecordingEventPublisher((IEventPublisher)ActivatorUtilities.CreateInstance(sp, publisher), Recorded)));
             services.Replace(ServiceDescriptor.Singleton<IFileStorage>(Files));
             services.Replace(ServiceDescriptor.Singleton<IGoogleConnectionStatus>(Google));
         });

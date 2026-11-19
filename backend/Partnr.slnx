@@ -18,6 +18,12 @@
     <Project Path="src/Services/Notifications/Partnr.Notifications.Domain/Partnr.Notifications.Domain.csproj" />
     <Project Path="src/Services/Notifications/Partnr.Notifications.Infrastructure/Partnr.Notifications.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Storage/">
+    <Project Path="src/Services/Storage/Partnr.Storage.Api/Partnr.Storage.Api.csproj" />
+    <Project Path="src/Services/Storage/Partnr.Storage.Application/Partnr.Storage.Application.csproj" />
+    <Project Path="src/Services/Storage/Partnr.Storage.Domain/Partnr.Storage.Domain.csproj" />
+    <Project Path="src/Services/Storage/Partnr.Storage.Infrastructure/Partnr.Storage.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Workspaces/">
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj" />
     <Project Path="src/Services/Workspaces/Partnr.Workspaces.Application/Partnr.Workspaces.Application.csproj" />
@@ -36,6 +42,11 @@
     <Project Path="tests/Notifications/Partnr.Notifications.ArchitectureTests/Partnr.Notifications.ArchitectureTests.csproj" />
     <Project Path="tests/Notifications/Partnr.Notifications.IntegrationTests/Partnr.Notifications.IntegrationTests.csproj" />
     <Project Path="tests/Notifications/Partnr.Notifications.UnitTests/Partnr.Notifications.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Storage/">
+    <Project Path="tests/Storage/Partnr.Storage.ArchitectureTests/Partnr.Storage.ArchitectureTests.csproj" />
+    <Project Path="tests/Storage/Partnr.Storage.IntegrationTests/Partnr.Storage.IntegrationTests.csproj" />
+    <Project Path="tests/Storage/Partnr.Storage.UnitTests/Partnr.Storage.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tests/Workspaces/">
     <Project Path="tests/Workspaces/Partnr.Workspaces.ArchitectureTests/Partnr.Workspaces.ArchitectureTests.csproj" />

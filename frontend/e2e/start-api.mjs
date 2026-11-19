@@ -23,9 +23,8 @@ const TEST_DATABASE = "partnr_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";
 const apiGrpcPort = process.env.E2E_API_GRPC_PORT ?? "5152";
 const integrationsGrpcPort = process.env.E2E_INTEGRATIONS_GRPC_PORT ?? "5154";
+const storageGrpcPort = process.env.E2E_STORAGE_GRPC_PORT ?? "5157";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://localhost:8025";
-const storageUrl = process.env.E2E_STORAGE_URL ?? "http://localhost:9000";
-const storageBucket = process.env.E2E_STORAGE_BUCKET ?? "partnr-e2e";
 
 /** The dev connection string: user secrets first (that is where a local Postgres password lives), then appsettings. */
 function devConnectionString() {
@@ -79,18 +78,6 @@ try {
   process.exit(1);
 }
 
-// Uploaded files go to the S3-compatible storage (RustFS in docker-compose.yml). Same idea: say so up front.
-try {
-  // Any answer under 500 means it is up: without a signature the S3 endpoint refuses with 403.
-  const response = await fetch(storageUrl);
-  if (response.status >= 500) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-} catch {
-  console.error(`The file storage is not reachable at ${storageUrl}. Start it with "docker compose up -d" in backend/ (the e2e tests upload and download files).`);
-  process.exit(1);
-}
-
 // Events go through RabbitMQ (the tests use their own queues on the development broker, see Events__Prefix). Same idea: say so up front.
 const rabbitPort = Number(process.env.E2E_RABBITMQ_PORT ?? "5672");
 try {
@@ -109,9 +96,6 @@ try {
 
 const env = {
   ...process.env,
-  // Its own bucket, created on first use, so the tests never touch the files of the dev one.
-  Storage__ServiceUrl: storageUrl,
-  Storage__Bucket: storageBucket,
   ArtifactsPath: artifactsPath,
   // Own exchanges and queues, so the tests never share them with a development API on the same broker.
   Events__Prefix: "e2e.",
@@ -124,6 +108,8 @@ const env = {
   App__FrontendUrl: process.env.E2E_FRONTEND_URL ?? "http://localhost:3100",
   // Google belongs to the Integrations service (see e2e/start-integrations.mjs): the API asks it over gRPC.
   Services__Integrations__GrpcAddress: `http://localhost:${integrationsGrpcPort}`,
+  // The bytes of the files belong to the Storage service (see e2e/start-storage.mjs): the API asks it over gRPC.
+  Services__Storage__GrpcAddress: `http://localhost:${storageGrpcPort}`,
 };
 
 function dotnet(args, { cwd = backendDir } = {}) {

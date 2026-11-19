@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option csharp_namespace = "Partnr.Contracts.Storage";
+
+package partnr.storage.v1;
+
+// Served by Storage, which holds the bytes of every file (the rules about who may see one stay with the service that owns the
+// file). The bytes travel in chunks, so a file is never one message. A key is chosen by the caller and holds ids only.
+service Files {
+  // The first message is the header, every other one a chunk. Saving under a key that exists replaces it.
+  rpc Save (stream SaveRequest) returns (SaveReply);
+  rpc Read (ReadRequest) returns (stream ReadReply);
+  // Best effort for a caller that just failed to save its own row; the normal way to remove a file is the ProjectFileRemoved event.
+  rpc Delete (DeleteRequest) returns (DeleteReply);
+}
+
+message SaveRequest {
+  oneof part {
+    SaveHeader header = 1;
+    bytes chunk = 2;
+  }
+}
+
+message SaveHeader {
+  string key = 1;
+  string content_type = 2;
+}
+
+message SaveReply {
+  int64 size_bytes = 1;
+}
+
+message ReadRequest {
+  string key = 1;
+}
+
+message ReadReply {
+  bytes chunk = 1;
+}
+
+message DeleteRequest {
+  string key = 1;
+}
+
+message DeleteReply {}
