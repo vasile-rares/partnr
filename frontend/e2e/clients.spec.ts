@@ -94,7 +94,9 @@ test("a client is edited, archived and restored, and the list follows", async ({
   await expect(page.getByText("This client is archived")).toBeVisible();
   await page.keyboard.press("Escape");
   await breadcrumb(page).getByRole("link", { name: "Clients" }).click();
-  await expect(page.getByText("No active clients")).toBeVisible();
+  // The other client is still active; the archived one is gone from this list.
+  await expect(page.getByRole("row", { name: /First/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Acme International/ })).toHaveCount(0);
   await page.getByRole("tab", { name: /Archived/ }).click();
   await expect(page).toHaveURL(`/w/${workspace.id}/clients?archived=1`);
   await expect(page.getByRole("row", { name: /Acme International/ })).toContainText("Archived");
