@@ -67,16 +67,6 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "apphost",
-      "type": "process",
-      "command": "aspire",
-      "args": ["run"],
-      "options": { "cwd": "${workspaceFolder}/backend" },
-      "isBackground": true,
-      "problemMatcher": [],
-      "presentation": { "panel": "dedicated" }
-    },
-    {
       "label": "frontend",
       "type": "shell",
       "command": "pnpm dev",
@@ -105,7 +95,7 @@
       "label": "db-up",
       "type": "process",
       "command": "docker",
-      "args": ["compose", "up", "-d"],
+      "args": ["compose", "up", "-d", "--wait"],
       "options": { "cwd": "${workspaceFolder}/backend" },
       "problemMatcher": []
     },

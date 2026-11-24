@@ -51,7 +51,7 @@ Smaller ideas (CRM, AI-assisted updates, stage templates, a public API) are left
 | -------- | ---------------------------------------------------------------------------------------------------- |
 | Backend  | .NET 10, ASP.NET Core Identity, EF Core, PostgreSQL 17, Clean Architecture (see [backend/CLAUDE.md](backend/CLAUDE.md)) |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4, [shadcn/ui](https://ui.shadcn.com) on Base UI         |
-| Local services | Docker Compose: Postgres, [Mailpit](https://mailpit.axllent.org) (email catcher), [RustFS](https://github.com/rustfs/rustfs) (S3-compatible storage), [RabbitMQ](https://www.rabbitmq.com) (events between services) |
+| Local services | Docker Compose: Postgres, [Mailpit](https://mailpit.axllent.org) (email catcher), [RustFS](https://github.com/rustfs/rustfs) (S3-compatible storage), [RabbitMQ](https://www.rabbitmq.com) (events between services), the [Aspire dashboard](https://aspire.dev) standalone (logs, metrics and traces) |
 | Tests    | xUnit (unit, integration with Testcontainers, architecture), Playwright (end to end)                  |
 
 ```
@@ -71,12 +71,15 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
 
 ### Run it locally
 
-1. Start Postgres, Mailpit, RustFS and RabbitMQ:
+1. Start Postgres, Mailpit, RustFS, RabbitMQ and the telemetry dashboard (the settings come from `backend/.env`; copy `.env.example` to `.env` first, or skip it to use the same defaults):
 
    ```bash
    cd backend
-   docker compose up -d
+   cp .env.example .env
+   docker compose up -d --wait
    ```
+
+   All ports are bound to `127.0.0.1` only. `--wait` returns once every service is healthy.
 
 2. Start the Storage service first (http://localhost:5056, gRPC 5057; the bytes of the uploaded files; it creates its own database `partnr_storage`), then the API (http://localhost:5051), and optionally load demo data (the demo files are saved through Storage, so it has to be running):
 
@@ -95,7 +98,7 @@ The browser never calls the API directly: Next.js rewrites `/api/*` to the backe
    dotnet run --project src/Partnr.Gateway --launch-profile http
    ```
 
-   Optional: `aspire run` in `backend/` starts all of them with the [Aspire](https://aspire.dev) dashboard (logs, metrics and traces of the backend); it needs the Aspire CLI (`dotnet tool install -g Aspire.Cli`) and replaces steps 2 and 3, except for loading demo data.
+   Optional: the telemetry dashboard (logs, metrics and traces of the backend) runs from `docker compose` at http://localhost:18888; set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` in the terminal of each service to send its telemetry there (the F5 profiles in VS Code already do).
 
 4. Start the frontend (http://localhost:3000):
 

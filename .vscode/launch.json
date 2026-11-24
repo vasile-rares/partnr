@@ -10,6 +10,7 @@
       "cwd": "${workspaceFolder}/backend/src/Services/Core/Partnr.Core.Api",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
         "Seed__ReseedOnChange": "true"
       }
     },
@@ -21,7 +22,8 @@
       "program": "${workspaceFolder}/backend/src/Services/Integrations/Partnr.Integrations.Api/bin/Debug/net10.0/Partnr.Integrations.Api.dll",
       "cwd": "${workspaceFolder}/backend/src/Services/Integrations/Partnr.Integrations.Api",
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
       }
     },
     {
@@ -32,7 +34,8 @@
       "program": "${workspaceFolder}/backend/src/Services/Notifications/Partnr.Notifications.Api/bin/Debug/net10.0/Partnr.Notifications.Api.dll",
       "cwd": "${workspaceFolder}/backend/src/Services/Notifications/Partnr.Notifications.Api",
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
       }
     },
     {
@@ -43,7 +46,8 @@
       "program": "${workspaceFolder}/backend/src/Services/Storage/Partnr.Storage.Api/bin/Debug/net10.0/Partnr.Storage.Api.dll",
       "cwd": "${workspaceFolder}/backend/src/Services/Storage/Partnr.Storage.Api",
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
       }
     },
     {
@@ -55,6 +59,7 @@
       "cwd": "${workspaceFolder}/backend/src/Partnr.Gateway",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
         "ASPNETCORE_URLS": "http://localhost:5050"
       }
     }

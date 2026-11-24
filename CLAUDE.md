@@ -90,7 +90,7 @@ Project rules in this file take precedence over any skill. A skill never authori
 ## VS Code (`.vscode/`)
 
 - Launch: **API**, **Integrations**, **Notifications**, **Storage** and **Gateway** (debugger) and **Full stack** (compound, F5: runs the `frontend` task, plain `pnpm dev` in its own terminal, then the API, the Integrations service, the Notifications service, the Storage service and the gateway under the debugger). The frontend is not debugged from VS Code and keeps running when the API session stops.
-- Tasks: `frontend`, `build-api`, `build-integrations`, `build-notifications`, `build-storage`, `build-gateway`, `apphost` (the optional Aspire dashboard run, see `backend/CLAUDE.md`), `test` (default), `db-up`, `db-migrate`, `db-seed`. The `db-*` tasks are not tied to F5.
+- Tasks: `frontend`, `build-api`, `build-integrations`, `build-notifications`, `build-storage`, `build-gateway`, `test` (default), `db-up`, `db-migrate`, `db-seed`. The `db-*` tasks are not tied to F5.
 
 ## Prerequisites
 

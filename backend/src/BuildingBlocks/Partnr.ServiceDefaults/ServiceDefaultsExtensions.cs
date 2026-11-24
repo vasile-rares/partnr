@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace Partnr.ServiceDefaults;
@@ -23,6 +24,8 @@ public static class ServiceDefaultsExtensions
         });
 
         builder.Services.AddOpenTelemetry()
+            // Without a name the dashboard lists every service as "unknown_service:<process>". OTEL_SERVICE_NAME still overrides it.
+            .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
@@ -35,7 +38,7 @@ public static class ServiceDefaultsExtensions
                 .AddSource("Npgsql"));
 
         // Without a collector the telemetry stays in the process: the exporter is only on when OTEL_EXPORTER_OTLP_ENDPOINT is set
-        // (the Aspire dashboard sets it for the projects it starts).
+        // (the F5 profiles set it, pointing at the dashboard in docker-compose.yml).
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
         {
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
