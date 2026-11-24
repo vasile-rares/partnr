@@ -6,8 +6,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build-api",
-      "program": "${workspaceFolder}/backend/src/Services/Workspaces/Partnr.Workspaces.Api/bin/Debug/net10.0/Partnr.Workspaces.Api.dll",
-      "cwd": "${workspaceFolder}/backend/src/Services/Workspaces/Partnr.Workspaces.Api",
+      "program": "${workspaceFolder}/backend/src/Services/Core/Partnr.Core.Api/bin/Debug/net10.0/Partnr.Core.Api.dll",
+      "cwd": "${workspaceFolder}/backend/src/Services/Core/Partnr.Core.Api",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "Seed__ReseedOnChange": "true"
@@ -51,8 +51,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build-gateway",
-      "program": "${workspaceFolder}/backend/src/Gateway/Partnr.Gateway/bin/Debug/net10.0/Partnr.Gateway.dll",
-      "cwd": "${workspaceFolder}/backend/src/Gateway/Partnr.Gateway",
+      "program": "${workspaceFolder}/backend/src/Partnr.Gateway/bin/Debug/net10.0/Partnr.Gateway.dll",
+      "cwd": "${workspaceFolder}/backend/src/Partnr.Gateway",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:5050"

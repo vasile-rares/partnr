@@ -7,7 +7,7 @@
       "command": "dotnet",
       "args": [
         "build",
-        "${workspaceFolder}/backend/src/Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj",
+        "${workspaceFolder}/backend/src/Services/Core/Partnr.Core.Api/Partnr.Core.Api.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
@@ -59,7 +59,7 @@
       "command": "dotnet",
       "args": [
         "build",
-        "${workspaceFolder}/backend/src/Gateway/Partnr.Gateway/Partnr.Gateway.csproj",
+        "${workspaceFolder}/backend/src/Partnr.Gateway/Partnr.Gateway.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
@@ -118,9 +118,9 @@
         "database",
         "update",
         "--project",
-        "src/Services/Workspaces/Partnr.Workspaces.Infrastructure",
+        "src/Services/Core/Partnr.Core.Infrastructure",
         "--startup-project",
-        "src/Services/Workspaces/Partnr.Workspaces.Api"
+        "src/Services/Core/Partnr.Core.Api"
       ],
       "options": { "cwd": "${workspaceFolder}/backend" },
       "problemMatcher": []
@@ -129,7 +129,7 @@
       "label": "db-seed",
       "type": "process",
       "command": "dotnet",
-      "args": ["run", "--project", "src/Services/Workspaces/Partnr.Workspaces.Api", "--launch-profile", "http", "--", "--seed"],
+      "args": ["run", "--project", "src/Services/Core/Partnr.Core.Api", "--launch-profile", "http", "--", "--seed"],
       "options": { "cwd": "${workspaceFolder}/backend" },
       "problemMatcher": []
     }

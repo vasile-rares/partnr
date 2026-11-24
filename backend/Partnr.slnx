@@ -3,14 +3,8 @@
     <Project Path="src/BuildingBlocks/Partnr.Contracts/Partnr.Contracts.csproj" />
     <Project Path="src/BuildingBlocks/Partnr.ServiceDefaults/Partnr.ServiceDefaults.csproj" />
   </Folder>
-  <Folder Name="/src/Gateway/">
-    <Project Path="src/Gateway/Partnr.Gateway/Partnr.Gateway.csproj" />
-  </Folder>
-  <Folder Name="/src/Services/Identity/">
-    <Project Path="src/Services/Identity/Partnr.Identity.Api/Partnr.Identity.Api.csproj" />
-    <Project Path="src/Services/Identity/Partnr.Identity.Application/Partnr.Identity.Application.csproj" />
-    <Project Path="src/Services/Identity/Partnr.Identity.Domain/Partnr.Identity.Domain.csproj" />
-    <Project Path="src/Services/Identity/Partnr.Identity.Infrastructure/Partnr.Identity.Infrastructure.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/Partnr.Gateway/Partnr.Gateway.csproj" />
   </Folder>
   <Folder Name="/src/Services/Integrations/">
     <Project Path="src/Services/Integrations/Partnr.Integrations.Api/Partnr.Integrations.Api.csproj" />
@@ -30,19 +24,14 @@
     <Project Path="src/Services/Storage/Partnr.Storage.Domain/Partnr.Storage.Domain.csproj" />
     <Project Path="src/Services/Storage/Partnr.Storage.Infrastructure/Partnr.Storage.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/Services/Workspaces/">
-    <Project Path="src/Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj" />
-    <Project Path="src/Services/Workspaces/Partnr.Workspaces.Application/Partnr.Workspaces.Application.csproj" />
-    <Project Path="src/Services/Workspaces/Partnr.Workspaces.Domain/Partnr.Workspaces.Domain.csproj" />
-    <Project Path="src/Services/Workspaces/Partnr.Workspaces.Infrastructure/Partnr.Workspaces.Infrastructure.csproj" />
+  <Folder Name="/src/Services/Core/">
+    <Project Path="src/Services/Core/Partnr.Core.Api/Partnr.Core.Api.csproj" />
+    <Project Path="src/Services/Core/Partnr.Core.Application/Partnr.Core.Application.csproj" />
+    <Project Path="src/Services/Core/Partnr.Core.Domain/Partnr.Core.Domain.csproj" />
+    <Project Path="src/Services/Core/Partnr.Core.Infrastructure/Partnr.Core.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/Gateway/">
     <Project Path="tests/Gateway/Partnr.Gateway.Tests/Partnr.Gateway.Tests.csproj" />
-  </Folder>
-  <Folder Name="/tests/Identity/">
-    <Project Path="tests/Identity/Partnr.Identity.ArchitectureTests/Partnr.Identity.ArchitectureTests.csproj" />
-    <Project Path="tests/Identity/Partnr.Identity.IntegrationTests/Partnr.Identity.IntegrationTests.csproj" />
-    <Project Path="tests/Identity/Partnr.Identity.UnitTests/Partnr.Identity.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tests/Integrations/">
     <Project Path="tests/Integrations/Partnr.Integrations.ArchitectureTests/Partnr.Integrations.ArchitectureTests.csproj" />
@@ -59,9 +48,9 @@
     <Project Path="tests/Storage/Partnr.Storage.IntegrationTests/Partnr.Storage.IntegrationTests.csproj" />
     <Project Path="tests/Storage/Partnr.Storage.UnitTests/Partnr.Storage.UnitTests.csproj" />
   </Folder>
-  <Folder Name="/tests/Workspaces/">
-    <Project Path="tests/Workspaces/Partnr.Workspaces.ArchitectureTests/Partnr.Workspaces.ArchitectureTests.csproj" />
-    <Project Path="tests/Workspaces/Partnr.Workspaces.IntegrationTests/Partnr.Workspaces.IntegrationTests.csproj" />
-    <Project Path="tests/Workspaces/Partnr.Workspaces.UnitTests/Partnr.Workspaces.UnitTests.csproj" />
+  <Folder Name="/tests/Core/">
+    <Project Path="tests/Core/Partnr.Core.ArchitectureTests/Partnr.Core.ArchitectureTests.csproj" />
+    <Project Path="tests/Core/Partnr.Core.IntegrationTests/Partnr.Core.IntegrationTests.csproj" />
+    <Project Path="tests/Core/Partnr.Core.UnitTests/Partnr.Core.UnitTests.csproj" />
   </Folder>
 </Solution>

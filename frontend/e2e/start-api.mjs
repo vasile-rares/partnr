@@ -14,10 +14,10 @@ import { fileURLToPath } from "node:url";
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const backendDir = path.resolve(frontendDir, "..", "backend");
-const apiProject = path.join(backendDir, "src", "Services", "Workspaces", "Partnr.Workspaces.Api");
-const infrastructureProject = path.join(backendDir, "src", "Services", "Workspaces", "Partnr.Workspaces.Infrastructure");
+const apiProject = path.join(backendDir, "src", "Services", "Core", "Partnr.Core.Api");
+const infrastructureProject = path.join(backendDir, "src", "Services", "Core", "Partnr.Core.Infrastructure");
 const artifactsPath = path.join(frontendDir, "e2e", ".artifacts");
-const apiDll = path.join(artifactsPath, "bin", "Partnr.Workspaces.Api", "debug", "Partnr.Workspaces.Api.dll");
+const apiDll = path.join(artifactsPath, "bin", "Partnr.Core.Api", "debug", "Partnr.Core.Api.dll");
 
 const TEST_DATABASE = "partnr_e2e";
 const apiPort = process.env.E2E_API_PORT ?? "5151";

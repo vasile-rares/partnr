@@ -14,7 +14,7 @@ internal static class GatewayHost
     public static WebApplicationFactory<Program> For(string apiAddress, ISessionValidator? sessions = null, string? integrationsAddress = null, string? notificationsAddress = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ReverseProxy:Clusters:workspaces:Destinations:api:Address", apiAddress);
+            builder.UseSetting("ReverseProxy:Clusters:core:Destinations:api:Address", apiAddress);
             builder.UseSetting("InternalAuth:SigningKey", SigningKey);
             builder.UseSetting("ReverseProxy:Clusters:integrations:Destinations:api:Address", integrationsAddress ?? apiAddress);
             builder.UseSetting("ReverseProxy:Clusters:notifications:Destinations:api:Address", notificationsAddress ?? apiAddress);

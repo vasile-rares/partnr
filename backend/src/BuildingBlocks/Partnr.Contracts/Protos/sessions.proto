@@ -4,7 +4,7 @@ option csharp_namespace = "Partnr.Contracts.Sessions";
 
 package partnr.sessions.v1;
 
-// Served by whoever owns the accounts and the session cookie (the Workspaces monolith for now, Identity later).
+// Served by whoever owns the accounts and the session cookie (the Core service).
 // The gateway asks on every request that carries a session cookie.
 service SessionValidation {
   // The browser's Cookie header travels as the call's "cookie" metadata (an HTTP/2 header), so the server validates it

@@ -5,7 +5,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // Each project keeps its own ports (Kestrel endpoints in its settings), so Aspire neither proxies nor reassigns them. Without the
 // launch profile there is no Development environment either, and with it the development settings (connection strings, keys) are not read.
-builder.AddDotnetProject("workspaces", "../Services/Workspaces/Partnr.Workspaces.Api/Partnr.Workspaces.Api.csproj", project =>
+builder.AddDotnetProject("core", "../Services/Core/Partnr.Core.Api/Partnr.Core.Api.csproj", project =>
 {
     project.ExcludeLaunchProfile = true;
 })
@@ -29,7 +29,7 @@ builder.AddDotnetProject("storage", "../Services/Storage/Partnr.Storage.Api/Part
 })
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
-builder.AddDotnetProject("gateway", "../Gateway/Partnr.Gateway/Partnr.Gateway.csproj", project =>
+builder.AddDotnetProject("gateway", "../Partnr.Gateway/Partnr.Gateway.csproj", project =>
 {
     project.ExcludeLaunchProfile = true;
 })

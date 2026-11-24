@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const backendDir = path.resolve(frontendDir, "..", "backend");
-const workspacesApiProject = path.join(backendDir, "src", "Services", "Workspaces", "Partnr.Workspaces.Api");
+const coreApiProject = path.join(backendDir, "src", "Services", "Core", "Partnr.Core.Api");
 const apiProject = path.join(backendDir, "src", "Services", "Notifications", "Partnr.Notifications.Api");
 const infrastructureProject = path.join(backendDir, "src", "Services", "Notifications", "Partnr.Notifications.Infrastructure");
 const artifactsPath = path.join(frontendDir, "e2e", ".artifacts");
@@ -21,21 +21,21 @@ const TEST_DATABASE = "partnr_notifications_e2e";
 const httpPort = process.env.E2E_NOTIFICATIONS_PORT ?? "5155";
 const frontendUrl = process.env.E2E_FRONTEND_URL ?? "http://localhost:3100";
 
-/** The Postgres credentials of the dev setup live with the Workspaces API (user secrets first, then appsettings). */
+/** The Postgres credentials of the dev setup live with the Core API (user secrets first, then appsettings). */
 function devConnectionString() {
-  const secrets = spawnSync("dotnet", ["user-secrets", "list", "--project", workspacesApiProject], { encoding: "utf8" });
+  const secrets = spawnSync("dotnet", ["user-secrets", "list", "--project", coreApiProject], { encoding: "utf8" });
   const fromSecrets = secrets.stdout?.match(/^ConnectionStrings:Postgres = (.+)$/m)?.[1];
   if (fromSecrets) {
     return fromSecrets.trim();
   }
 
-  const settings = JSON.parse(readFileSync(path.join(workspacesApiProject, "appsettings.Development.json"), "utf8"));
+  const settings = JSON.parse(readFileSync(path.join(coreApiProject, "appsettings.Development.json"), "utf8"));
   const fromSettings = settings.ConnectionStrings?.Postgres;
   if (fromSettings) {
     return fromSettings;
   }
 
-  throw new Error("No dev connection string found (user secrets or appsettings.Development.json of the Workspaces API).");
+  throw new Error("No dev connection string found (user secrets or appsettings.Development.json of the Core API).");
 }
 
 const databaseOf = (connectionString) => connectionString.match(/(?:^|;)\s*Database=([^;]*)/i)?.[1]?.trim();

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const backendDir = path.resolve(frontendDir, "..", "backend");
-const gatewayProject = path.join(backendDir, "src", "Gateway", "Partnr.Gateway");
+const gatewayProject = path.join(backendDir, "src", "Partnr.Gateway");
 const artifactsPath = path.join(frontendDir, "e2e", ".artifacts");
 const gatewayDll = path.join(artifactsPath, "bin", "Partnr.Gateway", "debug", "Partnr.Gateway.dll");
 
@@ -23,8 +23,8 @@ const env = {
   ArtifactsPath: artifactsPath,
   ASPNETCORE_ENVIRONMENT: "Development",
   ASPNETCORE_URLS: `http://localhost:${gatewayPort}`,
-  ReverseProxy__Clusters__workspaces__Destinations__api__Address: `http://localhost:${apiPort}`,
-  Services__Workspaces__GrpcAddress: `http://localhost:${apiGrpcPort}`,
+  ReverseProxy__Clusters__core__Destinations__api__Address: `http://localhost:${apiPort}`,
+  Services__Core__GrpcAddress: `http://localhost:${apiGrpcPort}`,
   ReverseProxy__Clusters__integrations__Destinations__api__Address: `http://localhost:${integrationsPort}`,
   ReverseProxy__Clusters__notifications__Destinations__api__Address: `http://localhost:${notificationsPort}`,
 };
