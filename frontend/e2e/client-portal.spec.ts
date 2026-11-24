@@ -311,7 +311,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
 
   // The home page puts the open question first and leads straight to the tab that answers it.
   await page.goto(`/w/${workspace.id}`);
-  await expect(page.getByText("Welcome back, Elena. Here's where things stand with Studio Pop.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Welcome back, Elena. Here's where things stand with Studio Pop.")).toBeVisible();
   const waitingForYou = page.getByRole("region", { name: "Waiting for you" });
   await expect(waitingForYou.getByRole("listitem")).toHaveCount(1);
   await expect(waitingForYou).toContainText("Logo");

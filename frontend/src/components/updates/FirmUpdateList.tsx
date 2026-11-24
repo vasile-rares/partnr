@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendJson } from "@/lib/api/client";
+import { toastDone } from "@/lib/toast";
 import { formatDate } from "@/lib/format";
 import type { Project } from "@/lib/projects/types";
 import type { ProjectUpdate } from "@/lib/updates/types";
@@ -53,6 +54,7 @@ export function FirmUpdateList({ workspaceId, project, updates, isOwner }: Props
       const result = await sendJson(method, `${base}${path}`, body);
       if (result.ok) {
         onDone?.();
+        toastDone("Update", method, path);
         router.refresh();
       } else {
         setMessage(result.message);

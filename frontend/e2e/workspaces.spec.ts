@@ -69,3 +69,17 @@ test("the owner renames the workspace and the new name shows everywhere", async 
   await expect(page.getByRole("status").filter({ hasText: "Name saved." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Studio Pop SRL" })).toBeVisible();
 });
+
+test("the skip link is the first stop of the keyboard and moves past the sidebar to the page", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio Pop");
+  await signInAt(page, user, `/w/${workspace.id}`);
+
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Skip to content" });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeVisible();
+
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("main")).toBeFocused();
+});

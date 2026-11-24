@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendJson } from "@/lib/api/client";
+import { toastDone } from "@/lib/toast";
 import type { Deliverable } from "@/lib/deliverables/types";
 import { formatDate } from "@/lib/format";
 import type { Project } from "@/lib/projects/types";
@@ -57,6 +58,7 @@ export function FirmDeliverableList({ workspaceId, project, deliverables, isOwne
       const result = await sendJson(method, `${base}${path}`, body);
       if (result.ok) {
         onDone?.();
+        toastDone("Deliverable", method, path);
         router.refresh();
       } else {
         setMessage(result.message);

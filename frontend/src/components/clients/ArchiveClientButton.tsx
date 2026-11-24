@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState } from "react";
+import { toast } from "sonner";
 import { FormError } from "@/components/forms/FormMessage";
 import { Button } from "@/components/ui/button";
 import { sendJson } from "@/lib/api/client";
@@ -18,6 +19,7 @@ export function ArchiveClientButton({ workspaceId, client }: { workspaceId: stri
     const result = await sendJson<Client>("POST", `/api/workspaces/${workspaceId}/clients/${client.id}/${action}`);
 
     if (result.ok) {
+      toast.success(archived ? "Client restored" : "Client archived");
       router.refresh();
       return {};
     }

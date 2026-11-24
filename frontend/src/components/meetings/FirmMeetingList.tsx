@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendJson } from "@/lib/api/client";
+import { toastDone } from "@/lib/toast";
 import { durationLabel, durationOf } from "@/lib/meetings/time";
 import type { Meeting } from "@/lib/meetings/types";
 
@@ -55,6 +56,7 @@ export function FirmMeetingList({ workspaceId, meetings, clients, projects, now,
       const result = await sendJson("POST", `${base}/${path}`);
       if (result.ok) {
         onDone?.();
+        toastDone("Meeting", "POST", path);
         router.refresh();
       } else {
         setMessage(result.message);

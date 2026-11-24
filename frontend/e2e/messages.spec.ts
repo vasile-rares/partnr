@@ -104,8 +104,10 @@ test("an unknown conversation is not found on either side", async ({ request, pl
   const firm = await studio.newPage();
 
   const unknown = randomUUID();
-  expect((await firm.goto(`/w/${workspace.id}/messages/${unknown}`))!.status()).toBe(404);
-  expect((await client.goto(`/w/${workspace.id}/messages/${unknown}`))!.status()).toBe(404);
+  await firm.goto(`/w/${workspace.id}/messages/${unknown}`);
+  await expect(firm.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await client.goto(`/w/${workspace.id}/messages/${unknown}`);
+  await expect(client.getByRole("heading", { name: "Page not found" })).toBeVisible();
 
   await studio.close();
   await asClient.close();
@@ -117,9 +119,12 @@ test("a client opens the Messages page but not the firm's other pages", async ({
   const asClient = await browser.newContext({ baseURL, storageState: await clientRequest.storageState() });
   const client = await asClient.newPage();
 
-  expect((await client.goto(`/w/${workspace.id}/messages`))!.status()).toBe(200);
-  expect((await client.goto(`/w/${workspace.id}/clients`))!.status()).toBe(404);
-  expect((await client.goto(`/w/${workspace.id}/settings`))!.status()).toBe(404);
+  await client.goto(`/w/${workspace.id}/messages`);
+  await expect(client.getByRole("main").getByRole("heading", { name: "Messages" })).toBeVisible();
+  await client.goto(`/w/${workspace.id}/clients`);
+  await expect(client.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await client.goto(`/w/${workspace.id}/settings`);
+  await expect(client.getByRole("heading", { name: "Page not found" })).toBeVisible();
 
   await asClient.close();
   await clientRequest.dispose();

@@ -22,6 +22,12 @@ export async function AppShell({ context, children }: { context: ShellContext; c
   // The notifications provider is here, not in `Page`: a layout stays mounted while the pages change, so the hub connection survives navigation.
   return (
     <NotificationsProvider>
+      <a
+        href="#main-content"
+        className="skip-link sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-background focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Skip to content
+      </a>
       <SidebarProvider defaultOpen={cookieStore.get(SIDEBAR_COOKIE)?.value !== "false"}>
         <AppSidebar
           context={context}
@@ -29,7 +35,9 @@ export async function AppShell({ context, children }: { context: ShellContext; c
           workspaces={workspaces.map(({ id, name }) => ({ id, name }))}
           clientOf={clientOf}
         />
-        <SidebarInset>{children}</SidebarInset>
+        <SidebarInset id="main-content" tabIndex={-1} className="focus-visible:outline-none">
+          {children}
+        </SidebarInset>
       </SidebarProvider>
     </NotificationsProvider>
   );

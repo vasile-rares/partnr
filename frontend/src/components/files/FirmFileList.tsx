@@ -24,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sendForm, sendJson } from "@/lib/api/client";
+import { toast } from "sonner";
+import { toastDone } from "@/lib/toast";
 import { MAX_FILE_BYTES, type ProjectFile } from "@/lib/files/types";
 import { formatDate, formatFileSize } from "@/lib/format";
 import type { Project } from "@/lib/projects/types";
@@ -58,6 +60,7 @@ export function FirmFileList({ workspaceId, project, files, isOwner }: Props) {
       const result = await sendJson(method, `${base}${path}`, body);
       if (result.ok) {
         onDone?.();
+        toastDone("File", method, path);
         router.refresh();
       } else {
         setMessage(result.message);
@@ -77,6 +80,7 @@ export function FirmFileList({ workspaceId, project, files, isOwner }: Props) {
       const result = await sendForm(base, form);
       if (result.ok) {
         setUploading(false);
+        toast.success("File uploaded");
         router.refresh();
       } else {
         setMessage(result.message);
