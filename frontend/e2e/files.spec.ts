@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, createWorkspace, openEditor, openTab, signIn } from "./helpers";
+import { alertWith, createAccount, createWorkspace, openEditor, openTab, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 const text = (name: string, content: string) => ({ name, mimeType: "text/plain", buffer: Buffer.from(content) });
@@ -16,9 +16,7 @@ test("a file dropped on the Files section opens the upload dialog with it chosen
     await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Acme SRL", email: `client-${randomUUID()}@example.com` } })
   ).json();
   const project = await (await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } })).json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   await openTab(page, "Files");
@@ -67,9 +65,7 @@ test("files are uploaded, downloaded, shared, edited, archived and deleted", asy
     await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Acme SRL", email: `client-${randomUUID()}@example.com` } })
   ).json();
   const project = await (await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } })).json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   await openTab(page, "Files");

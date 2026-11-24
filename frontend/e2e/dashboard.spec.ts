@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { createAccount, createWorkspace, signIn } from "./helpers";
+import { createAccount, createWorkspace, signInAt } from "./helpers";
 
 // UTC like the page, so "in 3 days" means the same here and there.
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
@@ -43,9 +43,7 @@ async function addProject(
 test("a new workspace first asks for a client, then for a project", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await expect(page.getByText("Add your first client")).toBeVisible();
   await expect(page.getByRole("button", { name: "Add client" })).toBeVisible();
@@ -69,9 +67,7 @@ test("the dashboard lists what is due, what is running and who has not joined ye
   await addProject(request, workspace.id, notInvited.id, "Draft", "Planning", inDays(5));
   await addProject(request, workspace.id, notInvited.id, "Old job", "Completed", inDays(-10));
 
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Studio" })).toBeVisible();
 
   // Late work first, then what is due soon; a far-off project date and a finished project stay out.

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { buildEvents, monthWeeks, parseMonth, shiftMonth, type CalendarSource } from "@/lib/calendar/calendar";
 import type { Stage, StageStatus } from "@/lib/projects/types";
-import { createAccount, createWorkspace, mainNav, signIn } from "./helpers";
+import { createAccount, createWorkspace, mainNav, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // Far-away months, so what is late and what is not does not depend on the day the tests run.
@@ -106,9 +106,7 @@ test("the freelancer sees deadlines on their day, pages through months and opens
   await addProject(request, workspace.id, client.id, "Old job", "Completed", `${FUTURE}-15`);
   await addProject(request, workspace.id, client.id, "Logo", "Active", `${PAST}-10`);
 
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
   await mainNav(page).getByRole("link", { name: "Calendar" }).click();
   await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
   const thisMonth = new Date().toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });

@@ -1,11 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { accountMenu, createAccount, signIn } from "./helpers";
+import { accountMenu, createAccount, signInAt } from "./helpers";
 
 test("the profile is edited from the account page and survives a reload", async ({ page, request }) => {
   const user = await createAccount(request);
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL("/workspaces/new");
+  await signInAt(page, user, "/workspaces/new");
 
   await accountMenu(page, user.email).click();
   await page.getByRole("menuitem", { name: "Account" }).click();

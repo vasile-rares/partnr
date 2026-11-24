@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, createAccount, mainNav, newUser, openTab, signIn } from "./helpers";
+import { alertWith, createAccount, mainNav, newUser, openTab, signIn, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // The freelancer's side goes through the API (tested elsewhere); these tests are about what the client sees.
@@ -90,9 +90,7 @@ test("a different account can't accept the invitation, but can sign out and sign
   const clientEmail = newClientEmail();
   const { token } = await inviteClient(request, "Studio Pop", clientEmail);
 
-  await page.goto("/login");
-  await signIn(page, other.email, other.password);
-  await expect(page).toHaveURL("/workspaces/new");
+  await signInAt(page, other, "/workspaces/new");
 
   await page.goto(`/invite/${token}`);
   await expect(page.getByText(`You are signed in as ${other.email}, but this invitation is for ${clientEmail}`)).toBeVisible();
@@ -125,9 +123,7 @@ test("a workspace asks you to sign in, and is not found by someone who is nobody
 
   const user = newUser();
   await request.post("/api/auth/register", { data: user });
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL("/workspaces/new");
+  await signInAt(page, user, "/workspaces/new");
   expect((await page.goto(address))!.status()).toBe(404);
 });
 

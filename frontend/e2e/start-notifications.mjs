@@ -70,6 +70,8 @@ const env = {
   // Own exchanges and queues, so the tests never share them with a development service on the same broker.
   Events__Prefix: "e2e.",
   App__FrontendUrl: frontendUrl,
+  // The emails of the notifications leave on the worker's next pass: every second here instead of every 5, so tests do not wait for it.
+  Notifications__EmailPollSeconds: "1",
 };
 
 function dotnet(args, { cwd = backendDir } = {}) {

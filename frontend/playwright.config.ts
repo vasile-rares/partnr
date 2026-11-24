@@ -82,10 +82,11 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
-      // A production build, like the real thing. BACKEND_URL is needed at build time too: the /api rewrite is baked in then.
-      command: `pnpm build && pnpm start --port ${WEB_PORT}`,
+      // A production build, like the real thing, reused when nothing changed since the last run (see e2e/start-web.mjs).
+      // BACKEND_URL is needed at build time too: the /api rewrite is baked in then.
+      command: "node e2e/start-web.mjs",
       url: `http://localhost:${WEB_PORT}/login`,
-      env: { BACKEND_URL: `http://localhost:${GATEWAY_PORT}` },
+      env: { BACKEND_URL: `http://localhost:${GATEWAY_PORT}`, E2E_WEB_PORT: String(WEB_PORT) },
       reuseExistingServer: false,
       timeout: 240_000,
     },

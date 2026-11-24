@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createAccount, createWorkspace, signIn } from "./helpers";
+import { createAccount, createWorkspace, signIn, signInAt } from "./helpers";
 
 const WORKSPACE_URL = /\/w\/[0-9a-f-]{36}$/;
 
@@ -48,9 +48,7 @@ test("someone else's workspace looks like it does not exist", async ({ page, req
   const strangerRequest = await playwright.request.newContext({ baseURL });
   const stranger = await createAccount(strangerRequest);
   await strangerRequest.dispose();
-  await page.goto("/login");
-  await signIn(page, stranger.email, stranger.password);
-  await expect(page).toHaveURL("/workspaces/new");
+  await signInAt(page, stranger, "/workspaces/new");
 
   for (const path of [`/w/${theirs.id}`, `/w/${theirs.id}/settings`]) {
     await page.goto(path);
@@ -62,9 +60,7 @@ test("someone else's workspace looks like it does not exist", async ({ page, req
 test("the owner renames the workspace and the new name shows everywhere", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.getByRole("link", { name: "Settings" }).click();
   await page.getByLabel("Workspace name").fill("Studio Pop SRL");

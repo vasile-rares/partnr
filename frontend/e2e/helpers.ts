@@ -21,6 +21,15 @@ export async function signIn(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
+// Signs the page in through the API and opens `path`: the same session the sign-in form gives (`page.request` shares the page's
+// cookies), without rendering the form and the redirects after it. Only the tests of the sign-in itself use the form.
+export async function signInAt(page: Page, user: { email: string; password: string }, path: string) {
+  const response = await page.request.post("/api/auth/login", { data: { email: user.email, password: user.password } });
+  expect(response.ok(), "sign-in through the API").toBe(true);
+  await page.goto(path);
+  await expect(page).toHaveURL(path);
+}
+
 // Next.js has its own (empty) role="alert" live region, so alerts are matched by their text.
 export const alertWith = (page: Page, text: string) => page.getByRole("alert").filter({ hasText: text });
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { alertWith, calendarDay, createAccount, createWorkspace, mainNav, openEditor, openTab, pickDate, signIn } from "./helpers";
+import { alertWith, calendarDay, createAccount, createWorkspace, mainNav, openEditor, openTab, pickDate, signInAt } from "./helpers";
 
 // Added through the API, without an invitation: a project can be prepared before the client is invited.
 async function addClient(request: APIRequestContext, workspaceId: string, name: string): Promise<{ id: string }> {
@@ -15,9 +15,7 @@ test("a project is started from a client's page, moved out of Planning, and arch
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
   const client = await addClient(request, workspace.id, "Acme SRL");
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/clients/${client.id}`);
   await expect(page.getByText("No projects for this client yet.")).toBeVisible();
@@ -65,9 +63,7 @@ test("stages are added, reordered, edited and deleted from the bar, and the prog
   const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
   expect(created.status()).toBe(201);
   const project = await created.json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   const timeline = page.getByRole("region", { name: "Timeline" });
@@ -169,9 +165,7 @@ test("a stage's end is dragged, or nudged with the keyboard, to change its due d
   }
   const dueOf = async (name: string) =>
     (await (await request.get(`${projectsUrl}/${project.id}`)).json()).stages.find((stage: { name: string }) => stage.name === name).dueDate;
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   const timeline = page.getByRole("region", { name: "Timeline" });
@@ -220,9 +214,7 @@ test("deliverables are added as links, shared, edited, archived and deleted", as
   const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
   const project = await created.json();
   await request.post(`/api/workspaces/${workspace.id}/projects/${project.id}/stages`, { data: { name: "Design" } });
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   await openTab(page, "Deliverables");
@@ -304,9 +296,7 @@ test("approvals are requested and withdrawn, and an open request freezes the del
   const project = await created.json();
   const deliverablesUrl = `/api/workspaces/${workspace.id}/projects/${project.id}/deliverables`;
   const deliverable = await (await request.post(deliverablesUrl, { data: { title: "Mockup", url: "https://figma.example/file" } })).json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   await openTab(page, "Deliverables");
@@ -360,9 +350,7 @@ test("updates are written, shared, edited, archived and deleted", async ({ page,
   const client = await addClient(request, workspace.id, "Acme SRL");
   const created = await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name: "Website" } });
   const project = await created.json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   const updates = page.getByRole("region", { name: "Updates" });
@@ -431,9 +419,7 @@ test("updates are written, shared, edited, archived and deleted", async ({ page,
 test("a workspace with no clients is asked to add one before starting a project", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects`);
   await page.getByRole("button", { name: "New project" }).click();
@@ -460,9 +446,7 @@ test("a project page keeps its sections in tabs, the open tab is in the address,
   const deliverable = await (await request.post(deliverablesUrl, { data: { title: "Mockup", url: "https://figma.example/file" } })).json();
   expect((await request.post(`${deliverablesUrl}/${deliverable.id}/share`)).ok()).toBe(true);
   expect((await request.post(`${deliverablesUrl}/${deliverable.id}/approvals`, { data: { note: "Look it over." } })).ok()).toBe(true);
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   // It opens on the overview, with the stages, the time left and what waits on the client.
   const projectUrl = `/w/${workspace.id}/projects/${project.id}`;
@@ -518,9 +502,7 @@ test("the project bar lays the stages along the dates, and a stage's status is c
     const added = await request.post(`${projectsUrl}/${project.id}/stages`, { data: { name, dueDate: inDays(due) } });
     expect(added.ok()).toBe(true);
   }
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   const timeline = page.getByRole("region", { name: "Timeline" });
@@ -557,9 +539,7 @@ test("a stage's date is picked on a calendar where days outside the project cann
   ).json();
   expect((await request.post(`${projectsUrl}/${project.id}/stages`, { data: { name: "Design", dueDate: "2040-04-15" } })).ok()).toBe(true);
   const stagesOf = async () => (await (await request.get(`${projectsUrl}/${project.id}`)).json()).stages;
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
   const timeline = page.getByRole("region", { name: "Timeline" });

@@ -1,14 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createWorkspace, signIn } from "./helpers";
+import { createAccount, createWorkspace, signInAt } from "./helpers";
 
 // The API runs with a stand-in for Google (Google__Fake, see start-api.mjs): "consent" sends the browser straight back with a code.
 
 async function signedInFreelancer(page: Page, request: Parameters<typeof createAccount>[0]) {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   return { user, workspace };
 }
@@ -54,43 +52,10 @@ test("a freelancer connects Google, sees which account it is, and disconnects", 
   await expect(googleCard(page).getByRole("button", { name: "Connect Google Calendar" })).toBeVisible();
 });
 
-test("saying no on Google's screen leaves nothing connected and says so", async ({ page, request }) => {
-  await signedInFreelancer(page, request);
-  const state = await newState(page);
-
-  await page.goto(`/api/integrations/google/callback?error=access_denied&state=${encodeURIComponent(state)}`);
-
-  await expect(page).toHaveURL("/account?google=denied");
-  await expect(page.getByRole("alert").filter({ hasText: "Google Calendar was not connected" })).toBeVisible();
-  await expect(googleCard(page)).toContainText("Not connected");
-});
-
-test("unticking the calendar on Google's screen asks for the permission again", async ({ page, request }) => {
-  await signedInFreelancer(page, request);
-  const state = await newState(page);
-
-  await page.goto(`/api/integrations/google/callback?code=fake-no-calendar&state=${encodeURIComponent(state)}`);
-
-  await expect(page).toHaveURL("/account?google=permission");
-  await expect(page.getByRole("alert").filter({ hasText: "Calendar access is missing" })).toBeVisible();
-  await expect(googleCard(page)).toContainText("Not connected");
-});
-
-test("a return from Google that was not started here connects nothing", async ({ page, request }) => {
-  await signedInFreelancer(page, request);
-
-  await page.goto("/api/integrations/google/callback?code=fake-ok&state=forged");
-
-  await expect(page).toHaveURL("/account?google=error");
-  await expect(page.getByRole("alert").filter({ hasText: "Google Calendar could not be connected" })).toBeVisible();
-  await expect(googleCard(page)).toContainText("Not connected");
-});
-
-test("an unknown ?google value is ignored, and someone with no workspace has no Google card", async ({ page, request }) => {
+test("a return from Google that does not connect says why, and a strange value in the address is ignored", async ({ page, request }) => {
+  // Someone with no workspace has no Google card, and an unknown ?google value shows nothing.
   const user = await createAccount(request);
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL("/workspaces/new");
+  await signInAt(page, user, "/workspaces/new");
 
   await page.goto("/account?google=connected");
   await expect(page.getByRole("heading", { level: 1, name: "Your profile" })).toBeVisible();
@@ -102,4 +67,22 @@ test("an unknown ?google value is ignored, and someone with no workspace has no 
   await expect(googleCard(page)).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Google Calendar" })).toHaveCount(0);
   await expect(page.getByRole("alert").filter({ hasText: "Google Calendar" })).toHaveCount(0);
+
+  // Saying no on Google's screen leaves nothing connected and says so.
+  await page.goto(`/api/integrations/google/callback?error=access_denied&state=${encodeURIComponent(await newState(page))}`);
+  await expect(page).toHaveURL("/account?google=denied");
+  await expect(page.getByRole("alert").filter({ hasText: "Google Calendar was not connected" })).toBeVisible();
+  await expect(googleCard(page)).toContainText("Not connected");
+
+  // Unticking the calendar on Google's screen asks for the permission again.
+  await page.goto(`/api/integrations/google/callback?code=fake-no-calendar&state=${encodeURIComponent(await newState(page))}`);
+  await expect(page).toHaveURL("/account?google=permission");
+  await expect(page.getByRole("alert").filter({ hasText: "Calendar access is missing" })).toBeVisible();
+  await expect(googleCard(page)).toContainText("Not connected");
+
+  // A return that was not started here connects nothing.
+  await page.goto("/api/integrations/google/callback?code=fake-ok&state=forged");
+  await expect(page).toHaveURL("/account?google=error");
+  await expect(page.getByRole("alert").filter({ hasText: "Google Calendar could not be connected" })).toBeVisible();
+  await expect(googleCard(page)).toContainText("Not connected");
 });

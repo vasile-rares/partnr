@@ -3,7 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { buildEvents } from "@/lib/calendar/calendar";
 import { durationLabel, durationOf, momentsOf, splitMeetings, whenLabel } from "@/lib/meetings/time";
 import type { Meeting } from "@/lib/meetings/types";
-import { createAccount, createWorkspace, mainNav, openTab, pickDate, signIn } from "./helpers";
+import { createAccount, createWorkspace, mainNav, openTab, pickDate, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // The browser is in Bucharest, so what is stored in UTC has to be shown (and placed on the calendar) in that zone.
@@ -81,9 +81,7 @@ test("the calendar holds the meetings that were not called off, by the hour befo
 async function signedInFreelancer(page: Page, request: APIRequestContext) {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   return { user, workspace };
 }

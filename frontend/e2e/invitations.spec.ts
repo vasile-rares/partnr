@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { createAccount, createWorkspace, openClientEditor, signIn } from "./helpers";
+import { createAccount, createWorkspace, openClientEditor, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 const newClientEmail = () => `client-${randomUUID()}@example.com`;
 
-test("a client is invited, their details lock, and cancelling unlocks them again", async ({ page, request }) => {
+test("a client is invited, their details lock, sending again replaces the link, cancelling unlocks them, and an archived client cannot be invited", async ({ page, request }) => {
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio Pop");
   const email = newClientEmail();
@@ -13,9 +13,7 @@ test("a client is invited, their details lock, and cancelling unlocks them again
     data: { name: "Acme SRL", email, company: "Acme Group", notes: "Old note" },
   });
   const acme = await created.json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
+  await signInAt(page, user, `/w/${workspace.id}`);
 
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
   const portal = page.getByRole("region", { name: "Status" });
@@ -54,6 +52,15 @@ test("a client is invited, their details lock, and cancelling unlocks them again
   await page.goto(`/w/${workspace.id}/clients`);
   await expect(page.getByRole("row", { name: /Acme SRL/ })).toContainText("Invited");
 
+  // Sending it again replaces the first link: the first one is cancelled, the second is the one that works.
+  await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
+  await portal.getByRole("button", { name: "Resend invitation" }).click();
+  await expect(portal.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
+  const [first, second] = await waitForEmails(email, 2);
+  const linkStatus = async (token: string) => ((await (await request.get(`/api/invitations/${token}`)).json()) as { status: string }).status;
+  expect(await linkStatus(invitationTokenIn(first))).toBe("Cancelled");
+  expect(await linkStatus(invitationTokenIn(second))).toBe("Pending");
+
   // Cancelling lifts the lock (this is how a wrong address gets corrected).
   await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
   await portal.getByRole("button", { name: "Cancel" }).click();
@@ -65,46 +72,12 @@ test("a client is invited, their details lock, and cancelling unlocks them again
   await unlocked.getByLabel("Email").fill(newClientEmail());
   await unlocked.getByRole("button", { name: "Save changes" }).click();
   await expect(unlocked.getByRole("status")).toHaveText("Changes saved.");
-});
 
-test("sending the invitation again replaces the first link", async ({ page, request }) => {
-  const user = await createAccount(request);
-  const workspace = await createWorkspace(request, "Studio Pop");
-  const email = newClientEmail();
-  const created = await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Acme SRL", email } });
-  const acme = await created.json();
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
-
-  await page.goto(`/w/${workspace.id}/clients/${acme.id}`);
-  const portal = page.getByRole("region", { name: "Status" });
-  await portal.getByRole("button", { name: "Send invitation" }).click();
-  await expect(portal.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
-  await portal.getByRole("button", { name: "Resend invitation" }).click();
-  await expect(portal.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
-
-  const [first, second] = await waitForEmails(email, 2);
-  const status = async (token: string) => ((await (await request.get(`/api/invitations/${token}`)).json()) as { status: string }).status;
-  expect(await status(invitationTokenIn(first))).toBe("Cancelled");
-  expect(await status(invitationTokenIn(second))).toBe("Pending");
-});
-
-test("an archived client cannot be invited", async ({ page, request }) => {
-  const user = await createAccount(request);
-  const workspace = await createWorkspace(request, "Studio Pop");
-  const created = await request.post(`/api/workspaces/${workspace.id}/clients`, {
-    data: { name: "Old Client", email: newClientEmail() },
-  });
-  const old = await created.json();
+  // An archived client cannot be invited.
+  const archivedResponse = await request.post(`/api/workspaces/${workspace.id}/clients`, { data: { name: "Old Client", email: newClientEmail() } });
+  const old = await archivedResponse.json();
   await request.post(`/api/workspaces/${workspace.id}/clients/${old.id}/archive`);
-  await page.goto("/login");
-  await signIn(page, user.email, user.password);
-  await expect(page).toHaveURL(`/w/${workspace.id}`);
-
   await page.goto(`/w/${workspace.id}/clients/${old.id}`);
-
-  const portal = page.getByRole("region", { name: "Status" });
   await expect(portal.getByText("Restore to invite them")).toBeVisible();
   await expect(portal.getByRole("button")).toHaveCount(0);
 });
