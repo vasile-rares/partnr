@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AddStageDialog } from "@/components/projects/AddStageDialog";
 import { StageDateHandle } from "@/components/projects/StageDateHandle";
 import { StagePopover } from "@/components/projects/StagePopover";
+import { stageColors } from "@/components/projects/StageSegments";
 import { daysUntil, formatDate, formatDayMonth } from "@/lib/format";
 import { buildTimeline, todayUtc } from "@/lib/projects/timeline";
 import { stageStatusLabel, type ProjectStatus, type Stage, type StageStatus } from "@/lib/projects/types";
@@ -20,12 +21,6 @@ type ProjectTimelineProps = {
   editable?: { workspaceId: string; projectId: string };
   /** What leads to setting the dates, shown when the project has none. */
   datesAction?: ReactNode;
-};
-
-const barColors: Record<StageStatus, string> = {
-  Done: "bg-status-done",
-  InProgress: "bg-status-doing",
-  ToDo: "bg-status-todo/30",
 };
 
 // The label carries the status too, so the bar is not read by colour alone.
@@ -83,7 +78,7 @@ export function ProjectTimeline({ project, editable, datesAction }: ProjectTimel
                       label={`${stage.name}, ${stageStatusLabel(stage.status)}${stage.dueDate ? `, due ${formatDate(stage.dueDate)}` : ""}`}
                       className="project-timeline-stage-button group flex h-5 w-full items-center rounded-full"
                     >
-                      <span className={cn("h-2 w-full rounded-full transition-[height] group-hover:h-2.5", barColors[stage.status])} />
+                      <span className={cn("h-2 w-full rounded-full transition-[height] group-hover:h-2.5", stageColors[stage.status])} />
                     </StagePopover>
                     {editable && timeline.mode === "time" && index < total - 1 ? (
                       <StageDateHandle

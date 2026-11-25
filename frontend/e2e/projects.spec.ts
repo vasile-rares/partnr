@@ -26,7 +26,7 @@ test("a project is started from a client's page, moved out of Planning, and arch
   await expect(page.locator('[data-slot="dialog-overlay"]')).toBeVisible();
 
   await dialog.getByLabel("Name", { exact: true }).fill("Website");
-  await dialog.getByLabel("Due date").fill("2026-12-15");
+  await dialog.getByLabel("Due date").fill(`${new Date().getUTCFullYear()}-12-15`);
   await dialog.getByRole("button", { name: "Create project" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
@@ -41,11 +41,16 @@ test("a project is started from a client's page, moved out of Planning, and arch
 
   await mainNav(page).getByRole("link", { name: "Projects", exact: true }).click();
   const row = page.getByRole("row", { name: /Website/ });
-  await expect(row).toContainText("Acme SRL");
   await expect(row).toContainText("Active");
-  await expect(row).toContainText("15 Dec 2026");
+  await expect(row).toContainText("15 Dec");
 
-  await row.getByRole("link", { name: "Website" }).click();
+  // The client's avatar is its own link; a click anywhere else on the row opens the project.
+  await row.getByRole("link", { name: "Client: Acme SRL" }).click();
+  await expect(page).toHaveURL(`/w/${workspace.id}/clients/${client.id}`);
+  await page.goBack();
+  // force: the name's link covers the row, which is the point, but Playwright refuses to click a cell something else covers.
+  await page.getByRole("row", { name: /Website/ }).getByRole("cell", { name: "15 Dec" }).click({ force: true });
+  await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
   const archiving = await openEditor(page);
   await archiving.getByRole("button", { name: "Archive project" }).click();
   await expect(page.getByText("This project is archived")).toBeVisible();
@@ -136,7 +141,7 @@ test("stages are added, reordered, edited and deleted from the bar, and the prog
   await expect(timeline.getByText("1 of 2 done")).toBeVisible();
 
   await page.goto(`/w/${workspace.id}/projects`);
-  await expect(page.getByRole("row", { name: /Website/ })).toContainText("1 of 2 done");
+  await expect(page.getByRole("row", { name: /Website/ }).getByRole("img", { name: "1 of 2 stages done" })).toBeVisible();
 
   // An archived project's bar can be read, but not changed.
   await page.goto(`/w/${workspace.id}/projects/${project.id}`);
@@ -587,4 +592,80 @@ test("a stage's date is picked on a calendar where days outside the project cann
   await editor.getByLabel("Due date").fill("2040-05-01");
   await editor.getByRole("button", { name: "Save changes" }).click();
   await expect(alertWith(page, "Change the stage first")).toBeVisible();
+});
+
+test("the project lists fit their page without a horizontal scrollbar", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Elena Client");
+  const name = "Elena Design website";
+  const created = await (await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name } })).json();
+  const updated = await request.put(`/api/workspaces/${workspace.id}/projects/${created.id}`, {
+    data: {
+      name,
+      description: "A new portfolio website with a booking page and a description that is far too long to fit on one line",
+      startDate: null,
+      dueDate: "2026-12-15",
+      status: "Active",
+    },
+  });
+  expect(updated.ok()).toBe(true);
+  await signInAt(page, user, `/w/${workspace.id}`);
+
+  for (const path of [`/w/${workspace.id}/clients/${client.id}`, `/w/${workspace.id}/projects`]) {
+    await page.goto(path);
+    // The page streams in, so for a moment a hidden copy of the table is there too.
+    const container = page.locator(".projects-table:visible").locator("xpath=ancestor::div[@data-slot='table-container'][1]");
+    await expect(container).toBeVisible();
+    for (const width of [768, 1000, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      const { scroll, visible } = await container.evaluate((element) => ({ scroll: element.scrollWidth, visible: element.clientWidth }));
+      expect(scroll, `${path} at ${width}px`).toBeLessThanOrEqual(visible);
+    }
+  }
+});
+
+test("the project list is sorted from its column headers, and a third click puts it back", async ({ page, request }) => {
+  const user = await createAccount(request);
+  const workspace = await createWorkspace(request, "Studio");
+  const client = await addClient(request, workspace.id, "Acme SRL");
+  const year = new Date().getUTCFullYear();
+  const add = async (name: string, status: string, dueDate: string | null) => {
+    const created = await (await request.post(`/api/workspaces/${workspace.id}/projects`, { data: { clientId: client.id, name } })).json();
+    const updated = await request.put(`/api/workspaces/${workspace.id}/projects/${created.id}`, {
+      data: { name, description: null, startDate: null, dueDate, status },
+    });
+    expect(updated.ok()).toBe(true);
+  };
+  await add("Bravo", "Active", `${year + 1}-01-10`);
+  await add("Alpha", "Planning", null);
+  await add("Charlie", "Completed", `${year}-03-01`);
+  await signInAt(page, user, `/w/${workspace.id}/projects`);
+
+  const names = () => page.locator(".projects-table-row").evaluateAll((rows) => rows.map((row) => row.querySelector("a")?.textContent));
+  const header = (name: string) => page.getByRole("columnheader", { name });
+  await expect.poll(names).toHaveLength(3);
+  const original = await names();
+
+  await header("Project").getByRole("button").click();
+  await expect.poll(names).toEqual(["Alpha", "Bravo", "Charlie"]);
+  await expect(header("Project")).toHaveAttribute("aria-sort", "ascending");
+  await header("Project").getByRole("button").click();
+  await expect.poll(names).toEqual(["Charlie", "Bravo", "Alpha"]);
+  await expect(header("Project")).toHaveAttribute("aria-sort", "descending");
+  await header("Project").getByRole("button").click();
+  await expect.poll(names).toEqual(original);
+  await expect(header("Project")).toHaveAttribute("aria-sort", "none");
+
+  // Status goes in the order a project goes through, not the alphabet.
+  await header("Status").getByRole("button").click();
+  await expect.poll(names).toEqual(["Alpha", "Bravo", "Charlie"]);
+  await header("Status").getByRole("button").click();
+  await expect.poll(names).toEqual(["Charlie", "Bravo", "Alpha"]);
+
+  // A project with no due date stays last whichever way the dates go.
+  await header("Due").getByRole("button").click();
+  await expect.poll(names).toEqual(["Charlie", "Bravo", "Alpha"]);
+  await header("Due").getByRole("button").click();
+  await expect.poll(names).toEqual(["Bravo", "Charlie", "Alpha"]);
 });

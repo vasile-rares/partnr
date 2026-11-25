@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "e2e/.artifacts/**",
+    // Vendored from the ReUI registry (see components.json); written to opt out of the React Compiler rules.
+    "src/components/reui/**",
   ]),
 ]);
 

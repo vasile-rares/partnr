@@ -54,6 +54,11 @@ const dayAndMonth = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "s
 /** "15 Dec", for a label with little room. */
 export const formatDayMonth = (date: string): string => dayAndMonth.format(new Date(`${date}T00:00:00Z`));
 
+/** "15 Dec" in the current year (UTC), "15 Dec 2027" in any other, for a calendar date ("YYYY-MM-DD"). */
+export function formatDateInYear(date: string, now: number = Date.now()): string {
+  return date.slice(0, 4) === String(new Date(now).getUTCFullYear()) ? formatDayMonth(date) : formatDate(date);
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "3 days overdue", "Today", "Tomorrow", "In 5 days", for a number of days from `daysUntil`. */

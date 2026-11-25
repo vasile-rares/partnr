@@ -2,15 +2,20 @@
 
 import { SearchIcon } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { PortalStatusBadge } from "@/components/clients/PortalStatusBadge";
+import { DataGrid, DataGridContainer, dataGridFeatures, type DataGridFeatures } from "@/components/reui/data-grid/data-grid";
+import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
+import { DataGridPagination } from "@/components/reui/data-grid/data-grid-pagination";
+import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
+import { DataGridTable } from "@/components/reui/data-grid/data-grid-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PortalStatus } from "@/lib/clients/types";
+import { useTable, type ColumnDef } from "@tanstack/react-table";
 
 export type ClientRow = {
   id: string;
@@ -24,6 +29,8 @@ export type ClientRow = {
 };
 
 type Scope = "active" | "archived";
+
+const PAGE_SIZE = 10;
 
 type ClientsTableProps = {
   workspaceId: string;
@@ -107,43 +114,75 @@ export function ClientsTable({ workspaceId, clients, initialScope, addClient }: 
           )}
         </div>
       ) : (
-        <Table className="clients-table">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Client</TableHead>
-              <TableHead className="hidden sm:table-cell">Projects</TableHead>
-              <TableHead>Portal</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.map((client) => (
-              <TableRow key={client.id} className="clients-table-row">
-                <TableCell>
-                  <div className="clients-table-person flex items-center gap-3">
-                    <ClientAvatar name={client.displayName} />
-                    <div className="clients-table-person-info min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/w/${workspaceId}/clients/${client.id}`} className="font-medium hover:underline">
-                          {client.displayName}
-                        </Link>
-                        {client.archived ? <Badge variant="secondary">Archived</Badge> : null}
-                      </div>
-                      <p className="break-all text-sm text-muted-foreground">
-                        {client.displayName === client.email ? null : client.email}
-                        {client.company ? `${client.displayName === client.email ? "" : " · "}${client.company}` : null}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">{client.activeProjects > 0 ? client.activeProjects : "—"}</TableCell>
-                <TableCell>
-                  <PortalStatusBadge status={client.portalStatus} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ClientsGrid workspaceId={workspaceId} rows={visible} />
       )}
     </div>
+  );
+}
+
+function ClientsGrid({ workspaceId, rows }: { workspaceId: string; rows: ClientRow[] }) {
+  const columns = useMemo<ColumnDef<DataGridFeatures, ClientRow>[]>(
+    () => [
+      {
+        id: "client",
+        accessorFn: (client) => client.displayName,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Client" />,
+        cell: ({ row }) => {
+          const client = row.original;
+          return (
+            <div className="clients-table-person flex items-center gap-3">
+              <ClientAvatar name={client.displayName} />
+              <div className="clients-table-person-info min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link href={`/w/${workspaceId}/clients/${client.id}`} className="font-medium hover:underline">
+                    {client.displayName}
+                  </Link>
+                  {client.archived ? <Badge variant="secondary">Archived</Badge> : null}
+                </div>
+                <p className="break-all text-sm text-muted-foreground">
+                  {client.displayName === client.email ? null : client.email}
+                  {client.company ? `${client.displayName === client.email ? "" : " · "}${client.company}` : null}
+                </p>
+              </div>
+            </div>
+          );
+        },
+        meta: { headerTitle: "Client" },
+      },
+      {
+        id: "projects",
+        accessorFn: (client) => client.activeProjects,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Projects" />,
+        cell: ({ row }) => (row.original.activeProjects > 0 ? row.original.activeProjects : "—"),
+        meta: { headerTitle: "Projects", headerClassName: "hidden sm:table-cell", cellClassName: "hidden sm:table-cell" },
+      },
+      {
+        id: "portal",
+        accessorFn: (client) => client.portalStatus,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Portal" />,
+        cell: ({ row }) => <PortalStatusBadge status={row.original.portalStatus} />,
+        meta: { headerTitle: "Portal" },
+      },
+    ],
+    [workspaceId],
+  );
+
+  const table = useTable({
+    features: dataGridFeatures,
+    columns,
+    data: rows,
+    getRowId: (client) => client.id,
+    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
+  });
+
+  return (
+    <DataGrid table={table} recordCount={rows.length} tableLayout={{ width: "auto" }}>
+      <DataGridContainer className="clients-grid">
+        <DataGridScrollArea>
+          <DataGridTable />
+        </DataGridScrollArea>
+      </DataGridContainer>
+      {rows.length > PAGE_SIZE ? <DataGridPagination className="clients-pagination" sizes={[10, 25, 50]} /> : null}
+    </DataGrid>
   );
 }

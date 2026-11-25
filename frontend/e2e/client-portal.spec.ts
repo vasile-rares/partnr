@@ -292,7 +292,7 @@ test("a client approves one deliverable and asks for changes on another, and is 
   await attention.getByRole("link", { name: /Website/ }).click();
   await expect(dashboard).toHaveURL(`/w/${workspace.id}/projects/${website.id}?tab=deliverables`);
   await dashboard.goto(`/w/${workspace.id}/projects`);
-  await expect(dashboard.getByRole("row", { name: /Website/ })).toContainText("1 changes requested");
+  await expect(dashboard.getByRole("row", { name: /Website/ })).toContainText("Changes requested");
 
   await ask(logo, "Bluer now?");
   expect((await (await request.get(projectUrl)).json()).approvals).toEqual({ pending: 1, changesRequested: 0 });
