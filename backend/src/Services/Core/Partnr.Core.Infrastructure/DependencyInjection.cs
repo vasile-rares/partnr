@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddEvents(configuration, connectionString, (options, _) => options.UseNpgsql(connectionString));
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientInvitationRepository, ClientInvitationRepository>();
+        services.AddScoped<IMemberInvitationRepository, MemberInvitationRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IDeliverableRepository, DeliverableRepository>();

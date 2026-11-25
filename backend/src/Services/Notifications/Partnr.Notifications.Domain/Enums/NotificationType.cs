@@ -12,5 +12,8 @@ public enum NotificationType
     ApprovalChangesRequested,
 
     /// <summary>To the member who invited: the client accepted and can open the portal.</summary>
-    InvitationAccepted
+    InvitationAccepted,
+
+    /// <summary>To the owner who invited: someone accepted and is now on the team.</summary>
+    MemberJoined
 }

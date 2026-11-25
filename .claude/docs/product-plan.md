@@ -434,7 +434,12 @@ Se actualizează după fiecare pas încheiat. Ordinea pașilor se stabilește î
   - [x] 5. Updates și fișiere (descărcarea fișierelor clientului pe ruta workspace-ului)
   - [x] 6. Home, dashboard, lista de firme, sidebar, linkuri din emailuri și invitații; ștergerea a tot ce era „portal” (rute, services, pagini)
   - [x] 7. Documentația și testele e2e rămase
+- [x] Echipa: membri adăugați prin invitație (după MVP), decis 2026-11-25 (deciziile în [decisions.md](decisions.md), „Echipa", descrierea în [features/team.md](features/team.md)), în trei pași:
+  - [x] 1. Backend: `MemberInvitation`, rutele pentru owner (invitații, scoatere), `kind` pe invitația publică, emailul și notificarea „X joined your team", teste unitare și de integrare
+  - [x] 2. Interfața: pagina Team în sidebar (listă de membri, invitații în așteptare, dialog de invitare, scoatere cu confirmare) și pagina `/invite/{token}` pentru echipă
+  - [x] 3. Test e2e (invitație, email, acceptare, scoatere, retrimitere, anulare, drepturile unui membru), date de test și documentația
+  - Rămân pe mai târziu: ieșirea singur din workspace, schimbarea rolului, transferul ownership-ului și alocarea membrilor pe proiect (coloana „Client" din lista de proiecte e locul în care vor intra)
 
 ## Decizii luate
 
-Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Proiecte, Livrabile, Timeline, Feedback și aprobări, Fișiere de proiect, Interfață, Generale). Se citește doar secțiunea relevantă pentru pasul curent.
+Deciziile de arhitectură / model de date, cu motivul lor, sunt în [decisions.md](decisions.md), pe secțiuni (Autentificare, Workspace, Clienți, Profil cont, Invitații, Echipa, Proiecte, Livrabile, Timeline, Feedback și aprobări, Fișiere de proiect, Interfață, Generale). Se citește doar secțiunea relevantă pentru pasul curent.

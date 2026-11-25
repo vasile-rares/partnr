@@ -22,6 +22,12 @@ public static class InvitationAcceptedHandler
         events.ApplyAsync(message, cancellationToken);
 }
 
+public static class MemberJoinedHandler
+{
+    public static Task Handle(MemberJoined message, INotificationEventService events, CancellationToken cancellationToken) =>
+        events.ApplyAsync(message, cancellationToken);
+}
+
 public static class ApprovalRequestWithdrawnHandler
 {
     public static Task Handle(ApprovalRequestWithdrawn message, INotificationEventService events, CancellationToken cancellationToken) =>
@@ -37,6 +43,12 @@ public static class ConversationChangedHandler
 public static class ClientInvitedHandler
 {
     public static Task Handle(ClientInvited message, ITransactionalEmailService emails, CancellationToken cancellationToken) =>
+        emails.SendAsync(message, cancellationToken);
+}
+
+public static class MemberInvitedHandler
+{
+    public static Task Handle(MemberInvited message, ITransactionalEmailService emails, CancellationToken cancellationToken) =>
         emails.SendAsync(message, cancellationToken);
 }
 

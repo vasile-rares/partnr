@@ -29,7 +29,7 @@
 - **Workspace-ul se creează explicit**, după register (pagina „Create your workspace”), nu automat. Un client invitat nu trebuie să ajungă cu un workspace gol. Un utilizator poate avea mai multe workspace-uri.
 - **Roluri: `Owner` și `Member`**, ținute pe apartenența la workspace (`WorkspaceMember`), nu pe cont. Ownerul gestionează workspace-ul; membrii lucrează la clienți și proiecte.
 - **Clienții nu sunt membri.** Accesul lor la portal vine prin invitație, limitat la proiectele lor (pasul Invitații). Dacă ar fi membri cu rol, o verificare uitată le-ar arăta datele tuturor clienților.
-- **Membrii noi se adaugă abia prin invitații**; tabela de membri și rolurile există deja, ca autorizarea să fie corectă de la început.
+- **Membrii noi se adaugă prin invitații** (făcut, vezi „Echipa" mai jos); tabela de membri și rolurile existau deja, ca autorizarea să fie corectă de la început.
 - **Workspace-ul e în rută** (`/api/workspaces/{id}/...`). Un non-membru primește **404**, la fel ca pentru un workspace inexistent, ca id-urile să nu poată fi ghicite. Un membru fără drept (de ex. redenumire) primește **403**.
 - **Regula de acces stă într-un singur loc** (`WorkspaceAccess`), prin care trec toate serviciile cu date dintr-un workspace.
 - **`Client` aparține unui workspace**; emailul e unic per workspace, nu global (aceeași persoană poate fi client la doi freelanceri). Asta a închis și o scurgere: înainte, orice utilizator logat putea citi orice client după id.
@@ -82,6 +82,19 @@
 - **Sugestii de conturi la adăugare** (`GET .../clients/suggestions?email=`), cu nume, la cererea explicită a utilizatorului. Fiind un director de conturi, e îngustat: minim 3 caractere (altfel listă goală), maxim 5 rezultate, potrivire doar pe începutul emailului (nu pe nume, iar `%` și `_` sunt caractere obișnuite), doar pentru membri ai workspace-ului (altfel 404), fără membrii acelui workspace (nu pot accepta oricum) și **60 de cereri pe minut pe utilizator** (429). Formularul cere sugestii la 250 ms după ultima tastă și abandonează cererile depășite. Alegerea unui cont **nu leagă nimic**: persoana trebuie să accepte invitația. După un email complet, formularul spune „Has an account: <nume>", „No account with this email yet…" sau „Already a client in this workspace." (și blochează butonul), pe baza emailurilor clienților deja existenți, pasate din pagină.
 - **Risc cunoscut al sugestiilor:** oricine își face un cont și un workspace poate parcurge lista conturilor, încetinit de limita de cereri. De reconsiderat înainte de producție, de exemplu cu o setare „pot fi găsit de freelanceri", dezactivată implicit.
 - **Un cont este client al unui workspace cel mult o dată** (`(WorkspaceId, UserId)` unic).
+
+## Echipa (invitații pentru membri, decis 2026-11-25)
+
+- **Scop:** ownerul trimite, retrimite și anulează invitații, persoana acceptă, apare lista de membri și ownerul poate scoate un membru. Rămân pe mai târziu: ieșirea singur, schimbarea rolului și transferul ownership-ului.
+- **Doar ownerul** invită, anulează, vede invitațiile deschise și scoate (403 pentru membri, 404 pentru străini). Un membru nou vede toți clienții și proiectele, deci e o decizie a ownerului, ca arhivarea. **Toți membrii** văd lista de membri, doar citire.
+- **Invitatul e mereu `Member`**; un workspace are un singur owner (cel care l-a creat), iar ownerul nu poate fi scos (409).
+- **Entitate nouă, `MemberInvitation`** (tabela `member_invitations`), cu aceeași mecanică ca `ClientInvitation`: token cu hash SHA-256, 7 zile, legat de adresa invitată, o singură invitație deschisă per adresă și workspace (retrimiterea o anulează pe cea veche). Nu o tabelă comună cu `Kind`: la client acceptarea leagă o fișă, la membru creează un `WorkspaceMember`, și ar fi însemnat chei nule și două feluri de acceptare în aceeași entitate.
+- **Aceeași pagină și aceleași rute publice** (`/invite/{token}`, `/api/invitations/{token}`): tokenul se caută în ambele tabele (același hash) și răspunsul spune `kind` (`Client` sau `Member`), ca pagina să scrie ce se potrivește. Cele patru cazuri (cont nou, cont existent, logat corect, logat cu altă adresă) rămân identice.
+- **La trimitere, 409 imediat** dacă adresa e deja membru sau client cu cont legat în acel workspace (un client vede doar proiectele lui, un membru tot, deci nu pot fi același cont în același workspace). O fișă de client fără cont e permisă; la acceptare se refuză dacă între timp s-a legat contul ca client.
+- **Scoaterea e refuzată (409) cât timp membrul organizează întâlniri viitoare necanceltate**: evenimentul Google trăiește în calendarul organizatorului și primește orice modificare prin conexiunea lui (cu emailul clientului ca invitat), așa că lăsat în urmă ar fi trimis detalii unei persoane care nu mai are acces. Ownerul le anulează întâi (orice membru poate), apoi scoate. Fără anulare automată: Google ar trimite clientului emailuri de anulare necerute.
+- **Ce rămâne după scoatere:** mesajele, actualizările și cererile de aprobare rămân sub numele lui (istorie, clientul le-a văzut așa); accesul dispare imediat (404 la următoarea cerere), fără email. **Răspunsul clientului la o aprobare cerută de un membru scos merge la owner**, ca să nu se piardă.
+- **Notificări:** emailul de invitație (`MemberInvited`, ca `ClientInvited`, cu tokenul în clar) și o notificare pentru owner când cineva intră în echipă (`MemberJoined`, cu link la `/w/{id}/team`).
+- **Interfață:** element „Team" în sidebar, în grupul „Collaborate", după Meetings; clienții nu-l văd.
 
 ## Proiecte
 

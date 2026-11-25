@@ -19,6 +19,8 @@ public static class DependencyInjection
         services.AddScoped<IClientSuggestionService, ClientSuggestionService>();
         services.AddScoped<IClientInvitationService, ClientInvitationService>();
         services.AddScoped<IInvitationService, InvitationService>();
+        services.AddScoped<IMemberService, MemberService>();
+        services.AddScoped<IMemberInvitationService, MemberInvitationService>();
         services.AddScoped<ProjectResponseBuilder>();
         services.AddScoped<ClientProjectResponseBuilder>();
         services.AddScoped<IProjectService, ProjectService>();

@@ -271,6 +271,26 @@ internal sealed class FakeClientInvitationRepository : IClientInvitationReposito
     public void Add(ClientInvitation invitation) => Items.Add(invitation);
 }
 
+internal sealed class FakeMemberInvitationRepository : IMemberInvitationRepository
+{
+    public List<MemberInvitation> Items { get; } = [];
+
+    public Task<MemberInvitation?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(i => i.TokenHash == tokenHash));
+
+    public Task<MemberInvitation?> GetByIdAsync(Guid workspaceId, Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(i => i.WorkspaceId == workspaceId && i.Id == id));
+
+    public Task<MemberInvitation?> GetOpenForEmailAsync(Guid workspaceId, string email, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.FirstOrDefault(i => i.WorkspaceId == workspaceId && i.Email == email && i.IsOpen));
+
+    public Task<IReadOnlyList<MemberInvitation>> ListOpenAsync(Guid workspaceId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<MemberInvitation>>(
+            Items.Where(i => i.WorkspaceId == workspaceId && i.IsOpen).OrderByDescending(i => i.CreatedAtUtc).ToList());
+
+    public void Add(MemberInvitation invitation) => Items.Add(invitation);
+}
+
 internal sealed class FakeAppLinks : IAppLinks
 {
     public string InvitationUrl(string token) => $"https://app.test/invite/{token}";
@@ -287,6 +307,10 @@ internal sealed class FakeNotificationPublisher : INotificationPublisher
     public List<ClientInvitation> Accepted { get; } = [];
 
     public List<Guid> Withdrawn { get; } = [];
+
+    public List<MemberInvitation> MemberInvitationsSent { get; } = [];
+
+    public List<MemberInvitation> MembersJoined { get; } = [];
 
     public List<InvitationSent> Invited { get; } = [];
 
@@ -315,6 +339,21 @@ internal sealed class FakeNotificationPublisher : INotificationPublisher
         Invited.Add(new InvitationSent(workspaceName, client, invitation, token));
         return Task.CompletedTask;
     }
+
+    public Task MemberInvitedAsync(string workspaceName, MemberInvitation invitation, string token, CancellationToken cancellationToken)
+    {
+        MemberInvitationsSent.Add(invitation);
+        MemberInvitationTokens.Add(token);
+        return Task.CompletedTask;
+    }
+
+    public Task MemberJoinedAsync(Workspace workspace, MemberInvitation invitation, Guid accountId, CancellationToken cancellationToken)
+    {
+        MembersJoined.Add(invitation);
+        return Task.CompletedTask;
+    }
+
+    public List<string> MemberInvitationTokens { get; } = [];
 
     public Task PasswordResetRequestedAsync(CurrentUserResponse account, string token, CancellationToken cancellationToken)
     {
@@ -498,6 +537,9 @@ internal sealed class FakeMeetingRepository : IMeetingRepository
         Task.FromResult<IReadOnlyList<Meeting>>(Items
             .Where(m => m.OrganizerUserId == organizerUserId && m.EndsAtUtc > nowUtc && m.SyncStatus != MeetingSyncStatus.Synced)
             .ToList());
+
+    public Task<int> CountUpcomingForOrganizerAsync(Guid workspaceId, Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken) =>
+        Task.FromResult(Items.Count(m => m.WorkspaceId == workspaceId && m.OrganizerUserId == organizerUserId && !m.IsCancelled && m.EndsAtUtc > nowUtc));
 
     public void Add(Meeting meeting) => Items.Add(meeting);
 }

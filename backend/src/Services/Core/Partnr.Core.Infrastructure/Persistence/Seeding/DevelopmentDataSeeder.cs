@@ -15,6 +15,7 @@ internal sealed class DevelopmentDataSeeder(
     IWorkspaceRepository workspaces,
     IClientRepository clients,
     IClientInvitationRepository invitations,
+    IMemberInvitationRepository memberInvitations,
     IProjectRepository projects,
     IDeliverableRepository deliverables,
     IProjectUpdateRepository projectUpdates,
@@ -188,6 +189,13 @@ internal sealed class DevelopmentDataSeeder(
             owner.Id,
             DateTime.UtcNow));
 
+        memberInvitations.Add(MemberInvitation.Create(
+            studio.Id,
+            DevelopmentSeed.InvitedMemberEmail,
+            MemberInvitation.HashToken(DevelopmentSeed.PendingMemberInvitationToken),
+            owner.Id,
+            DateTime.UtcNow));
+
         workspaces.Add(Workspace.Create("Side Project", owner.Id));
 
         // A workspace the owner does not belong to, to check that it stays invisible.
@@ -206,6 +214,10 @@ internal sealed class DevelopmentDataSeeder(
             "Also: {Client} is a client of Studio Pop (same password); the pending invitation is {Link}.",
             DevelopmentSeed.ClientEmail,
             links.InvitationUrl(DevelopmentSeed.PendingInvitationToken));
+        logger.LogInformation(
+            "And {Invited} is invited to join the team of Studio Pop (no account yet): {Link}.",
+            DevelopmentSeed.InvitedMemberEmail,
+            links.InvitationUrl(DevelopmentSeed.PendingMemberInvitationToken));
     }
 
     // Three meetings with Elena, already "sent" to Google (there is no Google behind the demo data): one coming up with a Meet link, one

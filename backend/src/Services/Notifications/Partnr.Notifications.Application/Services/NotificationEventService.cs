@@ -65,6 +65,19 @@ internal sealed class NotificationEventService(
                 Now()),
             cancellationToken);
 
+    public Task ApplyAsync(MemberJoined joined, CancellationToken cancellationToken) =>
+        AddAsync(
+            Notification.MemberJoined(
+                joined.RecipientUserId,
+                joined.RecipientEmail,
+                joined.RecipientName,
+                joined.WorkspaceId,
+                joined.WorkspaceName,
+                joined.MemberUserId,
+                joined.ActorName,
+                Now()),
+            cancellationToken);
+
     public async Task WithdrawAsync(Guid approvalRequestId, CancellationToken cancellationToken)
     {
         var notification = await notifications.GetApprovalRequestedAsync(approvalRequestId, cancellationToken);

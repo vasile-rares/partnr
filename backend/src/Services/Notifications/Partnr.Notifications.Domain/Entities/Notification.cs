@@ -189,6 +189,35 @@ public sealed partial class Notification : Entity
         };
     }
 
+    public static Notification MemberJoined(
+        Guid recipientUserId,
+        string recipientEmail,
+        string? recipientName,
+        Guid workspaceId,
+        string workspaceName,
+        Guid memberUserId,
+        string actorName,
+        DateTime nowUtc)
+    {
+        if (memberUserId == Guid.Empty)
+        {
+            throw new DomainException("A member who joined has to be someone.");
+        }
+
+        return new Notification(
+            recipientUserId,
+            recipientEmail,
+            recipientName,
+            workspaceId,
+            workspaceName,
+            NotificationType.MemberJoined,
+            $"member-joined:{workspaceId:N}:{memberUserId:N}:{recipientUserId:N}",
+            nowUtc)
+        {
+            ActorName = Snapshot(actorName) ?? throw new DomainException("A notification needs to say who it is about."),
+        };
+    }
+
     /// <summary>Marking it twice keeps the first date.</summary>
     public void MarkRead(DateTime nowUtc) => ReadAtUtc ??= nowUtc;
 

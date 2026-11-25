@@ -110,13 +110,53 @@ public class NotificationPublisherTests
     }
 
     [Fact]
-    public async Task ApprovalDecided_IsSilent_WhenTheRequesterLeftTheWorkspace()
+    public async Task ApprovalDecided_TellsTheOwner_WhenTheRequesterLeftTheWorkspace()
     {
+        _identity.Accounts.Add(new(_owner, "ana@example.com", "Ana Owner"));
         var account = _identity.AddAccount("elena2@example.com", "pw", "Elena");
         var round = Round(requestedBy: Guid.NewGuid());
         Decide(round, ApprovalStatus.Approved, account.Id);
 
         await _publisher.ApprovalDecidedAsync(_project, _deliverable, round, CancellationToken.None);
+
+        var sent = Assert.IsType<ApprovalDecided>(Assert.Single(_events.Published));
+        Assert.Equal((_owner, "ana@example.com", "Ana Owner"), (sent.RecipientUserId, sent.RecipientEmail, sent.RecipientName));
+    }
+
+    [Fact]
+    public async Task MemberInvited_CarriesTheTokenAndTheInviterName_ToTheInvitedAddress()
+    {
+        _identity.Accounts.Add(new(_owner, "ana@example.com", "Ana Owner"));
+        var invitation = MemberInvitation.Create(_workspace.Id, "new@example.com", "hash", _owner, DateTime.UtcNow);
+
+        await _publisher.MemberInvitedAsync("Studio Pop", invitation, "the-plain-token", CancellationToken.None);
+
+        var sent = Assert.IsType<MemberInvited>(Assert.Single(_events.Published));
+        Assert.Equal(("new@example.com", "Studio Pop", "Ana Owner", "the-plain-token"), (sent.RecipientEmail, sent.WorkspaceName, sent.InviterName, sent.Token));
+        Assert.Equal(invitation.ExpiresAtUtc, sent.ExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task MemberJoined_TellsTheOwnerWhoInvited_WithTheNewMembersName()
+    {
+        _identity.Accounts.Add(new(_owner, "ana@example.com", "Ana Owner"));
+        var newcomer = _identity.AddAccount("dana@example.com", "pw", "Dana New");
+        var invitation = MemberInvitation.Create(_workspace.Id, "dana@example.com", "hash", _owner, DateTime.UtcNow);
+
+        await _publisher.MemberJoinedAsync(_workspace, invitation, newcomer.Id, CancellationToken.None);
+
+        var sent = Assert.IsType<MemberJoined>(Assert.Single(_events.Published));
+        Assert.Equal((newcomer.Id, "Dana New"), (sent.MemberUserId, sent.ActorName));
+        Assert.Equal((_owner, "ana@example.com"), (sent.RecipientUserId, sent.RecipientEmail));
+    }
+
+    [Fact]
+    public async Task MemberJoined_IsSilent_WhenTheInviterLeftTheWorkspace()
+    {
+        var newcomer = _identity.AddAccount("dana@example.com", "pw", "Dana New");
+        var invitation = MemberInvitation.Create(_workspace.Id, "dana@example.com", "hash", Guid.NewGuid(), DateTime.UtcNow);
+
+        await _publisher.MemberJoinedAsync(_workspace, invitation, newcomer.Id, CancellationToken.None);
 
         Assert.Empty(_events.Published);
     }

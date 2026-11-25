@@ -9,6 +9,8 @@ export type InvitationPreview = {
   status: "Pending" | "Expired" | "Cancelled" | "Accepted";
   accountExists: boolean;
   expiresAtUtc: string;
+  /** A client's portal or the workspace's team. */
+  kind: "Client" | "Member";
 };
 
 // The token is 256 random bits in URL-safe base64, so anything else cannot be ours. It is rejected before it reaches

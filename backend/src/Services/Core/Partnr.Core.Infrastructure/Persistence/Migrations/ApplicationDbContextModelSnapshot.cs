@@ -395,6 +395,54 @@ namespace Partnr.Core.Infrastructure.Persistence.Migrations
                     b.ToTable("meetings", (string)null);
                 });
 
+            modelBuilder.Entity("Partnr.Core.Domain.Entities.MemberInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitedByUserId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "Email")
+                        .IsUnique()
+                        .HasDatabaseName("IX_member_invitations_open_per_email")
+                        .HasFilter("\"AcceptedAtUtc\" IS NULL AND \"CancelledAtUtc\" IS NULL");
+
+                    b.ToTable("member_invitations", (string)null);
+                });
+
             modelBuilder.Entity("Partnr.Core.Domain.Entities.Message", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1007,6 +1055,21 @@ namespace Partnr.Core.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Partnr.Core.Domain.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Partnr.Core.Domain.Entities.MemberInvitation", b =>
+                {
+                    b.HasOne("Partnr.Core.Infrastructure.Authentication.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("Partnr.Core.Domain.Entities.Workspace", null)
                         .WithMany()

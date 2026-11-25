@@ -18,6 +18,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<ClientInvitation> ClientInvitations => Set<ClientInvitation>();
 
+    public DbSet<MemberInvitation> MemberInvitations => Set<MemberInvitation>();
+
     public DbSet<Workspace> Workspaces => Set<Workspace>();
 
     public DbSet<Project> Projects => Set<Project>();

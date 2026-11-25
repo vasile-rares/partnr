@@ -33,6 +33,30 @@ internal sealed class TransactionalEmailService(IEmailSender email, IAppLinks li
             cancellationToken);
     }
 
+    public Task SendAsync(MemberInvited invited, CancellationToken cancellationToken)
+    {
+        var from = string.IsNullOrWhiteSpace(invited.InviterName) ? invited.WorkspaceName : $"{invited.InviterName} ({invited.WorkspaceName})";
+        var expires = invited.ExpiresAtUtc.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+        var link = links.Url($"/invite/{Uri.EscapeDataString(invited.Token)}");
+
+        return email.SendAsync(
+            new EmailMessage(
+                invited.RecipientEmail,
+                $"{invited.WorkspaceName} invited you to join their team",
+                $"""
+                Hi,
+
+                {from} invited you to join their team on {AppName}, where you can work on their clients and projects.
+
+                Open this link to create your account or sign in:
+                {link}
+
+                The link works until {expires}, and only with this email address ({invited.RecipientEmail}).
+                If you were not expecting this message, you can ignore it.
+                """),
+            cancellationToken);
+    }
+
     public Task SendAsync(PasswordResetRequested requested, CancellationToken cancellationToken)
     {
         var link = links.Url($"/reset-password/{Uri.EscapeDataString(requested.Token)}");

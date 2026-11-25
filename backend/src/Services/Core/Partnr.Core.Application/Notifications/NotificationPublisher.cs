@@ -51,12 +51,21 @@ internal sealed class NotificationPublisher(
     public async Task ApprovalDecidedAsync(Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken)
     {
         var workspace = await workspaces.GetByIdAsync(project.WorkspaceId, cancellationToken);
-        if (workspace is null || workspace.RoleOf(round.RequestedByUserId) is null)
+        if (workspace is null)
         {
             return;
         }
 
-        var recipient = await identity.FindByIdAsync(round.RequestedByUserId, cancellationToken);
+        // Whoever asked may have been removed from the team since: then the owner hears the answer, so it does not get lost.
+        var recipientId = workspace.RoleOf(round.RequestedByUserId) is not null
+            ? round.RequestedByUserId
+            : workspace.Members.FirstOrDefault(m => m.Role == WorkspaceRole.Owner)?.UserId;
+        if (recipientId is null)
+        {
+            return;
+        }
+
+        var recipient = await identity.FindByIdAsync(recipientId.Value, cancellationToken);
         if (recipient is null)
         {
             return;
@@ -135,6 +144,42 @@ internal sealed class NotificationPublisher(
                 inviter?.FullName ?? string.Empty,
                 token,
                 invitation.ExpiresAtUtc),
+            cancellationToken);
+    }
+
+    public async Task MemberInvitedAsync(string workspaceName, MemberInvitation invitation, string token, CancellationToken cancellationToken)
+    {
+        var inviter = await identity.FindByIdAsync(invitation.InvitedByUserId, cancellationToken);
+
+        await events.PublishAsync(
+            new MemberInvited(invitation.Email, workspaceName, inviter?.FullName ?? string.Empty, token, invitation.ExpiresAtUtc),
+            cancellationToken);
+    }
+
+    public async Task MemberJoinedAsync(Workspace workspace, MemberInvitation invitation, Guid accountId, CancellationToken cancellationToken)
+    {
+        if (workspace.RoleOf(invitation.InvitedByUserId) is null)
+        {
+            return;
+        }
+
+        var recipient = await identity.FindByIdAsync(invitation.InvitedByUserId, cancellationToken);
+        if (recipient is null)
+        {
+            return;
+        }
+
+        var account = await identity.FindByIdAsync(accountId, cancellationToken);
+
+        await events.PublishAsync(
+            new MemberJoined(
+                workspace.Id,
+                workspace.Name,
+                accountId,
+                DisplayName(account) ?? invitation.Email,
+                recipient.Id,
+                recipient.Email,
+                DisplayName(recipient) ?? string.Empty),
             cancellationToken);
     }
 

@@ -6,7 +6,7 @@ Who may touch a workspace (`WorkspaceAccess`, 404 for a non-member, 403 for a me
 
 - `/api/workspaces` (`WorkspaceService`): `POST` creates one with the caller as its `Owner`, `GET` lists the caller's own, the ones they work in first and then the ones they are a client of (each with the caller's `role`, `Client` for the latter; an archived client's firm is left out), `GET {id}` answers a member (with their role) and also a client of the workspace (with the role `Client`, the only thing a client can do on `/api/workspaces/{id}` itself), `PATCH {id}` renames it and is **owner-only**.
 - The name is required and at most 100 characters (`Workspace.NameMaxLength`, checked in the entity).
-- Members are `WorkspaceMember` rows inside the `Workspace` aggregate, with a role (`Owner`, `Member`). There is no endpoint to add or remove members yet; the integration tests and the seed add them straight to the database.
+- Members are `WorkspaceMember` rows inside the `Workspace` aggregate, with a role (`Owner`, `Member`). The owner adds members by invitation and removes them (the team's routes, rules and page are in [team.md](team.md)); the seed and some integration tests still add them straight to the database.
 - A member of a workspace cannot also be its client (accepting an invitation answers 409, see [invitations.md](invitations.md)).
 
 ## Web app

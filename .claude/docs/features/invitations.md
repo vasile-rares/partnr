@@ -1,6 +1,6 @@
 # Client invitations
 
-How an invited client gets into a firm's workspace. What they see there is in [portal.md](portal.md). Decisions: `decisions.md`, "Invitații pentru clienți".
+How an invited client gets into a firm's workspace (a team member's invitation uses the same link and page: [team.md](team.md)). What they see there is in [portal.md](portal.md). Decisions: `decisions.md`, "Invitații pentru clienți".
 
 ## API
 

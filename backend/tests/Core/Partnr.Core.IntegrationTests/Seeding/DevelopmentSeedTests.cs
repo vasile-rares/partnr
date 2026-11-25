@@ -6,6 +6,7 @@ using Partnr.Core.Application.DTOs.Deliverables;
 using Partnr.Core.Application.DTOs.ProjectUpdates;
 using Partnr.Core.Application.DTOs.Invitations;
 using Partnr.Core.Application.DTOs.Meetings;
+using Partnr.Core.Application.DTOs.Members;
 using Partnr.Core.Application.DTOs.Messages;
 using Partnr.Core.Application.DTOs.Projects;
 using Partnr.Core.Application.DTOs.Workspaces;
@@ -58,6 +59,16 @@ public sealed class DevelopmentSeedTests(ApiFactory factory)
             .GetFromJsonAsync<InvitationPreviewResponse>($"/api/invitations/{DevelopmentSeed.PendingInvitationToken}");
         Assert.Equal("Pending", preview!.Status);
         Assert.Equal("Studio Pop", preview.WorkspaceName);
+        Assert.Equal("Client", preview.Kind);
+
+        // The team: the demo member, and one invitation waiting for someone with no account yet.
+        var team = await owner.GetFromJsonAsync<MemberResponse[]>($"/api/workspaces/{studio.Id}/members");
+        Assert.Equal(["Owner", "Member"], team!.Select(m => m.Role));
+        var teamInvitation = Assert.Single((await owner.GetFromJsonAsync<MemberInvitationResponse[]>($"/api/workspaces/{studio.Id}/member-invitations"))!);
+        Assert.Equal((DevelopmentSeed.InvitedMemberEmail, "Pending"), (teamInvitation.Email, teamInvitation.Status));
+        var teamPreview = await factory.CreateClient()
+            .GetFromJsonAsync<InvitationPreviewResponse>($"/api/invitations/{DevelopmentSeed.PendingMemberInvitationToken}");
+        Assert.Equal(("Member", "Studio Pop", false), (teamPreview!.Kind, teamPreview.WorkspaceName, teamPreview.AccountExists));
         await SignIn(DevelopmentSeed.ClientEmail);
 
         var ownerProfile = await owner.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");

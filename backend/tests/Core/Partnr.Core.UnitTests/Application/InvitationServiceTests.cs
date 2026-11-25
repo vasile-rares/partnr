@@ -14,6 +14,7 @@ public class InvitationServiceTests
     private readonly Guid _owner = Guid.NewGuid();
     private readonly FakeClientRepository _clients = new();
     private readonly FakeClientInvitationRepository _invitations = new();
+    private readonly FakeMemberInvitationRepository _memberInvitations = new();
     private readonly FakeIdentityService _identity = new();
     private readonly FakeWorkspaceRepository _workspaces = new();
     private readonly FakeCurrentUser _currentUser = new();
@@ -35,7 +36,8 @@ public class InvitationServiceTests
             _workspace.Id, _client.Id, InvitedEmail, ClientInvitation.HashToken(Token), _owner, _time.Now.UtcDateTime);
         _invitations.Items.Add(_invitation);
 
-        _service = new InvitationService(_invitations, _clients, _workspaces, _identity, _currentUser, _notifications, _unitOfWork, _time);
+        _service = new InvitationService(
+            _invitations, _memberInvitations, _clients, _workspaces, _identity, _currentUser, _notifications, _unitOfWork, _time);
     }
 
     [Fact]
@@ -51,6 +53,113 @@ public class InvitationServiceTests
         await _service.AcceptAsync(Token, CancellationToken.None);
 
         Assert.Same(_invitation, Assert.Single(_notifications.Accepted));
+    }
+
+    private const string MemberToken = "a-member-token";
+    private const string MemberEmail = "mihai@studio.example";
+
+    private MemberInvitation AddMemberInvitation()
+    {
+        var invitation = MemberInvitation.Create(_workspace.Id, MemberEmail, MemberInvitation.HashToken(MemberToken), _owner, _time.Now.UtcDateTime);
+        _memberInvitations.Items.Add(invitation);
+
+        return invitation;
+    }
+
+    [Fact]
+    public async Task Get_OfATeamInvitation_SaysItIsForTheTeam()
+    {
+        AddMemberInvitation();
+
+        var preview = await _service.GetAsync(MemberToken, CancellationToken.None);
+
+        Assert.Equal(("Studio Pop", MemberEmail, "Pending", "Member"), (preview.WorkspaceName, preview.Email, preview.Status, preview.Kind));
+        Assert.False(preview.AccountExists);
+        Assert.Equal("Client", (await _service.GetAsync(Token, CancellationToken.None)).Kind);
+    }
+
+    [Fact]
+    public async Task Accept_ATeamInvitation_MakesTheAccountAMember_TellsTheOwner_AndConfirmsTheEmail()
+    {
+        var invitation = AddMemberInvitation();
+        var account = _identity.AddAccount("Mihai@Studio.example", "correct horse");
+        _currentUser.UserId = account.Id;
+
+        var accepted = await _service.AcceptAsync(MemberToken, CancellationToken.None);
+
+        Assert.Equal(_workspace.Id, accepted.WorkspaceId);
+        Assert.Equal(WorkspaceRole.Member, _workspace.RoleOf(account.Id));
+        Assert.NotNull(invitation.AcceptedAtUtc);
+        Assert.Same(invitation, Assert.Single(_notifications.MembersJoined));
+        Assert.Empty(_notifications.Accepted);
+        Assert.Contains(account.Id, _identity.ConfirmedEmails);
+        Assert.Equal(1, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Accept_ATeamInvitation_WithAnotherEmail_IsForbidden_AndChangesNothing()
+    {
+        var invitation = AddMemberInvitation();
+        _currentUser.UserId = _identity.AddAccount("someone.else@example.com", "correct horse").Id;
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => _service.AcceptAsync(MemberToken, CancellationToken.None));
+
+        Assert.Single(_workspace.Members);
+        Assert.Null(invitation.AcceptedAtUtc);
+        Assert.Empty(_notifications.MembersJoined);
+    }
+
+    [Fact]
+    public async Task Accept_ATeamInvitation_ByAnExistingMemberOrALinkedClient_IsAConflict()
+    {
+        AddMemberInvitation();
+        var account = _identity.AddAccount(MemberEmail, "correct horse");
+        _currentUser.UserId = account.Id;
+
+        _workspace.AddMember(account.Id, WorkspaceRole.Member);
+        await Assert.ThrowsAsync<ConflictException>(() => _service.AcceptAsync(MemberToken, CancellationToken.None));
+
+        _workspace.RemoveMember(account.Id);
+        var card = Client.Register(_workspace.Id, "Mihai", MemberEmail);
+        card.LinkTo(account.Id, _time.Now.UtcDateTime);
+        _clients.Items.Add(card);
+        await Assert.ThrowsAsync<ConflictException>(() => _service.AcceptAsync(MemberToken, CancellationToken.None));
+
+        Assert.Equal(0, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Register_ThroughATeamInvitation_CreatesTheAccount_JoinsTheTeam_AndSignsIn()
+    {
+        var invitation = AddMemberInvitation();
+
+        await _service.RegisterAsync(MemberToken, new RegisterViaInvitationRequest { FullName = " Mihai Member ", Password = "correct horse" }, CancellationToken.None);
+
+        var account = Assert.Single(_identity.Accounts, a => a.Email == MemberEmail);
+        Assert.Equal(WorkspaceRole.Member, _workspace.RoleOf(account.Id));
+        Assert.NotNull(invitation.AcceptedAtUtc);
+        Assert.Equal(account.Id, _identity.SignedIn?.Id);
+    }
+
+    [Theory]
+    [InlineData(8, "expired")]
+    [InlineData(-1, "cancelled")]
+    public async Task Accept_ATeamInvitation_ThatIsExpiredOrCancelled_IsAConflict(int daysLater, string why)
+    {
+        var invitation = AddMemberInvitation();
+        if (daysLater < 0)
+        {
+            invitation.Cancel(_time.Now.UtcDateTime);
+        }
+        else
+        {
+            _time.Now = _time.Now.AddDays(daysLater);
+        }
+
+        _currentUser.UserId = _identity.AddAccount(MemberEmail, "correct horse").Id;
+
+        var error = await Assert.ThrowsAsync<ConflictException>(() => _service.AcceptAsync(MemberToken, CancellationToken.None));
+        Assert.Contains(why, error.Message);
     }
 
     [Fact]

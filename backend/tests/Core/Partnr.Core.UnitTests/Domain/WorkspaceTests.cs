@@ -76,6 +76,29 @@ public class WorkspaceTests
     }
 
     [Fact]
+    public void RemoveMember_TakesAMemberOut_AndLeavesTheOwner()
+    {
+        var workspace = Workspace.Create("Studio", OwnerId);
+        var userId = Guid.NewGuid();
+        workspace.AddMember(userId, WorkspaceRole.Member);
+
+        workspace.RemoveMember(userId);
+
+        Assert.Null(workspace.RoleOf(userId));
+        Assert.Equal(WorkspaceRole.Owner, workspace.RoleOf(OwnerId));
+    }
+
+    [Fact]
+    public void RemoveMember_TheOwnerOrAStranger_Throws()
+    {
+        var workspace = Workspace.Create("Studio", OwnerId);
+
+        Assert.Throws<DomainException>(() => workspace.RemoveMember(OwnerId));
+        Assert.Throws<DomainException>(() => workspace.RemoveMember(Guid.NewGuid()));
+        Assert.Equal(WorkspaceRole.Owner, workspace.RoleOf(OwnerId));
+    }
+
+    [Fact]
     public void RoleOf_ReturnsTheRoleOrNullForStrangers()
     {
         var workspace = Workspace.Create("Studio", OwnerId);

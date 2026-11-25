@@ -48,5 +48,13 @@ internal sealed class MeetingRepository(ApplicationDbContext dbContext) : IMeeti
             .Where(m => m.OrganizerUserId == organizerUserId && m.EndsAtUtc > nowUtc && m.SyncStatus != MeetingSyncStatus.Synced)
             .ToListAsync(cancellationToken);
 
+    public Task<int> CountUpcomingForOrganizerAsync(Guid workspaceId, Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken) =>
+        dbContext.Meetings.CountAsync(
+            m => m.WorkspaceId == workspaceId
+                && m.OrganizerUserId == organizerUserId
+                && m.Status != MeetingStatus.Cancelled
+                && m.EndsAtUtc > nowUtc,
+            cancellationToken);
+
     public void Add(Meeting meeting) => dbContext.Meetings.Add(meeting);
 }

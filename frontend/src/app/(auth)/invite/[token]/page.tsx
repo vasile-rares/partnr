@@ -33,7 +33,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
         <Message title="Invitation already used">
           This invitation from {workspaceName} was already accepted.
           <Link href="/" className={buttonVariants({ size: "lg", className: "mt-6 w-full" })}>
-            Go to your portal
+            {invitation.kind === "Member" ? "Go to your workspace" : "Go to your portal"}
           </Link>
         </Message>
       );
@@ -59,8 +59,10 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
     <>
       <h1 className="mb-3 font-heading text-3xl font-semibold">Join {workspaceName}</h1>
       <p className="mb-8 text-muted-foreground">
-        {workspaceName} invited <span className="font-medium text-foreground">{email}</span> to follow their projects in the
-        portal.
+        {workspaceName} invited <span className="font-medium text-foreground">{email}</span>{" "}
+        {invitation.kind === "Member"
+          ? "to join their team. Once you accept, you can see all of its clients and projects."
+          : "to follow their projects in the portal."}
       </p>
 
       {user && signedInAsInvited ? (

@@ -25,6 +25,7 @@ How each built feature works, API and web app side by side in one file: routes, 
 | --- | --- |
 | Sign-in flows, password reset, account page and profile | [auth.md](.claude/docs/features/auth.md) |
 | Workspaces, members' roles, workspace settings | [workspaces.md](.claude/docs/features/workspaces.md) |
+| Team members, their invitations | [team.md](.claude/docs/features/team.md) |
 | Sidebar, menus, page frame, theme | [app-shell.md](.claude/docs/features/app-shell.md) |
 | Clients, account suggestions | [clients.md](.claude/docs/features/clients.md) |
 | Client invitations, locked client details | [invitations.md](.claude/docs/features/invitations.md) |

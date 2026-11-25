@@ -14,6 +14,8 @@ public interface INotificationEventService
 
     Task ApplyAsync(InvitationAccepted accepted, CancellationToken cancellationToken);
 
+    Task ApplyAsync(MemberJoined joined, CancellationToken cancellationToken);
+
     /// <summary>The request was taken back: its notification leaves the inbox and its email, if it has not gone out yet, is cancelled.</summary>
     Task WithdrawAsync(Guid approvalRequestId, CancellationToken cancellationToken);
 

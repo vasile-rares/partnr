@@ -13,5 +13,13 @@ public sealed record ClientInvited(
     string Token,
     DateTime ExpiresAtUtc);
 
+/// <summary>The owner invited someone to join the team; <paramref name="Token"/> goes into the link (the invitation keeps only its hash).</summary>
+public sealed record MemberInvited(
+    string RecipientEmail,
+    string WorkspaceName,
+    string InviterName,
+    string Token,
+    DateTime ExpiresAtUtc);
+
 /// <summary>An account asked to reset its password; <paramref name="Token"/> goes into the link and works once, for one hour.</summary>
 public sealed record PasswordResetRequested(string RecipientEmail, string RecipientName, string Token);

@@ -19,5 +19,8 @@ public interface IMeetingRepository
     /// <summary>The organiser's meetings that have not ended and are not in step with Google (tracked).</summary>
     Task<IReadOnlyList<Meeting>> ListOpenUnsyncedForOrganizerAsync(Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken);
 
+    /// <summary>How many meetings of this workspace the member organises that are not cancelled and have not ended.</summary>
+    Task<int> CountUpcomingForOrganizerAsync(Guid workspaceId, Guid organizerUserId, DateTime nowUtc, CancellationToken cancellationToken);
+
     void Add(Meeting meeting);
 }

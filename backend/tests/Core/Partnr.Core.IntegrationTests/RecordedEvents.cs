@@ -11,6 +11,7 @@ namespace Partnr.Core.IntegrationTests;
 public sealed class RecordedEvents
 {
     private readonly ConcurrentQueue<ClientInvited> _invitations = new();
+    private readonly ConcurrentQueue<MemberInvited> _memberInvitations = new();
     private readonly ConcurrentQueue<PasswordResetRequested> _resets = new();
     private readonly ConcurrentQueue<ProjectFileRemoved> _filesRemoved = new();
 
@@ -19,6 +20,9 @@ public sealed class RecordedEvents
 
     public IReadOnlyList<ClientInvited> InvitationsTo(string email) =>
         _invitations.Where(e => string.Equals(e.RecipientEmail, email, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    public IReadOnlyList<MemberInvited> MemberInvitationsTo(string email) =>
+        _memberInvitations.Where(e => string.Equals(e.RecipientEmail, email, StringComparison.OrdinalIgnoreCase)).ToList();
 
     public IReadOnlyList<PasswordResetRequested> ResetsTo(string email) =>
         _resets.Where(e => string.Equals(e.RecipientEmail, email, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -29,6 +33,9 @@ public sealed class RecordedEvents
         {
             case ClientInvited invited:
                 _invitations.Enqueue(invited);
+                break;
+            case MemberInvited memberInvited:
+                _memberInvitations.Enqueue(memberInvited);
                 break;
             case PasswordResetRequested reset:
                 _resets.Enqueue(reset);

@@ -17,6 +17,12 @@ public static class DevelopmentSeed
     /// <summary>Fixed so the invitation page opens without an email: /invite/{PendingInvitationToken}. Development only.</summary>
     public const string PendingInvitationToken = "dev-pending-invitation-token";
 
+    /// <summary>Fixed so the team invitation page opens without an email: /invite/{PendingMemberInvitationToken}, for <see cref="InvitedMemberEmail"/>. Development only.</summary>
+    public const string PendingMemberInvitationToken = "dev-pending-member-invitation-token";
+
+    /// <summary>Invited to join "Studio Pop" as a member, with no account yet.</summary>
+    public const string InvitedMemberEmail = "dana@team.example";
+
     /// <summary>Shared by all the seeded accounts. Local development only.</summary>
     public const string Password = "demo-password";
 

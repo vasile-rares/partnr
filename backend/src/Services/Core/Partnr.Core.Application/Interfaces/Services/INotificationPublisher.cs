@@ -14,7 +14,7 @@ public interface INotificationPublisher
     /// <summary>Tells the client, unless the project is not visible to them (no account yet, archived card, still in Planning).</summary>
     Task ApprovalRequestedAsync(string workspaceName, Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken);
 
-    /// <summary>Tells the member who asked, if they are still in the workspace.</summary>
+    /// <summary>Tells the member who asked; if they have left the workspace, the owner, so the client's answer reaches someone.</summary>
     Task ApprovalDecidedAsync(Project project, Deliverable deliverable, ApprovalRequest round, CancellationToken cancellationToken);
 
     /// <summary>Tells the member who sent the invitation, if they are still in the workspace.</summary>
@@ -22,6 +22,12 @@ public interface INotificationPublisher
 
     /// <summary>Sends the invitation link to the client's address; <paramref name="token"/> is the plain one, which only the email carries.</summary>
     Task ClientInvitedAsync(string workspaceName, Client client, ClientInvitation invitation, string token, CancellationToken cancellationToken);
+
+    /// <summary>Sends the invitation link to the address; <paramref name="token"/> is the plain one, which only the email carries.</summary>
+    Task MemberInvitedAsync(string workspaceName, MemberInvitation invitation, string token, CancellationToken cancellationToken);
+
+    /// <summary>Tells the owner who sent the invitation, if they are still in the workspace.</summary>
+    Task MemberJoinedAsync(Workspace workspace, MemberInvitation invitation, Guid accountId, CancellationToken cancellationToken);
 
     /// <summary>Sends the reset link to the account's address; <paramref name="token"/> is the plain one, which only the email carries.</summary>
     Task PasswordResetRequestedAsync(CurrentUserResponse account, string token, CancellationToken cancellationToken);

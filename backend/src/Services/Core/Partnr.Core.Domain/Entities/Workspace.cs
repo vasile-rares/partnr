@@ -51,6 +51,20 @@ public sealed class Workspace : Entity
         _members.Add(new WorkspaceMember(Id, userId, role, DateTime.UtcNow));
     }
 
+    /// <summary>The owner stays: a workspace without one has nobody who can invite or remove.</summary>
+    public void RemoveMember(Guid userId)
+    {
+        var member = _members.FirstOrDefault(m => m.UserId == userId)
+            ?? throw new DomainException("This user is not a member of the workspace.");
+
+        if (member.Role == WorkspaceRole.Owner)
+        {
+            throw new DomainException("The owner of a workspace cannot be removed.");
+        }
+
+        _members.Remove(member);
+    }
+
     public WorkspaceRole? RoleOf(Guid userId) => _members.FirstOrDefault(m => m.UserId == userId)?.Role;
 
     private static string ValidName(string name)

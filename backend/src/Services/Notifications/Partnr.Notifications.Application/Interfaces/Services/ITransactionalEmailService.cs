@@ -10,5 +10,7 @@ public interface ITransactionalEmailService
 {
     Task SendAsync(ClientInvited invited, CancellationToken cancellationToken);
 
+    Task SendAsync(MemberInvited invited, CancellationToken cancellationToken);
+
     Task SendAsync(PasswordResetRequested requested, CancellationToken cancellationToken);
 }

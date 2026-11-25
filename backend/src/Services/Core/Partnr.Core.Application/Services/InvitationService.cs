@@ -8,8 +8,10 @@ using Partnr.Core.Domain.Enums;
 
 namespace Partnr.Core.Application.Services;
 
+/// <summary>What the person holding a link does with it. The link is for a client's portal or for the workspace's team, and the token tells which.</summary>
 internal sealed class InvitationService(
     IClientInvitationRepository invitations,
+    IMemberInvitationRepository memberInvitations,
     IClientRepository clients,
     IWorkspaceRepository workspaces,
     IIdentityService identity,
@@ -25,7 +27,7 @@ internal sealed class InvitationService(
         var accountExists = await identity.FindByEmailAsync(invitation.Email, cancellationToken) is not null;
         var status = invitation.StatusAt(Now());
 
-        return new InvitationPreviewResponse(workspace.Name, invitation.Email, status.ToString(), accountExists, invitation.ExpiresAtUtc);
+        return new InvitationPreviewResponse(workspace.Name, invitation.Email, status.ToString(), accountExists, invitation.ExpiresAtUtc, invitation.Kind);
     }
 
     public async Task<AcceptedInvitationResponse> AcceptAsync(string token, CancellationToken cancellationToken)
@@ -43,7 +45,7 @@ internal sealed class InvitationService(
                 "This invitation was sent to a different email address. Sign in with the address it was sent to.");
         }
 
-        return await LinkAsync(invitation, userId, cancellationToken);
+        return await UseAsync(invitation, userId, cancellationToken);
     }
 
     public async Task<AcceptedInvitationResponse> RegisterAsync(
@@ -66,11 +68,16 @@ internal sealed class InvitationService(
             TextHelpers.Optional(request.Company),
             cancellationToken);
 
-        var accepted = await LinkAsync(invitation, account.Id, cancellationToken);
+        var accepted = await UseAsync(invitation, account.Id, cancellationToken);
         await identity.SignInAsync(account.Id, cancellationToken);
 
         return accepted;
     }
+
+    private Task<AcceptedInvitationResponse> UseAsync(FoundInvitation invitation, Guid userId, CancellationToken cancellationToken) =>
+        invitation.Client is { } client
+            ? LinkAsync(client, userId, cancellationToken)
+            : JoinAsync(invitation.Member!, userId, cancellationToken);
 
     private async Task<AcceptedInvitationResponse> LinkAsync(ClientInvitation invitation, Guid userId, CancellationToken cancellationToken)
     {
@@ -102,18 +109,54 @@ internal sealed class InvitationService(
         return new AcceptedInvitationResponse(workspace.Id, workspace.Name);
     }
 
-    private async Task<ClientInvitation> FindAsync(string token, CancellationToken cancellationToken)
+    private async Task<AcceptedInvitationResponse> JoinAsync(MemberInvitation invitation, Guid userId, CancellationToken cancellationToken)
+    {
+        var workspace = await RequireWorkspaceAsync(invitation.WorkspaceId, cancellationToken);
+
+        if (workspace.RoleOf(userId) is not null)
+        {
+            throw new ConflictException($"You are already a member of {workspace.Name}.");
+        }
+
+        // A client sees only their own projects; the team sees everything, so the two cannot be one account in one workspace.
+        if (await clients.IsLinkedAsync(workspace.Id, userId, cancellationToken))
+        {
+            throw new ConflictException($"You have access to {workspace.Name} as a client, so you cannot also join its team.");
+        }
+
+        var now = Now();
+        workspace.AddMember(userId, WorkspaceRole.Member);
+        invitation.Accept(now);
+        await notifications.MemberJoinedAsync(workspace, invitation, userId, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await identity.ConfirmEmailAsync(userId, cancellationToken);
+
+        return new AcceptedInvitationResponse(workspace.Id, workspace.Name);
+    }
+
+    private async Task<FoundInvitation> FindAsync(string token, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(token) || token.Length > ClientInvitation.TokenMaxLength)
         {
             throw new NotFoundException("This invitation link is not valid.");
         }
 
-        return await invitations.GetByTokenHashAsync(ClientInvitation.HashToken(token), cancellationToken)
+        // Both kinds hash the token the same way, so one hash finds it in either table.
+        var hash = ClientInvitation.HashToken(token);
+        var client = await invitations.GetByTokenHashAsync(hash, cancellationToken);
+        if (client is not null)
+        {
+            return new FoundInvitation(client, null);
+        }
+
+        var member = await memberInvitations.GetByTokenHashAsync(hash, cancellationToken)
             ?? throw new NotFoundException("This invitation link is not valid.");
+
+        return new FoundInvitation(null, member);
     }
 
-    private async Task<ClientInvitation> RequirePendingAsync(string token, CancellationToken cancellationToken)
+    private async Task<FoundInvitation> RequirePendingAsync(string token, CancellationToken cancellationToken)
     {
         var invitation = await FindAsync(token, cancellationToken);
 

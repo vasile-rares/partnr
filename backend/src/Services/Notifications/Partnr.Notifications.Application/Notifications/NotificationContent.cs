@@ -32,6 +32,12 @@ internal sealed record NotificationContent(string Subject, string Headline, stri
             "Open the client",
             $"/w/{n.WorkspaceId}/clients/{n.ClientId}"),
 
+        NotificationType.MemberJoined => new(
+            $"{n.ActorName} joined your team",
+            $"{n.ActorName} accepted your invitation and is now a member of {n.WorkspaceName}.",
+            "Open the team",
+            $"/w/{n.WorkspaceId}/team"),
+
         _ => throw new ArgumentOutOfRangeException(nameof(n), n.Type, "Unknown notification type.")
     };
 }

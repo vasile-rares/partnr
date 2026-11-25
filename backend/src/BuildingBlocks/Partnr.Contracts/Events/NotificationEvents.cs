@@ -46,6 +46,16 @@ public sealed record InvitationAccepted(
     string RecipientEmail,
     string RecipientName);
 
+/// <summary>Someone accepted an invitation to the team; the recipient is the owner who sent it.</summary>
+public sealed record MemberJoined(
+    Guid WorkspaceId,
+    string WorkspaceName,
+    Guid MemberUserId,
+    string ActorName,
+    Guid RecipientUserId,
+    string RecipientEmail,
+    string RecipientName);
+
 /// <summary>The request was taken back (withdrawn, or its deliverable unshared or archived): what was said about it no longer holds.</summary>
 public sealed record ApprovalRequestWithdrawn(Guid ApprovalRequestId);
 

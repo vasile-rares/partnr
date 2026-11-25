@@ -5,6 +5,7 @@ import {
   ListChecksIcon,
   MessageSquareIcon,
   UsersIcon,
+  UsersRoundIcon,
   VideoIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
           unreadFrom: `/api/workspaces/${workspaceId}/conversations/unread-count`,
         },
         { label: "Meetings", icon: VideoIcon, href: `${base}/meetings` },
+        { label: "Team", icon: UsersRoundIcon, href: `${base}/team` },
       ],
     },
     {
