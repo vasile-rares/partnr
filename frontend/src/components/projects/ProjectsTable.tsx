@@ -7,6 +7,7 @@ import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { StageSegments } from "@/components/projects/StageSegments";
 import { Badge } from "@/components/reui/badge";
+import { IconTile } from "@/components/reui/icon-tile";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateInYear } from "@/lib/format";
 import type { Project, ProjectStatus } from "@/lib/projects/types";
@@ -112,21 +113,21 @@ export function ProjectsTable({ workspaceId, projects, showClient = true }: Proj
             {/* max-w-0: the column keeps its share of the table, so a long name wraps and the description is cut instead of widening it. */}
             <TableCell className="max-w-0 whitespace-normal">
               <div className="projects-table-project flex items-center gap-3">
-                <div className="projects-table-icon flex size-8 shrink-0 items-center justify-center rounded-sm bg-muted">
-                  <FolderIcon className="size-4 text-muted-foreground" aria-hidden />
-                </div>
+                <IconTile variant="elevated" size="sm" aria-hidden>
+                  <FolderIcon />
+                </IconTile>
                 <div className="projects-table-project-info flex min-w-0 flex-col">
                   <div className="text-sm font-medium">
                     <Link href={`/w/${workspaceId}/projects/${project.id}`} className="after:absolute after:inset-0">
                       {project.name}
                     </Link>
                     {project.archivedAtUtc ? (
-                      <Badge variant="secondary" radius="full" className="ml-2">
+                      <Badge variant="secondary" className="ml-2">
                         Archived
                       </Badge>
                     ) : null}
                     {project.approvals.changesRequested > 0 ? (
-                      <Badge variant="destructive-light" radius="full" className="ml-2">
+                      <Badge variant="destructive-light" className="ml-2">
                         {project.approvals.changesRequested > 1 ? `${project.approvals.changesRequested} changes requested` : "Changes requested"}
                       </Badge>
                     ) : null}

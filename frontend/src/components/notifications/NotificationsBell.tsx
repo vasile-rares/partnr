@@ -13,8 +13,8 @@ import { useNotifications } from "./NotificationsProvider";
 // A path from the API is only followed when it stays inside this app: router.push must never get a URL from elsewhere.
 const isAppPath = (path: string) => path.startsWith("/") && !path.startsWith("//");
 
-/** The bell in the top bar: the number of unread notifications and, when opened, the account's latest ones. The data lives in the provider. */
-export function NotificationsBell() {
+/** The bell, in the sidebar's header or, while the sidebar is out of sight, in the top bar: the number of unread notifications and, when opened, the account's latest ones. The data lives in the provider. */
+export function NotificationsBell({ placement }: { placement: "sidebar" | "topbar" }) {
   const router = useRouter();
   const { unread, items, failed, setListOpen, loadList, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
@@ -58,7 +58,10 @@ export function NotificationsBell() {
           </span>
         ) : null}
       </PopoverTrigger>
-      <PopoverContent align="end" className="notifications-popover w-80 gap-0 p-0 sm:w-96">
+      <PopoverContent
+        side={placement === "sidebar" ? "right" : "bottom"}
+        align={placement === "sidebar" ? "start" : "end"}
+        className="notifications-popover w-80 gap-0 p-0 sm:w-96">
         <div className="notifications-header flex items-center justify-between gap-2 border-b px-3 py-2">
           <h2 className="font-medium">Notifications</h2>
           <Button type="button" variant="ghost" size="xs" disabled={!unread} onClick={markAllRead}>

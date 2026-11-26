@@ -1,6 +1,7 @@
 using Partnr.Integrations.Application.DTOs.Google;
 using Partnr.Integrations.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Partnr.Integrations.Api.Controllers;
 
@@ -14,10 +15,12 @@ public sealed class GoogleIntegrationController(IGoogleConnectionService service
         Ok(await service.GetAsync(cancellationToken));
 
     [HttpPost("connect")]
-    public async Task<IActionResult> Connect(CancellationToken cancellationToken) =>
-        Ok(await service.StartAsync(cancellationToken));
+    public async Task<IActionResult> Connect(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] GoogleConnectRequest? request,
+        CancellationToken cancellationToken) =>
+        Ok(await service.StartAsync(request?.ReturnTo, cancellationToken));
 
-    /// <summary>Google sends the browser here, through the web app's /api rewrite so the session cookie comes along; it ends on a page of the web app.</summary>
+    /// <summary>Google sends the browser here, through the web app's /api rewrite so the session cookie comes along; it ends on the page the connection started from (the account page by default).</summary>
     [HttpGet("callback")]
     public async Task<IActionResult> Callback(string? code, string? state, string? error, CancellationToken cancellationToken)
     {
@@ -30,7 +33,7 @@ public sealed class GoogleIntegrationController(IGoogleConnectionService service
             _ => "error",
         };
 
-        return Redirect(links.Url($"/account?google={result}"));
+        return Redirect(links.Url($"{service.ReturnPathOf(state) ?? "/account"}?google={result}"));
     }
 
     [HttpDelete]

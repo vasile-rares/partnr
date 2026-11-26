@@ -1,6 +1,6 @@
 import { ClientStageList } from "@/components/projects/ClientStageList";
 import { GoToTab } from "@/components/projects/ProjectTabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClientUpdateList } from "@/components/updates/ClientUpdateList";
 import { standing } from "@/lib/projects/summary";

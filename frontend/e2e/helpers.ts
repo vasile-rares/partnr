@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 export const PASSWORD = "correct horse battery";
 
@@ -70,6 +70,45 @@ export async function openAddClient(page: Page) {
 export async function openClientEditor(page: Page) {
   await page.getByRole("button", { name: "Edit client", exact: true }).click();
   return page.getByRole("dialog", { name: "Edit client" });
+}
+
+// The Calendar page: its title ("January 2099"), and a check that an event covers exactly the days `from` to `to` ("YYYY-MM-DD", one day when
+// `to` is left out) of the month grid. An event over several weeks is one element per week, so `events` may match several.
+export const calendarTitle = (page: Page) => page.getByRole("main").locator('[data-slot="event-calendar-title"]');
+
+// Project deadlines are off until asked for.
+export const showDeadlines = (page: Page) => page.getByRole("main").getByRole("checkbox", { name: "Show deadlines" }).click();
+
+export async function expectOnCalendarDay(page: Page, events: Locator, from: string, to = from) {
+  const DAY = 86_400_000;
+  const shift = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY).toISOString().slice(0, 10);
+
+  await expect(events.first()).toBeVisible();
+  const boxes = (await Promise.all((await events.all()).map((event) => event.boundingBox()))).filter((box) => box !== null);
+
+  // True when an element of the event sits over the middle of the day's cell, null when the day is not on the grid.
+  const covers = async (date: string) => {
+    const [year, month, day] = date.split("-").map(Number);
+    const monthName = new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-GB", { month: "long", timeZone: "UTC" });
+    const cell = await page
+      .getByRole("main")
+      .getByRole("gridcell", { name: new RegExp(`, ${day} ${monthName} ${year}$`) })
+      .boundingBox();
+    if (!cell) {
+      return null;
+    }
+    const x = cell.x + cell.width / 2;
+    return boxes.some((box) => {
+      const y = box.y + box.height / 2;
+      return x > box.x && x < box.x + box.width && y > cell.y && y < cell.y + cell.height;
+    });
+  };
+
+  for (let date = from; date <= to; date = shift(date, 1)) {
+    expect(await covers(date), `${date} is covered`).toBe(true);
+  }
+  expect(await covers(shift(from, -1)), "the day before is not covered").not.toBe(true);
+  expect(await covers(shift(to, 1)), "the day after is not covered").not.toBe(true);
 }
 
 // A day on an open calendar, found by the date it stands for as the browser writes it (the tests run in en-US).

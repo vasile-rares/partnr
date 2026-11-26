@@ -1,11 +1,10 @@
 import { CircleAlertIcon, VideoIcon } from "lucide-react";
-import Link from "next/link";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
+import { ConnectGoogleButton } from "@/components/account/ConnectGoogleButton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert";
 import type { GoogleConnection } from "@/lib/google/types";
 
 /** Above the meetings while Google is not in the way: nothing when it is connected and well. */
-export function GoogleCalendarNotice({ google }: { google: GoogleConnection }) {
+export function GoogleCalendarNotice({ google, returnTo }: { google: GoogleConnection; returnTo?: string }) {
   if (google.available && google.status === "Connected") {
     return null;
   }
@@ -32,9 +31,9 @@ export function GoogleCalendarNotice({ google }: { google: GoogleConnection }) {
             ? "Google no longer lets Partnr use your calendar. Changes to your meetings wait until you connect again."
             : "Meetings are created in your Google Calendar with a Meet link, and Google invites your clients and sends the reminders."}
         </p>
-        <Link href="/account" className={buttonVariants({ variant: lapsed ? "outline" : "default", size: "sm" })}>
+        <ConnectGoogleButton variant={lapsed ? "outline" : "default"} size="sm" returnTo={returnTo}>
           {lapsed ? "Reconnect Google Calendar" : "Connect Google Calendar"}
-        </Link>
+        </ConnectGoogleButton>
       </AlertDescription>
     </Alert>
   );

@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
 import { cn } from "@/lib/utils";
 import { stageStatusLabel, type StageStatus } from "@/lib/projects/types";
 

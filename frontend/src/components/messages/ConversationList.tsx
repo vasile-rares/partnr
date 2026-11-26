@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
 import { useConversationChanges } from "@/components/notifications/NotificationsProvider";
 import { getJson } from "@/lib/api/client";
 import { formatDateTimeUtc } from "@/lib/format";

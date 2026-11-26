@@ -3,7 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { buildEvents } from "@/lib/calendar/calendar";
 import { durationLabel, durationOf, momentsOf, splitMeetings, whenLabel } from "@/lib/meetings/time";
 import type { Meeting } from "@/lib/meetings/types";
-import { createAccount, createWorkspace, mainNav, openTab, pickDate, signInAt } from "./helpers";
+import { calendarTitle, createAccount, createWorkspace, expectOnCalendarDay, mainNav, pickDate, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // The browser is in Bucharest, so what is stored in UTC has to be shown (and placed on the calendar) in that zone.
@@ -57,9 +57,9 @@ test("a meeting reads as a day, a time range and a zone", () => {
   expect([durationLabel(15), durationLabel(60), durationLabel(90), durationLabel(120)]).toEqual(["15 min", "1 h", "1 h 30 min", "2 h"]);
 });
 
-test("the calendar holds the meetings that were not called off, by the hour before the deadlines", () => {
+test("the calendar holds every meeting, the ones called off marked, by the hour before the deadlines", () => {
   const events = buildEvents(
-    [{ id: "p", name: "Website", status: "Active", dueDate: "2026-11-20", stages: [], clientName: null }],
+    [{ id: "p", name: "Website", status: "Active", startDate: null, dueDate: "2026-11-20", stages: [], clientName: null }],
     "2026-11-16",
     [
       { id: "late", title: "Afternoon", startsAtUtc: "2026-11-20T15:00:00.000Z", endsAtUtc: "2026-11-20T15:30:00.000Z", status: "Scheduled", clientName: "Elena" },
@@ -68,10 +68,11 @@ test("the calendar holds the meetings that were not called off, by the hour befo
     ],
   );
 
-  expect(events.map((event) => [event.kind, event.title])).toEqual([
-    ["meeting", "Morning"],
-    ["meeting", "Afternoon"],
-    ["project", "Website"],
+  expect(events.map((event) => [event.kind, event.title, event.cancelled])).toEqual([
+    ["meeting", "Morning", false],
+    ["meeting", "Called off", true],
+    ["meeting", "Afternoon", false],
+    ["project", "Website", false],
   ]);
   expect(events[0]).toMatchObject({ date: "2026-11-20", projectId: null, late: false });
 });
@@ -146,23 +147,45 @@ const inDays = (days: number, hourUtc = 9) => {
 /** "YYYY-MM-DD" of a moment in Bucharest, the zone the browser is in. */
 const bucharestDay = (date: Date) => date.toLocaleDateString("sv-SE", { timeZone: "Europe/Bucharest" });
 
-const meetingRow = (page: Page, title: string) => page.getByRole("main").getByRole("listitem").filter({ hasText: title });
+// A meeting on the month grid is a button named "<title>, <time>" (a called off one: "<title> (cancelled), <time>").
+const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const meetingButton = (page: Page, title: string) => page.getByRole("main").getByRole("button", { name: new RegExp(`^${escaped(title)}( \\(cancelled\\))?, `) });
 
-test("without Google connected, the Meetings page says so and sends to the account page", async ({ page, request }) => {
+// The calendar opens on the current month; pages on when the day is in the next one.
+async function showMonthOf(page: Page, isoDate: string) {
+  const label = new Date(`${isoDate}T12:00:00`).toLocaleString("en-GB", { month: "long", year: "numeric" });
+  if ((await calendarTitle(page).textContent()) !== label) {
+    await page.getByRole("main").getByRole("button", { name: "Next", exact: true }).click();
+  }
+  await expect(calendarTitle(page)).toHaveText(label);
+}
+
+// Opens a meeting from the month that has its day; its dialog is named after it.
+async function openMeeting(page: Page, title: string, isoDate: string) {
+  await showMonthOf(page, isoDate);
+  await meetingButton(page, title).click();
+
+  return page.getByRole("dialog", { name: title });
+}
+
+test("without Google connected, the Calendar says so and its button connects Google", async ({ page, request }) => {
   const { workspace } = await signedInFreelancer(page, request);
   await addClient(request, workspace.id, "Acme SRL");
 
-  await mainNav(page).getByRole("link", { name: "Meetings" }).click();
-  await expect(page).toHaveURL(`/w/${workspace.id}/meetings`);
-  await expect(page.getByRole("heading", { level: 1, name: "Meetings" })).toBeVisible();
+  await mainNav(page).getByRole("link", { name: "Calendar" }).click();
+  await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
+  await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
 
   await expect(page.getByRole("alert").filter({ hasText: "Connect your Google Calendar to schedule meetings" })).toBeVisible();
   await expect(page.getByRole("button", { name: "New meeting" })).toHaveCount(0);
-  await expect(page.getByText("No meetings coming up.")).toBeVisible();
+  await expect(calendarTitle(page)).toBeVisible();
 
-  await page.getByRole("main").getByRole("link", { name: "Connect Google to schedule" }).click();
-  await expect(page).toHaveURL("/account");
-  await expect(page.getByRole("region", { name: "Google Calendar" })).toContainText("Not connected");
+  // The button starts the connection itself (the stand-in for Google sends the browser straight back) and the way back ends on the calendar.
+  await page.getByRole("main").getByRole("button", { name: "Connect Google to schedule" }).click();
+  await expect(page).toHaveURL(`/w/${workspace.id}/calendar?google=connected`);
+  await expect(page.getByRole("status").filter({ hasText: "Google Calendar connected" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New meeting" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Connect your Google Calendar" })).toHaveCount(0);
 });
 
 test("a meeting is scheduled in the dialog, sent to Google, and shows in the browser's own time", async ({ page, request }) => {
@@ -171,16 +194,17 @@ test("a meeting is scheduled in the dialog, sent to Google, and shows in the bro
   await addProject(request, workspace.id, acme.id, "Website");
   await connectGoogle(page.request);
 
-  await page.goto(`/w/${workspace.id}/meetings`);
+  await page.goto(`/w/${workspace.id}/calendar`);
   await expect(page.getByRole("alert").filter({ hasText: "Connect your Google Calendar" })).toHaveCount(0);
   await page.getByRole("button", { name: "New meeting" }).click();
   const dialog = page.getByRole("dialog", { name: "New meeting" });
 
+  const day = bucharestDay(inDays(3));
   await dialog.getByLabel("Client").selectOption({ label: "Acme SRL" });
   await dialog.getByLabel("Project").selectOption({ label: "Website" });
   await dialog.getByLabel("Title").fill("Kick-off");
   await dialog.getByLabel("Date", { exact: true }).click();
-  await pickDate(page, bucharestDay(inDays(3)));
+  await pickDate(page, day);
   await dialog.getByLabel("Start time").fill("10:30");
   await dialog.getByLabel("Length").selectOption("45");
   await dialog.getByLabel("Notes").fill("Bring the brief");
@@ -188,32 +212,33 @@ test("a meeting is scheduled in the dialog, sent to Google, and shows in the bro
   await dialog.getByRole("button", { name: "Schedule meeting" }).click();
 
   await expect(dialog).toHaveCount(0);
-  const row = meetingRow(page, "Kick-off");
-  await expect(row).toBeVisible();
-  await expect(row).toContainText("10:30–11:15");
-  await expect(row).toContainText("Acme SRL");
-  await expect(row).toContainText("Website");
-  await expect(row).toContainText("45 min");
-  await expect(row).toContainText("Bring the brief");
-  await expect(page.getByRole("tab", { name: /Upcoming/ })).toContainText("1");
+  const details = await openMeeting(page, "Kick-off", day);
+  await expect(details).toContainText("10:30–11:15");
+  await expect(details).toContainText("Acme SRL");
+  await expect(details).toContainText("Website");
+  await expect(details).toContainText("45 min");
+  await expect(details).toContainText("Bring the brief");
 
   // The page asks again while Google has not answered, so the Meet link turns up by itself.
-  const join = row.getByRole("link", { name: /Join Kick-off/ });
+  const join = details.getByRole("link", { name: /Join Kick-off/ });
   await expect(join).toBeVisible({ timeout: SYNC_TIMEOUT });
   await expect(join).toHaveAttribute("href", /^https:\/\/meet\.google\.com\//);
   await expect(join).toHaveAttribute("target", "_blank");
-  await expect(row.getByText(/Sending to Google/)).toHaveCount(0);
+  await expect(details.getByText(/Sending to Google/)).toHaveCount(0);
 });
 
-test("a meeting can be changed and called off, and the cancelled one stays under Past", async ({ page, request }) => {
+test("a meeting can be changed and called off, and the cancelled one stays on the calendar, marked", async ({ page, request }) => {
   const { workspace } = await signedInFreelancer(page, request);
   const acme = await addClient(request, workspace.id, "Acme SRL");
   await connectGoogle(page.request);
-  const created = await schedule(request, workspace.id, acme.id, "Kick-off", inDays(3));
+  const when = inDays(3);
+  const created = await schedule(request, workspace.id, acme.id, "Kick-off", when);
   await waitUntilSent(request, workspace.id, created.id);
 
-  await page.goto(`/w/${workspace.id}/meetings`);
-  await page.getByRole("button", { name: "Edit Kick-off" }).click();
+  await page.goto(`/w/${workspace.id}/calendar`);
+  const day = bucharestDay(when);
+  const details = await openMeeting(page, "Kick-off", day);
+  await details.getByRole("button", { name: "Edit Kick-off" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit meeting" });
   await expect(dialog).toContainText("Acme SRL");
   await expect(dialog.getByLabel("Title")).toHaveValue("Kick-off");
@@ -222,26 +247,25 @@ test("a meeting can be changed and called off, and the cancelled one stays under
   await dialog.getByRole("button", { name: "Save meeting" }).click();
   await expect(dialog).toHaveCount(0);
 
-  const row = meetingRow(page, "Kick-off, second try");
-  await expect(row).toBeVisible();
-  await expect(row).toContainText("14:00–14:30");
-  await expect(row.getByRole("link", { name: /Join/ })).toBeVisible({ timeout: SYNC_TIMEOUT });
+  const edited = page.getByRole("dialog", { name: "Kick-off, second try" });
+  await expect(edited).toContainText("14:00–14:30");
+  await expect(edited.getByRole("link", { name: /Join/ })).toBeVisible({ timeout: SYNC_TIMEOUT });
 
-  await page.getByRole("button", { name: "Cancel Kick-off, second try" }).click();
+  await edited.getByRole("button", { name: "Cancel Kick-off, second try" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("Google tells Acme SRL that “Kick-off, second try” is cancelled");
   await confirm.getByRole("button", { name: "Keep the meeting" }).click();
-  await expect(row).toBeVisible();
+  await expect(edited.getByRole("button", { name: "Edit Kick-off, second try" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Cancel Kick-off, second try" }).click();
+  await edited.getByRole("button", { name: "Cancel Kick-off, second try" }).click();
   await confirm.getByRole("button", { name: "Cancel meeting" }).click();
-  await expect(meetingRow(page, "Kick-off, second try")).toHaveCount(0);
 
-  await openTab(page, "Past");
-  const history = meetingRow(page, "Kick-off, second try");
-  await expect(history).toContainText("Cancelled");
-  await expect(history.getByRole("button", { name: /Edit|Cancel/ })).toHaveCount(0);
-  await expect(history.getByRole("link", { name: /Join/ })).toHaveCount(0);
+  // History: it stays, marked, with nothing left to do.
+  await expect(edited).toContainText("Cancelled");
+  await expect(edited.getByRole("button", { name: /Edit|Cancel/ })).toHaveCount(0);
+  await expect(edited.getByRole("link", { name: /Join/ })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("main").getByRole("button", { name: /^Kick-off, second try \(cancelled\), / })).toBeVisible();
 });
 
 test("a start in the past is refused with a message, and nothing is saved", async ({ page, request }) => {
@@ -249,7 +273,7 @@ test("a start in the past is refused with a message, and nothing is saved", asyn
   await addClient(request, workspace.id, "Acme SRL");
   await connectGoogle(page.request);
 
-  await page.goto(`/w/${workspace.id}/meetings`);
+  await page.goto(`/w/${workspace.id}/calendar`);
   await page.getByRole("button", { name: "New meeting" }).click();
   const dialog = page.getByRole("dialog", { name: "New meeting" });
   await dialog.getByLabel("Client").selectOption({ label: "Acme SRL" });
@@ -265,24 +289,27 @@ test("a start in the past is refused with a message, and nothing is saved", asyn
 
   await expect(dialog.getByRole("alert").filter({ hasText: "A meeting has to start in the future." })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByText("No meetings coming up.")).toBeVisible();
+  await expect(meetingButton(page, "Too late")).toHaveCount(0);
 });
 
 test("a meeting Google cannot be told about keeps its mark, and has no Join link", async ({ page, request }) => {
   const { workspace } = await signedInFreelancer(page, request);
   const acme = await addClient(request, workspace.id, "Acme SRL");
   await connectGoogle(page.request);
-  await schedule(request, workspace.id, acme.id, "[google-down] Strategy", inDays(3));
+  const when = inDays(3);
+  await schedule(request, workspace.id, acme.id, "[google-down] Strategy", when);
 
-  await page.goto(`/w/${workspace.id}/meetings`);
-  const row = meetingRow(page, "Strategy");
-  await expect(row.getByText("Sending to Google…")).toBeVisible();
+  await page.goto(`/w/${workspace.id}/calendar`);
+  const day = bucharestDay(when);
+  const details = await openMeeting(page, "[google-down] Strategy", day);
+  await expect(details.getByText("Sending to Google…")).toBeVisible();
 
   // One round of the background sync (it runs every 5 seconds) fails for this title and puts the next try a minute away.
   await page.waitForTimeout(7_000);
   await page.reload();
-  await expect(row.getByText("Sending to Google…")).toBeVisible();
-  await expect(row.getByRole("link", { name: /Join/ })).toHaveCount(0);
+  const again = await openMeeting(page, "[google-down] Strategy", day);
+  await expect(again.getByText("Sending to Google…")).toBeVisible();
+  await expect(again.getByRole("link", { name: /Join/ })).toHaveCount(0);
 });
 
 test("a client's page schedules with the client already chosen, and lists what is coming up", async ({ page, request }) => {
@@ -297,14 +324,18 @@ test("a client's page schedules with the client already chosen, and lists what i
   const dialog = page.getByRole("dialog", { name: "New meeting" });
   await expect(dialog.getByLabel("Client")).toHaveValue(acme.id);
   await dialog.getByLabel("Title").fill("Intro call");
+  const day = bucharestDay(inDays(3));
   await dialog.getByLabel("Date", { exact: true }).click();
-  await pickDate(page, bucharestDay(inDays(3)));
+  await pickDate(page, day);
   await dialog.getByRole("button", { name: "Schedule meeting" }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(meetingRow(page, "Intro call")).toBeVisible();
-  await page.getByRole("link", { name: "All meetings" }).click();
-  await expect(meetingRow(page, "Intro call")).toContainText("Acme SRL");
+  const row = page.getByRole("main").getByRole("listitem").filter({ hasText: "Intro call" });
+  await expect(row).toBeVisible();
+  await page.getByRole("link", { name: "Open the calendar" }).click();
+  await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
+  const details = await openMeeting(page, "Intro call", day);
+  await expect(details).toContainText("Acme SRL");
 });
 
 test("meetings are shown in the reader's zone, on the calendar day that is theirs", async ({ page, request }) => {
@@ -315,23 +346,20 @@ test("meetings are shown in the reader's zone, on the calendar day that is their
   await schedule(request, workspace.id, acme.id, "Morning call", new Date("2099-07-15T07:30:00Z"), 45);
   await schedule(request, workspace.id, acme.id, "Late call", new Date("2099-07-15T22:30:00Z"), 30);
 
-  await page.goto(`/w/${workspace.id}/meetings`);
-  await expect(meetingRow(page, "Morning call")).toContainText(/10:30–11:15 (EEST|GMT\+3)/);
-  await expect(meetingRow(page, "Late call")).toContainText(/Thu 16 Jul · 01:30–02:00/);
-
   await page.goto(`/w/${workspace.id}/calendar?month=2099-07`);
-  const main = page.getByRole("main");
-  await expect(main.locator('[data-date="2099-07-15"]').getByRole("link", { name: "Meeting: 10:30 Morning call" })).toBeVisible();
-  await expect(main.locator('[data-date="2099-07-16"]').getByRole("link", { name: "Meeting: 01:30 Late call" })).toBeVisible();
-  await expect(main.locator('[data-date="2099-07-15"]').getByRole("link", { name: /Late call/ })).toHaveCount(0);
+  await expectOnCalendarDay(page, page.getByRole("main").getByRole("button", { name: /^Morning call, 10:30/ }), "2099-07-15");
+  await expectOnCalendarDay(page, page.getByRole("main").getByRole("button", { name: /^Late call, 01:30/ }), "2099-07-16");
 
-  await main.getByRole("link", { name: "Meeting: 10:30 Morning call" }).click();
-  await expect(page).toHaveURL(`/w/${workspace.id}/meetings`);
+  await page.getByRole("main").getByRole("button", { name: /^Morning call, 10:30/ }).click();
+  await expect(page.getByRole("dialog", { name: "Morning call" })).toContainText(/Wed 15 Jul · 10:30–11:15 (EEST|GMT\+3)/);
+  await page.keyboard.press("Escape");
+  await page.getByRole("main").getByRole("button", { name: /^Late call, 01:30/ }).click();
+  await expect(page.getByRole("dialog", { name: "Late call" })).toContainText(/Thu 16 Jul · 01:30–02:00/);
 });
 
 // ---------------------------------------------------------------- the client's side
 
-test("the client sees its meetings in the portal: next on Home, a list with Join, history, and on the calendar", async ({ page, request }) => {
+test("the client sees its meetings in the portal: next on Home, and on the calendar with Join and history", async ({ page, request }) => {
   await createAccount(request);
   const workspace = await createWorkspace(request, "Studio Pop");
   await connectGoogle(request);
@@ -360,23 +388,29 @@ test("the client sees its meetings in the portal: next on Home, a list with Join
   await expect(next).toContainText(/10:30–11:15/);
   await expect(next.getByRole("link", { name: /Join Design review/ })).toHaveAttribute("href", /^https:\/\/meet\.google\.com\//);
 
-  await mainNav(page).getByRole("link", { name: "Meetings" }).click();
-  await expect(page).toHaveURL(`/w/${workspace.id}/meetings`);
-  const upcoming = page.getByRole("main").getByRole("listitem");
-  await expect(upcoming.filter({ hasText: "Design review" })).toContainText("Website");
-  await expect(upcoming.filter({ hasText: "Design review" }).getByRole("link", { name: /Join/ })).toBeVisible();
-  // A project the client cannot open is not named, and the call off one has nothing to join.
-  await expect(upcoming.filter({ hasText: "About the secret" })).toBeVisible();
-  await expect(page.getByRole("main")).not.toContainText("Secret plan");
-  await expect(upcoming.filter({ hasText: "Called off" })).toHaveCount(0);
-  await expect(upcoming.getByRole("button", { name: /Edit|Cancel/ })).toHaveCount(0);
-
-  await openTab(page, "Past");
-  const history = page.getByRole("main").getByRole("listitem").filter({ hasText: "Called off" });
-  await expect(history).toContainText("Cancelled");
-  await expect(history.getByRole("link", { name: /Join/ })).toHaveCount(0);
+  await mainNav(page).getByRole("link", { name: "Calendar" }).click();
+  await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
+  await expect(mainNav(page).getByRole("link", { name: "Meetings" })).toHaveCount(0);
 
   await page.goto(`/w/${workspace.id}/calendar?month=2099-07`);
-  await expect(page.getByRole("main").locator('[data-date="2099-07-15"]').getByRole("link", { name: "Meeting: 10:30 Design review" })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("link", { name: /Called off/ })).toHaveCount(0);
+  const main = page.getByRole("main");
+  await expectOnCalendarDay(page, main.getByRole("button", { name: /^Design review, 10:30/ }), "2099-07-15");
+
+  await main.getByRole("button", { name: /^Design review, 10:30/ }).click();
+  const review = page.getByRole("dialog", { name: "Design review" });
+  await expect(review).toContainText("Website");
+  await expect(review.getByRole("link", { name: /Join/ })).toBeVisible();
+  await expect(review.getByRole("button", { name: /Edit|Cancel/ })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // A project the client cannot open is not named.
+  await main.getByRole("button", { name: /^About the secret, / }).click();
+  await expect(page.getByRole("dialog", { name: "About the secret" })).not.toContainText("Secret plan");
+  await page.keyboard.press("Escape");
+
+  // The call off one stays, marked, with nothing to join.
+  await main.getByRole("button", { name: /^Called off \(cancelled\), / }).click();
+  const history = page.getByRole("dialog", { name: "Called off" });
+  await expect(history).toContainText("Cancelled");
+  await expect(history.getByRole("link", { name: /Join/ })).toHaveCount(0);
 });

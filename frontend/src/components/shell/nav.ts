@@ -6,7 +6,6 @@ import {
   MessageSquareIcon,
   UsersIcon,
   UsersRoundIcon,
-  VideoIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,10 +30,12 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
 
   return [
     {
+      label: "Platform",
       items: [
         { label: "Home", icon: HouseIcon, href: base, exact: true },
         { label: "Projects", icon: FolderKanbanIcon, href: `${base}/projects` },
         { label: "Clients", icon: UsersIcon, href: `${base}/clients` },
+        { label: "Tasks", icon: ListChecksIcon },
       ],
     },
     {
@@ -46,16 +47,12 @@ export function workspaceNav(workspaceId: string): NavGroup[] {
           href: `${base}/messages`,
           unreadFrom: `/api/workspaces/${workspaceId}/conversations/unread-count`,
         },
-        { label: "Meetings", icon: VideoIcon, href: `${base}/meetings` },
-        { label: "Team", icon: UsersRoundIcon, href: `${base}/team` },
+        { label: "Calendar", icon: CalendarIcon, href: `${base}/calendar` },
       ],
     },
     {
-      label: "Plan",
-      items: [
-        { label: "Calendar", icon: CalendarIcon, href: `${base}/calendar` },
-        { label: "Tasks", icon: ListChecksIcon },
-      ],
+      label: "Manage",
+      items: [{ label: "Team", icon: UsersRoundIcon, href: `${base}/team` }],
     },
   ];
 }
@@ -68,14 +65,13 @@ export function clientNav(workspaceId: string): NavGroup[] {
       items: [
         { label: "Home", icon: HouseIcon, href: base, exact: true },
         { label: "Projects", icon: FolderKanbanIcon, href: `/w/${workspaceId}/projects` },
-        { label: "Calendar", icon: CalendarIcon, href: `/w/${workspaceId}/calendar` },
-        { label: "Meetings", icon: VideoIcon, href: `/w/${workspaceId}/meetings` },
         {
           label: "Messages",
           icon: MessageSquareIcon,
           href: `/w/${workspaceId}/messages`,
           unreadFrom: `/api/workspaces/${workspaceId}/conversations/unread-count`,
         },
+        { label: "Calendar", icon: CalendarIcon, href: `/w/${workspaceId}/calendar` },
       ],
     },
   ];

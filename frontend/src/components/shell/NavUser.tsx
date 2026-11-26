@@ -4,14 +4,13 @@ import { ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { ThemeRadioGroup } from "@/components/theme-toggle";
+import { ThemeMenuItem } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -39,20 +38,30 @@ export function NavUser({ user }: { user: ShellUser }) {
             <ChevronsUpDownIcon className="ml-auto" aria-hidden />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent side="top" align="start" className="nav-user-menu min-w-56">
+          <DropdownMenuContent side="top" align="start" className="nav-user-menu min-w-64 bg-sidebar">
+            <div className="nav-user-menu-header flex items-center gap-3 px-1.5 py-1.5">
+              <Avatar>
+                <AvatarFallback>{initials(user.fullName)}</AvatarFallback>
+              </Avatar>
+              <div className="grid min-w-0 leading-tight">
+                <span className="truncate text-sm font-medium">{user.fullName}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              </div>
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem render={<Link href="/account" />}>
+              <DropdownMenuItem className="h-7" render={<Link href="/account" />}>
                 <UserIcon /> Account
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Theme</DropdownMenuLabel>
-              <ThemeRadioGroup />
+              <ThemeMenuItem />
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem
+                className="h-7"
                 disabled={pending}
                 onClick={() =>
                   startTransition(async () => {

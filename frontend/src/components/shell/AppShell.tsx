@@ -35,7 +35,12 @@ export async function AppShell({ context, children }: { context: ShellContext; c
           workspaces={workspaces.map(({ id, name }) => ({ id, name }))}
           clientOf={clientOf}
         />
-        <SidebarInset id="main-content" tabIndex={-1} className="focus-visible:outline-none">
+        <SidebarInset
+          id="main-content"
+          tabIndex={-1}
+          // On a wide screen the panel is a card inside the sidebar's frame and scrolls by itself, so its rounded corners clip what moves under the sticky top bar.
+          className="focus-visible:outline-none md:peer-data-[variant=inset]:m-3 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0 md:peer-data-[variant=inset]:h-[calc(100svh-(--spacing(6)))] md:peer-data-[variant=inset]:rounded-2xl md:peer-data-[variant=inset]:overflow-y-auto"
+        >
           {children}
         </SidebarInset>
       </SidebarProvider>

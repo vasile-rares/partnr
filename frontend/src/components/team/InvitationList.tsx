@@ -6,7 +6,8 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { IconButton } from "@/components/actions/IconButton";
 import { FormError } from "@/components/forms/FormMessage";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
+import { IconTile } from "@/components/reui/icon-tile";
 import { sendJson } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import type { MemberInvitation } from "@/lib/team/types";
@@ -45,9 +46,9 @@ export function InvitationList({ workspaceId, invitations }: { workspaceId: stri
       <ul className="invitation-list flex flex-col divide-y rounded-lg border">
         {invitations.map((invitation) => (
           <li key={invitation.id} className="invitation-item flex items-center gap-3 p-4">
-            <span className="invitation-icon flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
-              <MailIcon className="size-4 text-muted-foreground" aria-hidden />
-            </span>
+            <IconTile variant="elevated" radius="full" aria-hidden>
+              <MailIcon />
+            </IconTile>
             <div className="invitation-info min-w-0 flex-1">
               <p className="break-all font-medium">{invitation.email}</p>
               <p className="text-sm text-muted-foreground">

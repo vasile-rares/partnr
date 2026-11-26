@@ -13,7 +13,7 @@ import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { ProjectsTable } from "@/components/projects/ProjectsTable";
 import { Page } from "@/components/shell/Page";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/reui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -163,8 +163,8 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/w
                 showClient={false}
               />
               <p className="mt-3 text-sm">
-                <Link href={`/w/${workspace.id}/meetings`} className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
-                  All meetings
+                <Link href={`/w/${workspace.id}/calendar`} className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                  Open the calendar
                 </Link>
               </p>
             </div>

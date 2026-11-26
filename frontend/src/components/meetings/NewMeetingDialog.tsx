@@ -3,6 +3,7 @@
 import { PlusIcon, VideoIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ConnectGoogleButton } from "@/components/account/ConnectGoogleButton";
 import { MeetingForm, type MeetingProjectOption } from "@/components/meetings/MeetingForm";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -18,7 +19,7 @@ type NewMeetingDialogProps = {
   variant?: "default" | "outline";
 };
 
-/** "New meeting". Without a connected Google Calendar there is nothing to schedule into, so the button leads to the account page instead. */
+/** "New meeting". Without a connected Google Calendar there is nothing to schedule into, so the button connects it instead. */
 export function NewMeetingDialog({ workspaceId, clients, projects, google, clientId, variant = "default" }: NewMeetingDialogProps) {
   const [open, setOpen] = useState(false);
 
@@ -33,10 +34,10 @@ export function NewMeetingDialog({ workspaceId, clients, projects, google, clien
 
   if (google.status !== "Connected") {
     return (
-      <Link href="/account" className={buttonVariants({ variant })}>
+      <ConnectGoogleButton variant={variant} returnTo={`/w/${workspaceId}/calendar`}>
         <VideoIcon data-icon="inline-start" />
         {google.status === "NeedsReconnect" ? "Reconnect Google to schedule" : "Connect Google to schedule"}
-      </Link>
+      </ConnectGoogleButton>
     );
   }
 

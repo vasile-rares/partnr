@@ -33,7 +33,7 @@ internal sealed class GoogleConnectionService(
             : new GoogleConnectionResponse(google.IsConfigured, connection.Status.ToString(), connection.GoogleEmail);
     }
 
-    public Task<GoogleConnectUrlResponse> StartAsync(CancellationToken cancellationToken)
+    public Task<GoogleConnectUrlResponse> StartAsync(string? returnTo, CancellationToken cancellationToken)
     {
         if (!google.IsConfigured)
         {
@@ -42,7 +42,12 @@ internal sealed class GoogleConnectionService(
 
         // Bound to this account and short-lived: a link made for someone else cannot connect their Google to this one.
         var expires = (time.GetUtcNow() + StateLifetime).ToUnixTimeSeconds();
-        var state = protector.Protect(StatePurpose, $"{RequireUserId():N}|{expires}");
+        var plain = $"{RequireUserId():N}|{expires}";
+        if (returnTo is not null && IsAppPath(returnTo))
+        {
+            plain += $"|{returnTo}";
+        }
+        var state = protector.Protect(StatePurpose, plain);
 
         return Task.FromResult(new GoogleConnectUrlResponse(google.AuthorizationUrl(state)));
     }
@@ -101,6 +106,14 @@ internal sealed class GoogleConnectionService(
         return GoogleConnectOutcome.Connected;
     }
 
+    public string? ReturnPathOf(string? state)
+    {
+        var plain = string.IsNullOrEmpty(state) ? null : protector.Unprotect(StatePurpose, state);
+        var parts = plain?.Split('|');
+
+        return parts is { Length: 3 } && IsAppPath(parts[2]) ? parts[2] : null;
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken)
     {
         var userId = RequireUserId();
@@ -139,11 +152,18 @@ internal sealed class GoogleConnectionService(
         var plain = string.IsNullOrEmpty(state) ? null : protector.Unprotect(StatePurpose, state);
         var parts = plain?.Split('|');
 
-        return parts is [var id, var expires]
-            && id == userId.ToString("N")
-            && long.TryParse(expires, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
+        return parts is { Length: 2 or 3 }
+            && parts[0] == userId.ToString("N")
+            && long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
             && time.GetUtcNow().ToUnixTimeSeconds() < seconds;
     }
+
+    // A path of our own web app and nothing else: no host, no query, so the redirect cannot leave the app.
+    private static bool IsAppPath(string path) =>
+        path is { Length: > 0 and <= 200 }
+        && path[0] == '/'
+        && !path.StartsWith("//", StringComparison.Ordinal)
+        && path.All(c => char.IsAsciiLetterOrDigit(c) || c is '/' or '_' or '-');
 
     private Guid RequireUserId() => currentUser.UserId ?? throw new UnauthorizedException("Sign in to continue.");
 }

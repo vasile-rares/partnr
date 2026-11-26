@@ -18,7 +18,7 @@ Details and reasons: `decisions.md`, "Notificări". The **Notifications service*
 
 ## Web app
 
-- The `NotificationsBell` sits in the top bar of `Page.tsx` (`src/components/notifications/`): a popover with the latest 30, a click marks one read and opens it, "Mark all as read"; its button is named "Notifications, N unread".
+- The `NotificationsBell` sits in the sidebar's header (`AppSidebar`; in the top bar of `Page.tsx` only on a phone, where the sidebar is a sheet) (`src/components/notifications/`): a popover with the latest 30, a click marks one read and opens it, "Mark all as read"; its button is named "Notifications, N unread".
 - The data and the SignalR connection live in `NotificationsProvider`, mounted in `AppShell` because a layout outlives page navigation: one WebSocket-only connection per tab and area, the server only says `inboxChanged` and the REST routes answer, no polling; the state reloads whenever the connection (re)starts. Messages use the same connection ([messages.md](messages.md)).
 - In e2e tests a bell with no number also means "not loaded yet", so wait for a number. The notification now arrives a moment after the action (over the broker), so wait with `expect(...)` rather than reading once.
 

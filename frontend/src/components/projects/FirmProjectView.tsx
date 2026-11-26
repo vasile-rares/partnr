@@ -10,7 +10,7 @@ import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 import { ProjectTabs } from "@/components/projects/ProjectTabs";
 import { ProjectTimeline } from "@/components/projects/ProjectTimeline";
 import { Page } from "@/components/shell/Page";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/reui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";

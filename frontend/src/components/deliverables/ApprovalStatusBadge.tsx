@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import type { ComponentProps } from "react";
+import { Badge } from "@/components/reui/badge";
 import type { ApprovalRoundStatus } from "@/lib/deliverables/types";
 
 const labels: Record<ApprovalRoundStatus, string> = {
@@ -8,10 +9,10 @@ const labels: Record<ApprovalRoundStatus, string> = {
   Withdrawn: "Withdrawn",
 };
 
-const variants: Record<ApprovalRoundStatus, "default" | "secondary" | "destructive" | "outline"> = {
+const variants: Record<ApprovalRoundStatus, ComponentProps<typeof Badge>["variant"]> = {
   Pending: "secondary",
-  Approved: "default",
-  ChangesRequested: "destructive",
+  Approved: "success-light",
+  ChangesRequested: "destructive-light",
   Withdrawn: "outline",
 };
 

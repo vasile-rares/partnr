@@ -56,6 +56,33 @@ public sealed class GoogleConnectionTests(IntegrationsFactory factory)
     }
 
     [Fact]
+    public async Task ComingBackFromGoogle_EndsOnThePageTheConnectionStartedFrom()
+    {
+        var (client, _) = SignedIn();
+        var code = $"code-{Guid.NewGuid():N}";
+        factory.Google.Grants[code] = new GoogleGrant($"1//{Guid.NewGuid():N}", $"ana-{Guid.NewGuid():N}@gmail.example", true);
+        var connect = await client.PostAsJsonAsync("/api/integrations/google/connect", new { returnTo = "/w/some-workspace/calendar" });
+        var url = (await connect.Content.ReadFromJsonAsync<GoogleConnectUrlResponse>())!.Url;
+        var state = HttpUtility.ParseQueryString(new Uri(url).Query)["state"]!;
+
+        var back = await client.GetAsync($"/api/integrations/google/callback?code={code}&state={Uri.EscapeDataString(state)}");
+
+        Assert.Equal(HttpStatusCode.Redirect, back.StatusCode);
+        Assert.EndsWith("/w/some-workspace/calendar?google=connected", back.Headers.Location!.ToString());
+    }
+
+    [Theory]
+    [InlineData("//evil.example")]
+    [InlineData("https://evil.example/x")]
+    [InlineData("/calendar?next=1")]
+    public async Task APathThatIsNotOfTheWebApp_IsRefused(string returnTo)
+    {
+        var (client, _) = SignedIn();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/integrations/google/connect", new { returnTo })).StatusCode);
+    }
+
+    [Fact]
     public async Task ComingBackWithoutAGoodState_ConnectsNothing()
     {
         var (client, _) = SignedIn();

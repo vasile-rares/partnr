@@ -2,7 +2,7 @@ import Link from "next/link";
 import { DividedList } from "@/components/layout/DividedList";
 import { ProjectProgress } from "@/components/projects/ProjectProgress";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
 import { formatDate } from "@/lib/format";
 import type { ClientProjectSummary } from "@/lib/projects/types";
 

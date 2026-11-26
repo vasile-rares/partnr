@@ -127,7 +127,7 @@ public partial class GoogleConnectionServiceTests
     [Fact]
     public async Task Start_ReturnsTheGoogleAddressWithAStateOfOurs()
     {
-        var url = (await _service.StartAsync(CancellationToken.None)).Url;
+        var url = (await _service.StartAsync(null, CancellationToken.None)).Url;
 
         Assert.StartsWith("https://google.test/consent?state=", url);
     }
@@ -137,7 +137,38 @@ public partial class GoogleConnectionServiceTests
     {
         _google.IsConfigured = false;
 
-        await Assert.ThrowsAsync<ConflictException>(() => _service.StartAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.StartAsync(null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task TheReturnPath_TravelsInTheState_AndStillConnects()
+    {
+        var url = (await _service.StartAsync("/w/abc-123/calendar", CancellationToken.None)).Url;
+        var state = StatePattern().Match(url).Groups[1].Value;
+
+        Assert.Equal("/w/abc-123/calendar", _service.ReturnPathOf(state));
+        Assert.Equal(GoogleConnectOutcome.Connected, await _service.CompleteAsync("code", state, null, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("//evil.example")]
+    [InlineData("https://evil.example/x")]
+    [InlineData("/calendar?next=1")]
+    [InlineData("/a|b")]
+    [InlineData("calendar")]
+    public async Task APathThatIsNotOurOwn_IsLeftOut(string returnTo)
+    {
+        var state = StatePattern().Match((await _service.StartAsync(returnTo, CancellationToken.None)).Url).Groups[1].Value;
+
+        Assert.Null(_service.ReturnPathOf(state));
+        Assert.Equal(GoogleConnectOutcome.Connected, await _service.CompleteAsync("code", state, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public void ReturnPathOf_AStateThatIsNotOurs_IsNull()
+    {
+        Assert.Null(_service.ReturnPathOf(null));
+        Assert.Null(_service.ReturnPathOf("forged"));
     }
 
     [Fact]
@@ -274,7 +305,7 @@ public partial class GoogleConnectionServiceTests
     }
 
     private async Task<string> NewState() =>
-        StatePattern().Match((await _service.StartAsync(CancellationToken.None)).Url).Groups[1].Value;
+        StatePattern().Match((await _service.StartAsync(null, CancellationToken.None)).Url).Groups[1].Value;
 
     [GeneratedRegex("state=(.+)$")]
     private static partial Regex StatePattern();

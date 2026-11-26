@@ -9,6 +9,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { NotificationsBell } from "@/components/notifications/NotificationsBell";
+import { WhenSidebarHidden } from "@/components/shell/SidebarVisibility";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
@@ -28,8 +29,10 @@ export function Page({ crumbs, narrow = false, children }: PageFrameProps) {
   return (
     <>
       <header className="page-topbar sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 py-2">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-1 data-vertical:h-4 data-vertical:self-center" />
+        <WhenSidebarHidden>
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-1 data-vertical:h-4 data-vertical:self-center" />
+        </WhenSidebarHidden>
         <Breadcrumb>
           <BreadcrumbList>
             {crumbs.map((crumb, index) => (
@@ -47,7 +50,9 @@ export function Page({ crumbs, narrow = false, children }: PageFrameProps) {
           </BreadcrumbList>
         </Breadcrumb>
         <div className="page-topbar-actions ml-auto">
-          <NotificationsBell />
+          <WhenSidebarHidden>
+            <NotificationsBell placement="topbar" />
+          </WhenSidebarHidden>
         </div>
       </header>
       <div className={cn("page-content mx-auto w-full px-6 py-8", narrow ? "max-w-3xl" : "max-w-5xl")}>{children}</div>

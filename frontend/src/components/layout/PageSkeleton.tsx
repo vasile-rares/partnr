@@ -1,3 +1,4 @@
+import { WhenSidebarHidden } from "@/components/shell/SidebarVisibility";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -9,8 +10,10 @@ export function PageSkeleton({ narrow = false }: { narrow?: boolean }) {
     <div role="status" className="page-skeleton">
       <span className="sr-only">Loading…</span>
       <header className="page-skeleton-topbar flex min-h-14 shrink-0 items-center gap-2 border-b px-4 py-2" aria-hidden>
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-1 data-vertical:h-4 data-vertical:self-center" />
+        <WhenSidebarHidden>
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-1 data-vertical:h-4 data-vertical:self-center" />
+        </WhenSidebarHidden>
         <Skeleton className="h-4 w-40" />
       </header>
       <div className={cn("page-skeleton-content mx-auto flex w-full flex-col gap-8 px-6 py-8", narrow ? "max-w-3xl" : "max-w-5xl")} aria-hidden>

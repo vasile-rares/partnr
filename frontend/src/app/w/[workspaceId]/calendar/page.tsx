@@ -13,11 +13,11 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
   if (!workspace) {
     notFound();
   }
-  const { month } = await searchParams;
+  const { month, google } = await searchParams;
 
   return workspace.role === "Client" ? (
     <ClientCalendarView workspace={workspace} month={month} />
   ) : (
-    <FirmCalendarView workspace={workspace} month={month} />
+    <FirmCalendarView workspace={workspace} month={month} google={google} />
   );
 }

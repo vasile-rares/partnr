@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { AcceptInvitationButton } from "@/components/invitations/AcceptInvitationButton";
 import { InvitationRegisterForm } from "@/components/invitations/InvitationRegisterForm";
 import { SwitchAccountButton } from "@/components/invitations/SwitchAccountButton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/reui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getInvitation } from "@/lib/invitations/server";

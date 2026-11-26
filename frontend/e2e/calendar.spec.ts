@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { buildEvents, monthWeeks, parseMonth, shiftMonth, type CalendarSource } from "@/lib/calendar/calendar";
+import { buildEvents, parseMonth, type CalendarSource } from "@/lib/calendar/calendar";
 import type { Stage, StageStatus } from "@/lib/projects/types";
-import { createAccount, createWorkspace, mainNav, signInAt } from "./helpers";
+import { calendarTitle, createAccount, createWorkspace, expectOnCalendarDay, mainNav, showDeadlines, signInAt } from "./helpers";
 import { invitationTokenIn, waitForEmails } from "./mailpit";
 
 // Far-away months, so what is late and what is not does not depend on the day the tests run.
@@ -22,27 +22,14 @@ const source = (overrides: Partial<CalendarSource>): CalendarSource => ({
   id: `project-${counter++}`,
   name: "Website",
   status: "Active",
+  startDate: null,
   dueDate: null,
   stages: [],
   clientName: null,
   ...overrides,
 });
 
-test("a month is drawn as whole weeks starting on Monday", () => {
-  const november = monthWeeks("2026-11");
-  expect(november).toHaveLength(6);
-  expect(november[0][0]).toBe("2026-10-26");
-  expect(november[0][6]).toBe("2026-11-01");
-  expect(november.at(-1)?.[6]).toBe("2026-12-06");
-
-  // February 2027 starts on a Monday and ends on a Sunday: exactly four weeks.
-  expect(monthWeeks("2027-02")).toHaveLength(4);
-});
-
-test("months shift across years, and a bad month falls back", () => {
-  expect(shiftMonth("2026-12", 1)).toBe("2027-01");
-  expect(shiftMonth("2026-01", -1)).toBe("2025-12");
-
+test("a bad month falls back to the current one", () => {
   expect(parseMonth("2026-05", "2026-11")).toBe("2026-05");
   for (const bad of [undefined, "", "2026-13", "2026-5", "abc", "1999-01", ["2026-05"]]) {
     expect(parseMonth(bad, "2026-11")).toBe("2026-11");
@@ -66,6 +53,34 @@ test("the calendar holds a project's end and its unfinished stages, nothing from
   ]);
 });
 
+test("a stage covers the days it has on the timeline: after the previous stage, up to its own end", () => {
+  const events = buildEvents(
+    [
+      source({
+        name: "Website",
+        startDate: "2026-11-02",
+        dueDate: "2026-11-30",
+        stages: [
+          { ...stage("2026-11-20"), name: "Build" },
+          { ...stage("2026-11-10"), name: "Design" },
+          { ...stage("2026-11-12", "Done"), name: "Review" },
+          { ...stage(null), name: "Launch" },
+        ],
+      }),
+      // No start date, so the stages have no span: each is its own day.
+      source({ name: "Logo", dueDate: "2026-11-25", stages: [{ ...stage("2026-11-18"), name: "Sketch" }] }),
+    ],
+    "2026-11-16",
+  );
+
+  // Design: from the start to the 10th. Review (done) held the 12th, so Build runs from the 13th to the 20th. Launch has no date.
+  expect(events.filter((event) => event.kind === "stage").map((event) => [event.title, event.date, event.endDate])).toEqual([
+    ["Design", "2026-11-02", "2026-11-10"],
+    ["Build", "2026-11-13", "2026-11-20"],
+    ["Sketch", "2026-11-18", "2026-11-18"],
+  ]);
+});
+
 async function addProject(
   request: APIRequestContext,
   workspaceId: string,
@@ -74,10 +89,11 @@ async function addProject(
   status: string,
   dueDate: string,
   stages: { name: string; dueDate: string; status: StageStatus }[] = [],
+  startDate: string | null = null,
 ) {
   const url = `/api/workspaces/${workspaceId}/projects`;
   const created = await (await request.post(url, { data: { clientId, name } })).json();
-  const updated = await request.put(`${url}/${created.id}`, { data: { name, description: null, startDate: null, dueDate, status } });
+  const updated = await request.put(`${url}/${created.id}`, { data: { name, description: null, startDate, dueDate, status } });
   expect(updated.ok()).toBe(true);
   for (const { name: stageName, dueDate: stageDate, status: stageStatus } of stages) {
     const added = await (await request.post(`${url}/${created.id}/stages`, { data: { name: stageName } })).json();
@@ -99,45 +115,60 @@ test("the freelancer sees deadlines on their day, pages through months and opens
   const user = await createAccount(request);
   const workspace = await createWorkspace(request, "Studio");
   const client = await addClient(request, workspace.id, "Acme SRL");
-  await addProject(request, workspace.id, client.id, "Website", "Active", `${FUTURE}-31`, [
-    { name: "Design", dueDate: `${FUTURE}-20`, status: "InProgress" },
-    { name: "Research", dueDate: `${FUTURE}-10`, status: "Done" },
-  ]);
+  // Research ends on the 10th, so Design runs from the 11th; as the last stage it reaches the project's end, the 31st.
+  await addProject(
+    request,
+    workspace.id,
+    client.id,
+    "Website",
+    "Active",
+    `${FUTURE}-31`,
+    [
+      { name: "Design", dueDate: `${FUTURE}-20`, status: "InProgress" },
+      { name: "Research", dueDate: `${FUTURE}-10`, status: "Done" },
+    ],
+    `${FUTURE}-05`,
+  );
   await addProject(request, workspace.id, client.id, "Old job", "Completed", `${FUTURE}-15`);
   await addProject(request, workspace.id, client.id, "Logo", "Active", `${PAST}-10`);
 
   await signInAt(page, user, `/w/${workspace.id}`);
   await mainNav(page).getByRole("link", { name: "Calendar" }).click();
   await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
-  const thisMonth = new Date().toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-  await expect(page.getByRole("heading", { level: 2, name: thisMonth })).toBeVisible();
+  const thisMonth = new Date().toLocaleString("en-GB", { month: "long", year: "numeric" });
+  await expect(calendarTitle(page)).toHaveText(thisMonth);
 
+  // `?month=` is the month the calendar opens on.
   const main = page.getByRole("main");
   await page.goto(`/w/${workspace.id}/calendar?month=${FUTURE}`);
-  await expect(page.getByRole("heading", { level: 2, name: "January 2099" })).toBeVisible();
-  await expect(main.locator('[data-date="2099-01-31"]').getByRole("link", { name: "Project deadline: Website" })).toBeVisible();
-  await expect(main.locator('[data-date="2099-01-20"]').getByRole("link", { name: "Stage of Website: Design" })).toBeVisible();
+  await expect(calendarTitle(page)).toHaveText("January 2099");
+  // Deadlines are off until asked for.
+  await expect(main.getByRole("button", { name: /^Website/ })).toHaveCount(0);
+  await showDeadlines(page);
+  await expectOnCalendarDay(page, main.getByRole("button", { name: /^Website, All day/ }), `${FUTURE}-31`);
+  await expectOnCalendarDay(page, main.getByRole("button", { name: /^Website: Design, All day/ }), `${FUTURE}-11`, `${FUTURE}-31`);
   // A finished stage and a completed project have nothing left to plan.
-  await expect(main.getByRole("link", { name: /Research|Old job/ })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: /Research|Old job/ })).toHaveCount(0);
 
   await page.goto(`/w/${workspace.id}/calendar?month=${PAST}`);
-  await expect(main.locator('[data-date="2020-03-10"]').getByRole("link", { name: /Logo.*overdue/ })).toBeVisible();
+  await showDeadlines(page);
+  await expectOnCalendarDay(page, main.getByRole("button", { name: /^Logo \(overdue\)/ }), `${PAST}-10`);
 
   await page.goto(`/w/${workspace.id}/calendar?month=${FUTURE}`);
-  await page.getByRole("link", { name: "Next month" }).click();
-  await expect(page).toHaveURL(`/w/${workspace.id}/calendar?month=2099-02`);
-  await expect(page.getByRole("heading", { level: 2, name: "February 2099" })).toBeVisible();
-  await page.getByRole("link", { name: "Today" }).click();
-  await expect(page).toHaveURL(`/w/${workspace.id}/calendar`);
-  await expect(page.getByRole("heading", { level: 2, name: thisMonth })).toBeVisible();
+  await showDeadlines(page);
+  await main.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(calendarTitle(page)).toHaveText("February 2099");
+  await main.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(calendarTitle(page)).toHaveText(thisMonth);
 
   await page.goto(`/w/${workspace.id}/calendar?month=${FUTURE}`);
-  await main.getByRole("link", { name: "Stage of Website: Design" }).click();
+  await showDeadlines(page);
+  await main.getByRole("button", { name: /^Website: Design, All day/ }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
 
   // Not a month: the current one, not an error.
   await page.goto(`/w/${workspace.id}/calendar?month=nonsense`);
-  await expect(page.getByRole("heading", { level: 2, name: thisMonth })).toBeVisible();
+  await expect(calendarTitle(page)).toHaveText(thisMonth);
 });
 
 test("the client sees the shared projects' deadlines, not the ones still in planning", async ({ page, request }) => {
@@ -163,10 +194,11 @@ test("the client sees the shared projects' deadlines, not the ones still in plan
 
   await page.goto(`/w/${workspace.id}/calendar?month=${FUTURE}`);
   const main = page.getByRole("main");
-  await expect(main.locator('[data-date="2099-01-31"]').getByRole("link", { name: "Project deadline: Website" })).toBeVisible();
-  await expect(main.locator('[data-date="2099-01-20"]').getByRole("link", { name: "Stage of Website: Design" })).toBeVisible();
-  await expect(main.getByRole("link", { name: /Secret plan/ })).toHaveCount(0);
+  await showDeadlines(page);
+  await expectOnCalendarDay(page, main.getByRole("button", { name: /^Website, All day/ }), `${FUTURE}-31`);
+  await expectOnCalendarDay(page, main.getByRole("button", { name: /^Website: Design, All day/ }), `${FUTURE}-20`);
+  await expect(main.getByRole("button", { name: /Secret plan/ })).toHaveCount(0);
 
-  await main.getByRole("link", { name: "Stage of Website: Design" }).click();
+  await main.getByRole("button", { name: /^Website: Design, All day/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Website" })).toBeVisible();
 });

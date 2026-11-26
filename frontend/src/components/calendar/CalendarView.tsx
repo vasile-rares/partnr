@@ -1,180 +1,137 @@
 "use client";
 
-import { ChevronLeftIcon, ChevronRightIcon, VideoIcon } from "lucide-react";
-import Link from "next/link";
-import { useMemo } from "react";
-import { useInBrowser, useTimeZone } from "@/components/meetings/useInBrowser";
-import { buttonVariants } from "@/components/ui/button";
-import {
-  eventsByDay,
-  monthLabel,
-  monthOf,
-  monthWeeks,
-  shiftMonth,
-  type CalendarEvent,
-  type Month,
-} from "@/lib/calendar/calendar";
-import { formatDate } from "@/lib/format";
-import { clockOf, dayOf, localDateOf } from "@/lib/meetings/time";
-import { cn } from "@/lib/utils";
+import { TZDate } from "@date-fns/tz";
+import { enGB } from "date-fns/locale/en-GB";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useInBrowser } from "@/components/meetings/useInBrowser";
+import { EventCalendar } from "@/components/reui/event-calendar/event-calendar";
+import { EventCalendarContent } from "@/components/reui/event-calendar/event-calendar-content";
+import { EventCalendarNav } from "@/components/reui/event-calendar/event-calendar-nav";
+import type { EventCalendarI18nOverrides } from "@/components/reui/event-calendar/event-calendar-i18n";
+import type { CalendarEvent as UiEvent, CalendarView as UiView } from "@/components/reui/event-calendar/event-calendar-types";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { monthOf, type CalendarEvent, type Month } from "@/lib/calendar/calendar";
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const VIEWS: UiView[] = ["month", "week", "day", "agenda"];
+const HEIGHT = "h-[calc(100svh-15rem)] min-h-[40rem]";
 
-type CalendarViewProps = {
-  events: CalendarEvent[];
-  month: Month;
-  today: string;
-  /** The calendar page's own address: the month is added to it as `?month=`. */
-  basePath: string;
-  /** Where a project's page is: the event's link goes to `${projectsPath}/{projectId}`. */
-  projectsPath: string;
-  /** Where the meetings are listed: a meeting's link goes there. */
-  meetingsPath: string;
+// The rest of the app writes 24-hour times and the day before the month.
+const I18N: EventCalendarI18nOverrides = {
+  formats: {
+    eventTime: "HH:mm",
+    timeGutter: "HH:mm",
+    timeGutterMinute: "HH:mm",
+    dayTitle: "EEEE, d MMMM yyyy",
+    agendaDayHeader: "EEEE, d MMMM",
+    moreDayHeader: "EEEE, d MMMM",
+  },
 };
 
-// A client component only because a meeting belongs to the day it is on for the reader, which the server cannot know: the server
-// puts it on its UTC day and the browser moves it, once it has taken over (see `useInBrowser`). A deadline is a day with no zone.
-export function CalendarView({ events, month, today, basePath, projectsPath, meetingsPath }: CalendarViewProps) {
+type CalendarViewProps = {
+  /** The meetings, and the project deadlines the reader can switch on. */
+  events: CalendarEvent[];
+  /** The month the calendar opens on. */
+  month: Month;
+  today: string;
+  /** Where a project's page is: the event's link goes to `${projectsPath}/{projectId}`. */
+  projectsPath: string;
+  /** A click on a meeting; the page shows it. */
+  onMeetingClick: (meetingId: string) => void;
+};
+
+// A client component because the calendar draws in the reader's time zone, which the server cannot know: until the browser has taken
+// over there is only a placeholder, so nothing the server sent can differ from the first browser render (see `useInBrowser`).
+export function CalendarView(props: CalendarViewProps) {
   const inBrowser = useInBrowser();
-  const day = (event: CalendarEvent) => (inBrowser && event.startsAtUtc ? localDateOf(event.startsAtUtc) : event.date);
-  const byDay = useMemo(() => eventsByDay(events, day), [events, inBrowser]); // eslint-disable-line react-hooks/exhaustive-deps
-  const monthHref = (target: Month) => (target === monthOf(today) ? basePath : `${basePath}?month=${target}`);
-  const inMonth = events.filter((event) => monthOf(day(event)) === month);
-  const hrefOf = (event: CalendarEvent) => (event.kind === "meeting" ? meetingsPath : `${projectsPath}/${event.projectId}`);
+  const [showDeadlines, setShowDeadlines] = useState(false);
 
   return (
-    <section aria-label="Calendar" className="calendar flex flex-col gap-4">
-      <div className="calendar-header flex flex-wrap items-center justify-between gap-3">
-        <h2 aria-live="polite" className="font-heading text-xl font-semibold">
-          {monthLabel(month)}
-        </h2>
-        <nav aria-label="Month" className="calendar-nav flex items-center gap-2">
-          <Link
-            href={monthHref(shiftMonth(month, -1))}
-            aria-label="Previous month"
-            className={buttonVariants({ variant: "outline", size: "icon" })}
-          >
-            <ChevronLeftIcon aria-hidden />
-          </Link>
-          <Link href={basePath} className={buttonVariants({ variant: "outline" })}>
-            Today
-          </Link>
-          <Link
-            href={monthHref(shiftMonth(month, 1))}
-            aria-label="Next month"
-            className={buttonVariants({ variant: "outline", size: "icon" })}
-          >
-            <ChevronRightIcon aria-hidden />
-          </Link>
-        </nav>
+    <div className="calendar-section flex flex-col gap-3">
+      <div className="calendar-options flex items-center justify-end gap-2">
+        <Checkbox id="calendar-deadlines" checked={showDeadlines} onCheckedChange={(checked) => setShowDeadlines(checked === true)} />
+        <Label htmlFor="calendar-deadlines" className="font-normal text-muted-foreground">
+          Show deadlines
+        </Label>
       </div>
-
-      <div className="calendar-grid hidden overflow-hidden rounded-lg border md:block">
-        <div className="calendar-weekdays grid grid-cols-7 border-b bg-muted/40 text-xs font-medium text-muted-foreground">
-          {WEEKDAYS.map((weekday) => (
-            <div key={weekday} className="px-2 py-1.5">
-              {weekday}
-            </div>
-          ))}
-        </div>
-        {monthWeeks(month).map((week) => (
-          <div key={week[0]} className="calendar-week grid grid-cols-7 divide-x border-b last:border-b-0">
-            {week.map((date) => {
-              const dayEvents = inTimeOrder(byDay.get(date) ?? []);
-              const outside = monthOf(date) !== month;
-              return (
-                <div
-                  key={date}
-                  data-date={date}
-                  className={cn("calendar-day flex min-h-24 min-w-0 flex-col gap-1 p-1.5", outside && "bg-muted/30")}
-                >
-                  <span
-                    className={cn(
-                      "calendar-day-number flex size-6 items-center justify-center self-start rounded-full text-xs",
-                      outside ? "text-muted-foreground/60" : "text-muted-foreground",
-                      date === today && "bg-primary font-semibold text-primary-foreground",
-                    )}
-                  >
-                    {Number(date.slice(8))}
-                  </span>
-                  <ul className="calendar-day-events flex flex-col gap-1">
-                    {dayEvents.map((event) => (
-                      <li key={event.key}>
-                        <EventLink event={event} href={hrefOf(event)} className="truncate px-1.5 py-0.5 text-xs" />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      <div className="calendar-agenda md:hidden">
-        {inMonth.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing is due in {monthLabel(month)}.</p>
-        ) : (
-          <ul className="calendar-agenda-list flex flex-col divide-y rounded-lg border">
-            {[...inMonth]
-              .sort((a, b) => day(a).localeCompare(day(b)))
-              .map((event) => (
-                <li key={event.key} className="calendar-agenda-item flex items-center justify-between gap-3 p-3">
-                  <EventLink event={event} href={hrefOf(event)} className="min-w-0 truncate px-2 py-1 text-sm" />
-                  <EventWhen event={event} day={day(event)} />
-                </li>
-              ))}
-          </ul>
-        )}
-      </div>
-    </section>
+      <Card className="calendar gap-0 overflow-hidden py-0">
+        {inBrowser ? <Calendar {...props} showDeadlines={showDeadlines} /> : <Skeleton className={`calendar-placeholder ${HEIGHT} rounded-none`} />}
+      </Card>
+    </div>
   );
 }
 
-// Meetings by the hour, then the deadlines.
-const inTimeOrder = (events: CalendarEvent[]): CalendarEvent[] =>
-  [...events].sort((a, b) => (a.startsAtUtc ? 0 : 1) - (b.startsAtUtc ? 0 : 1) || (a.startsAtUtc ?? "").localeCompare(b.startsAtUtc ?? ""));
-
-function EventWhen({ event, day }: { event: CalendarEvent; day: string }) {
-  const timeZone = useTimeZone();
-
-  return (
-    <time dateTime={event.startsAtUtc ?? event.date} className={cn("shrink-0 text-xs", event.late ? "text-destructive" : "text-muted-foreground")}>
-      {event.startsAtUtc ? `${dayOf(event.startsAtUtc, timeZone)} · ${clockOf(event.startsAtUtc, timeZone)}` : formatDate(day)}
-    </time>
+function Calendar({ events, month, today, projectsPath, onMeetingClick, showDeadlines }: CalendarViewProps & { showDeadlines: boolean }) {
+  const router = useRouter();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const uiEvents = useMemo(
+    () =>
+      events
+        .filter((event) => showDeadlines || event.kind === "meeting")
+        .map((event) => toUiEvent(event, timeZone, event.kind === "meeting" ? null : `${projectsPath}/${event.projectId}`)),
+    [events, showDeadlines, timeZone, projectsPath],
   );
-}
-
-function EventLink({ event, href, className }: { event: CalendarEvent; href: string; className: string }) {
-  const timeZone = useTimeZone();
-  const meeting = event.kind === "meeting";
-  const context = meeting ? "Meeting" : event.kind === "stage" ? `Stage of ${event.projectName}` : "Project deadline";
+  const [defaultDate] = useState(() => (month === monthOf(today) ? new Date() : new TZDate(Number(month.slice(0, 4)), Number(month.slice(5)) - 1, 1, timeZone)));
+  const [defaultView] = useState<UiView>(() => (window.matchMedia("(max-width: 767px)").matches ? "agenda" : "month"));
 
   return (
-    <Link
-      href={href}
-      title={[context, event.clientName].filter(Boolean).join(" · ")}
-      className={cn(
-        "calendar-event block rounded-md font-medium hover:underline",
-        event.late
-          ? "bg-destructive/15 text-destructive"
-          : meeting
-            ? "border-l-2 border-primary bg-secondary text-secondary-foreground"
-            : event.kind === "project"
-              ? "bg-primary/15 text-primary"
-              : "bg-muted text-foreground",
-        className,
-      )}
+    <EventCalendar
+      events={uiEvents}
+      defaultDate={defaultDate}
+      defaultView={defaultView}
+      views={VIEWS}
+      timeZone={timeZone}
+      locale={enGB}
+      i18n={I18N}
+      weekStartsOn={1}
+      interactions={{ drag: false, resize: false, selectSlot: false }}
+      onEventClick={(occurrence) => {
+        const { href, meetingId } = occurrence.event.data ?? {};
+        if (meetingId) {
+          onMeetingClick(meetingId);
+        } else if (href) {
+          router.push(href);
+        }
+      }}
+      className={`calendar-grid ${HEIGHT}`}
     >
-      <span className="sr-only">{context}: </span>
-      {meeting && event.startsAtUtc ? (
-        <>
-          <VideoIcon aria-hidden className="mr-1 inline size-3" />
-          <span className="tabular-nums">{clockOf(event.startsAtUtc, timeZone)}</span>{" "}
-        </>
-      ) : null}
-      {event.title}
-      {event.late ? <span className="sr-only"> (overdue)</span> : null}
-    </Link>
+      <EventCalendarNav />
+      <EventCalendarContent />
+    </EventCalendar>
   );
+}
+
+/** A meeting is opened by the page (`meetingId`), a deadline goes to its project (`href`). */
+type EventData = { href: string | null; meetingId: string | null };
+
+// Deadlines are whole days in the reader's zone, meetings are the instants they are.
+function toUiEvent(event: CalendarEvent, timeZone: string, href: string | null): UiEvent<EventData> {
+  const base = { id: event.key, readOnly: true };
+
+  if (event.startsAtUtc && event.endsAtUtc) {
+    return {
+      ...base,
+      data: { href: null, meetingId: event.key },
+      title: event.cancelled ? `${event.title} (cancelled)` : event.title,
+      start: new Date(event.startsAtUtc),
+      end: new Date(event.endsAtUtc),
+      color: event.cancelled ? "var(--color-muted-foreground)" : "var(--color-violet-500)",
+    };
+  }
+
+  const [year, monthNumber, day] = event.date.split("-").map(Number);
+  const [endYear, endMonth, endDay] = event.endDate.split("-").map(Number);
+  const title = event.kind === "stage" ? `${event.projectName}: ${event.title}` : event.title;
+  return {
+    ...base,
+    data: { href, meetingId: null },
+    title: event.late ? `${title} (overdue)` : title,
+    start: new TZDate(year, monthNumber - 1, day, timeZone),
+    end: new TZDate(endYear, endMonth - 1, endDay + 1, timeZone),
+    allDay: true,
+    color: event.late ? "var(--color-destructive)" : event.kind === "stage" ? "var(--color-teal-500)" : "var(--color-blue-500)",
+  };
 }

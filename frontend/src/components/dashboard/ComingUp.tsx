@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
 import { UPCOMING_DAYS, type Deadline } from "@/lib/dashboard/deadlines";
 import { dueIn, formatDate } from "@/lib/format";
 
@@ -27,7 +27,7 @@ export function ComingUp({ workspaceId, deadlines }: { workspaceId: string; dead
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  {late ? <Badge variant="destructive">Overdue</Badge> : null}
+                  {late ? <Badge variant="destructive-light">Overdue</Badge> : null}
                   <span className={late ? "text-destructive" : "text-muted-foreground"}>
                     {dueIn(deadline.daysLeft)} · <time dateTime={deadline.date}>{formatDate(deadline.date)}</time>
                   </span>

@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
 import { sendJson } from "@/lib/api/client";
 import { formatDate, initials } from "@/lib/format";
 import type { Member } from "@/lib/team/types";

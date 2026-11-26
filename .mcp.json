@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "shadcn@latest",
+        "mcp",
+        "--cwd",
+        "frontend"
+      ]
+    },
+    "reui": {
+      "type": "http",
+      "url": "https://mcp.reui.io"
+    }
+  }
+}

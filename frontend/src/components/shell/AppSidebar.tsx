@@ -17,8 +17,11 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { UnreadMessagesBadge } from "@/components/messages/UnreadMessagesBadge";
+import { NotificationsBell } from "@/components/notifications/NotificationsBell";
 import { ContextSwitcher } from "./ContextSwitcher";
 import { NavUser } from "./NavUser";
+import { SidebarEdgeToggle } from "./SidebarEdgeToggle";
+import { WhenSidebarShown } from "./SidebarVisibility";
 import { isActivePath, clientNav, workspaceNav, type NavGroup, type NavItem } from "./nav";
 import type { ShellContext, ShellUser, ShellWorkspace } from "./types";
 
@@ -46,9 +49,18 @@ export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarPr
         : "";
 
   return (
-    <Sidebar>
+    <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
-        <ContextSwitcher context={context} workspaces={workspaces} clientOf={clientOf} />
+        <div className="sidebar-header-row flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
+          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
+            <ContextSwitcher context={context} workspaces={workspaces} clientOf={clientOf} />
+          </div>
+          <WhenSidebarShown>
+            <div className="sidebar-header-controls flex shrink-0 items-center">
+              <NotificationsBell placement="sidebar" />
+            </div>
+          </WhenSidebarShown>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
@@ -79,6 +91,7 @@ export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarPr
                         <SidebarMenuButton
                           isActive={active}
                           aria-current={active ? "page" : undefined}
+                          tooltip={project.name}
                           render={<Link href={href} />}
                         >
                           <FolderIcon aria-hidden />
@@ -100,6 +113,7 @@ export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarPr
             <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={isActivePath(pathname, { href: `/w/${context.workspace.id}/settings` })}
+                tooltip="Settings"
                 render={<Link href={`/w/${context.workspace.id}/settings`} />}
               >
                 <SettingsIcon aria-hidden />
@@ -110,6 +124,8 @@ export function AppSidebar({ context, user, workspaces, clientOf }: AppSidebarPr
         ) : null}
         <NavUser user={user} />
       </SidebarFooter>
+
+      <SidebarEdgeToggle />
     </Sidebar>
   );
 }
@@ -120,7 +136,7 @@ function NavEntry({ item, active }: { item: NavItem; active: boolean }) {
   if (!item.href) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton disabled>
+        <SidebarMenuButton disabled tooltip={`${item.label} (coming soon)`}>
           <Icon aria-hidden />
           <span>
             {item.label}
@@ -134,7 +150,7 @@ function NavEntry({ item, active }: { item: NavItem; active: boolean }) {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton isActive={active} aria-current={active ? "page" : undefined} render={<Link href={item.href} />}>
+      <SidebarMenuButton isActive={active} aria-current={active ? "page" : undefined} tooltip={item.label} render={<Link href={item.href} />}>
         <Icon aria-hidden />
         <span>{item.label}</span>
       </SidebarMenuButton>

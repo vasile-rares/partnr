@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/reui/badge";
 import type { DeliverableStatus } from "@/lib/deliverables/types";
 
 export function DeliverableStatusBadge({ status }: { status: DeliverableStatus }) {

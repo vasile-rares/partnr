@@ -3,6 +3,7 @@
 import { CircleAlertIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { ConnectGoogleButton } from "@/components/account/ConnectGoogleButton";
 import { FormError } from "@/components/forms/FormMessage";
 import {
   AlertDialog,
@@ -15,8 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert";
+import { Badge } from "@/components/reui/badge";
 import { Button } from "@/components/ui/button";
 import { sendJson } from "@/lib/api/client";
 import type { GoogleConnection } from "@/lib/google/types";
@@ -27,19 +28,6 @@ export function GoogleCalendarCard({ connection }: { connection: GoogleConnectio
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string>();
   const { available, status, email } = connection;
-
-  // Google's own page comes next, so this leaves the app instead of refreshing it.
-  function connect() {
-    startTransition(async () => {
-      setMessage(undefined);
-      const result = await sendJson<{ url: string }>("POST", "/api/integrations/google/connect");
-      if (result.ok) {
-        window.location.assign(result.data.url);
-      } else {
-        setMessage(result.message);
-      }
-    });
-  }
 
   function disconnect() {
     startTransition(async () => {
@@ -60,7 +48,7 @@ export function GoogleCalendarCard({ connection }: { connection: GoogleConnectio
           Google Calendar
         </h2>
         {available ? (
-          <Badge variant={status === "Connected" ? "default" : status === "NeedsReconnect" ? "destructive" : "secondary"}>
+          <Badge variant={status === "Connected" ? "success-light" : status === "NeedsReconnect" ? "destructive-light" : "secondary"}>
             {status === "Connected" ? "Connected" : status === "NeedsReconnect" ? "Needs attention" : "Not connected"}
           </Badge>
         ) : null}
@@ -96,9 +84,7 @@ export function GoogleCalendarCard({ connection }: { connection: GoogleConnectio
       {available ? (
         <div className="google-calendar-actions flex flex-wrap gap-3">
           {status === "Connected" ? null : (
-            <Button type="button" onClick={connect} disabled={pending}>
-              {status === "NeedsReconnect" ? "Reconnect Google Calendar" : "Connect Google Calendar"}
-            </Button>
+            <ConnectGoogleButton>{status === "NeedsReconnect" ? "Reconnect Google Calendar" : "Connect Google Calendar"}</ConnectGoogleButton>
           )}
           {status === "NotConnected" ? null : (
             <AlertDialog>

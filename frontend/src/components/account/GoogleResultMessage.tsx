@@ -1,5 +1,5 @@
 import { CheckCircle2Icon, CircleAlertIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert";
 import type { GoogleResult } from "@/lib/google/types";
 
 const messages: Record<GoogleResult, { title: string; description: string; failed: boolean }> = {

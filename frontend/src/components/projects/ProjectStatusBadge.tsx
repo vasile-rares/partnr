@@ -11,7 +11,7 @@ const variants: Record<ProjectStatus, ComponentProps<typeof Badge>["variant"]> =
 
 export function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
   return (
-    <Badge variant={variants[status]} radius="full">
+    <Badge variant={variants[status]}>
       {statusLabel(status)}
     </Badge>
   );

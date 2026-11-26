@@ -1,9 +1,9 @@
 import { ArchiveIcon, CircleCheckIcon, ClockAlertIcon, MailIcon, UserRoundPlusIcon, type LucideIcon } from "lucide-react";
 import { InfoTip } from "@/components/actions/InfoTip";
+import { IconTile } from "@/components/reui/icon-tile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { displayName, type Client } from "@/lib/clients/types";
 import { formatDate, formatDateTimeUtc } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { ClientPortalActions } from "./ClientPortalActions";
 
 export function ClientPortalCard({ workspaceId, client }: { workspaceId: string; client: Client }) {
@@ -26,13 +26,13 @@ export function ClientPortalCard({ workspaceId, client }: { workspaceId: string;
 }
 
 function PortalState({ client }: { client: Client }) {
-  const { icon: Icon, tone, title, detail } = state(client);
+  const { icon: Icon, tile, title, detail } = state(client);
 
   return (
     <div className="client-portal-state flex items-center gap-3">
-      <span aria-hidden className={cn("client-portal-state-icon flex size-10 shrink-0 items-center justify-center rounded-lg", tone)}>
-        <Icon className="size-5" />
-      </span>
+      <IconTile aria-hidden variant={tile.variant} className={tile.className}>
+        <Icon />
+      </IconTile>
       <div className="min-w-0">
         <p className="font-medium">{title}</p>
         <p className="text-sm text-muted-foreground">{detail}</p>
@@ -41,20 +41,22 @@ function PortalState({ client }: { client: Client }) {
   );
 }
 
-function state(client: Client): { icon: LucideIcon; tone: string; title: string; detail: string } {
+type Tile = { variant: "soft" | "outline"; className: string };
+
+function state(client: Client): { icon: LucideIcon; tile: Tile; title: string; detail: string } {
   const expires = client.portal.expiresAtUtc ? formatDate(client.portal.expiresAtUtc.slice(0, 10)) : "";
 
   switch (client.portal.status) {
     case "Active":
-      return { icon: CircleCheckIcon, tone: "bg-status-done/15 text-status-done", title: "Active", detail: "Has an account" };
+      return { icon: CircleCheckIcon, tile: { variant: "soft", className: "text-status-done" }, title: "Active", detail: "Has an account" };
     case "Invited":
-      return { icon: MailIcon, tone: "bg-status-doing/15 text-status-doing", title: "Invited", detail: `Expires ${expires}` };
+      return { icon: MailIcon, tile: { variant: "soft", className: "text-status-doing" }, title: "Invited", detail: `Expires ${expires}` };
     case "Expired":
-      return { icon: ClockAlertIcon, tone: "bg-destructive/10 text-destructive", title: "Invitation expired", detail: `Expired ${expires}` };
+      return { icon: ClockAlertIcon, tile: { variant: "soft", className: "text-destructive" }, title: "Invitation expired", detail: `Expired ${expires}` };
     case "NotInvited":
       return client.archivedAtUtc
-        ? { icon: ArchiveIcon, tone: "bg-muted text-muted-foreground", title: "Archived", detail: "Restore to invite them" }
-        : { icon: UserRoundPlusIcon, tone: "bg-muted text-muted-foreground", title: "Not invited yet", detail: "No access to the portal" };
+        ? { icon: ArchiveIcon, tile: { variant: "outline", className: "text-muted-foreground" }, title: "Archived", detail: "Restore to invite them" }
+        : { icon: UserRoundPlusIcon, tile: { variant: "outline", className: "text-muted-foreground" }, title: "Not invited yet", detail: "No access to the portal" };
   }
 }
 
